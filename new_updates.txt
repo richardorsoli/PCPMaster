@@ -10,4 +10,11 @@ então pra isso rodar bem é preciso:
 6. em cadastro de maquina colocar 2 campos para alimentar com 2 paramentos: um tempo em horas para iniciar uma manutenção, exemplo 3 meses = 36000 horas o corte laser gera um intervalo de 4hrs para manutenção preventiva. estes sao os 2 parametros quanto tempo de distancia de uma manutenção pra outra e quanto tempo leva a manutenção.
 7. crie o botão de editar alguma máquina ao lado de excluir, crie tambem o botao de editar ao lado do botao de excluir ao lado de um processamento agrupado e de uma uniao de peças  
 
+versão atual: v1.4.3 - manutenção
+
+1. pedir data da ultima atualização. pedir data da proxima manutenção, calular tempo de uma pra outra.
+2. velocidade da passagem de tempo da simulação com 3 velocidades padrao, 5x e 10x
+3. a barra de tempo onde permite rolar e acelerar, procurar um tempo específico, deve correr a pagina inteira na horizontal.
+4. o comportamento da função de agrupar o corte das peças não está ocorrendo como esperado, se ele estivesse funcionando como esperado as primeira linhas do relatorio deveria ser, setup corte laser nucleo e setup corte laser dobradica as 07:30, em processamento nucleo 07:31 e processamento dobradica 07:31
+5. dentro de relatório: abra uma coluna ao lado de cronoanalise para o encarregado relatar e descrever oque foi feito e como foi feito para chegar nesse tempo que foi registrado
  

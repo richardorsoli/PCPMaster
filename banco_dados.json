@@ -1,7 +1,12 @@
 {
   "app": "SimulaFab",
-  "version": "1.4.2",
-  "exportedAt": "2026-09-14T18:01:30.279Z",
+  "version": "1.4.3",
+  "exportedAt": "2026-09-14T19:30:54.020Z",
+  "holidays": [
+    "2026-10-12",
+    "2026-11-02",
+    "2026-11-20"
+  ],
   "projects": {
     "COMANDO MODELO 1": {
       "name": "COMANDO MODELO 1",
@@ -10,113 +15,137 @@
           "id": "m1789391560191",
           "name": "CORTE LASER",
           "pop": "Procedimento Padrão.",
-          "x": 137.55555555555554,
-          "y": 120
+          "maintIntervalHours": 3600,
+          "maintDurationHours": 4
         },
         {
           "id": "m1789391570242",
           "name": "MURATA",
           "pop": "Procedimento Padrão.",
-          "x": 137.55555555555554,
-          "y": 300
+          "maintIntervalHours": 7200,
+          "maintDurationHours": 20
         },
         {
           "id": "m1789391576850",
           "name": "IMAG",
           "pop": "Procedimento Padrão.",
           "x": 275.1111111111111,
-          "y": 120
+          "y": 120,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0
         },
         {
           "id": "m1789391581287",
           "name": "CORDOB",
           "pop": "Procedimento Padrão.",
           "x": 275.1111111111111,
-          "y": 300
+          "y": 300,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0
         },
         {
           "id": "m1789391593505",
           "name": "DOBRA NUCLEO",
           "pop": "Procedimento Padrão.",
           "x": 412.66666666666663,
-          "y": 120
+          "y": 120,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0
         },
         {
           "id": "m1789391598762",
           "name": "DOBRA DOBRADIÇA",
           "pop": "Procedimento Padrão.",
           "x": 412.66666666666663,
-          "y": 300
+          "y": 300,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0
         },
         {
           "id": "m1789391604678",
           "name": "SOLDA MIG",
           "pop": "Procedimento Padrão.",
-          "x": 550.2222222222222,
-          "y": 120
+          "maintIntervalHours": 3600,
+          "maintDurationHours": 4
         },
         {
           "id": "m1789391638329",
           "name": "SOLDA PONTO",
           "pop": "Procedimento Padrão.",
-          "x": 550.2222222222222,
-          "y": 300
+          "maintIntervalHours": 7200,
+          "maintDurationHours": 4
         },
         {
           "id": "m1789391647617",
           "name": "LIXAMENTO",
           "pop": "Procedimento Padrão.",
           "x": 687.7777777777777,
-          "y": 120
+          "y": 120,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0
         },
         {
           "id": "m1789391652436",
           "name": "PINO STUD",
           "pop": "Procedimento Padrão.",
           "x": 687.7777777777777,
-          "y": 300
+          "y": 300,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0
         },
         {
           "id": "m1789391662071",
           "name": "BANHO",
           "pop": "Procedimento Padrão.",
           "x": 825.3333333333333,
-          "y": 120
+          "y": 120,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0
         },
         {
           "id": "m1789391670237",
           "name": "CABINE",
           "pop": "Procedimento Padrão.",
           "x": 825.3333333333333,
-          "y": 300
+          "y": 300,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0
         },
         {
           "id": "m1789391695129",
           "name": "ESTUFA",
           "pop": "Procedimento Padrão.",
           "x": 962.8888888888888,
-          "y": 120
+          "y": 120,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0
         },
         {
           "id": "m1789391701665",
           "name": "MONTAGEM",
           "pop": "Procedimento Padrão.",
           "x": 962.8888888888888,
-          "y": 300
+          "y": 300,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0
         },
         {
           "id": "m1789391707261",
           "name": "EMBALAGEM",
           "pop": "Procedimento Padrão.",
           "x": 1100.4444444444443,
-          "y": 120
+          "y": 120,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0
         },
         {
           "id": "m1789391725515",
           "name": "EXPEDIÇÃO",
           "pop": "Procedimento Padrão.",
           "x": 1100.4444444444443,
-          "y": 300
+          "y": 300,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0
         }
       ],
       "parts": [
@@ -405,7 +434,9 @@
             "SOLDA CORPO"
           ]
         }
-      ]
+      ],
+      "startDate": "2026-09-15",
+      "boxesQty": 100
     }
   }
 }

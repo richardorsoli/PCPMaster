@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SimulaFab v1.4.3</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- TELA 1: INICIAL -->
+  <div id="screen-welcome" class="screen active">
+    <div style="background: #1e293b; padding: 40px; border-radius: 12px; border: 1px solid #334155; text-align: center; max-width: 780px; margin: 40px auto;">
+      <h1 style="color: #38bdf8; font-size: 2.3rem; margin-bottom: 15px;">SimulaFab v1.4.3</h1>
+      <p style="color: #94a3b8; font-size: 1.05rem; line-height: 1.6; margin-bottom: 30px;">
+        Simulação multi-dia com feriados, manutenção preventiva, cronômetro DD/MM/AA e relatórios PDF.
+      </p>
+
+      <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 25px; flex-wrap: wrap;">
+        <button class="btn" onclick="loadExampleAndNavigate()">Carregar Exemplo Real</button>
+        <button class="btn btn-secondary" onclick="navigateTo('screen-config')">Criar Projeto do Zero</button>
+      </div>
+
+      <div style="border-top: 1px solid #334155; padding-top: 20px; text-align: left;">
+        <label style="font-size: 0.85rem; color: #94a3b8;">Carregar Projeto Salvo:</label>
+        <div style="display: flex; gap: 10px; margin-top: 5px;">
+          <select id="saved-projects-select" style="flex:1; padding: 8px; border-radius: 4px; background: #0f172a; color: white; border: 1px solid #475569;"></select>
+          <button class="btn btn-success" onclick="loadSelectedProject()">Carregar</button>
+        </div>
+      </div>
+
+      <div style="border-top: 1px solid #334155; padding-top: 20px; margin-top: 20px; text-align: left;">
+        <label style="font-size: 0.85rem; color: #94a3b8;">Banco de Dados (arquivo .json):</label>
+        <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
+          <button class="btn btn-success" onclick="exportDatabaseJSON()">⬇ Baixar banco_dados.json</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('import-db-file').click()">⬆ Carregar banco_dados.json</button>
+          <input type="file" id="import-db-file" accept=".json,application/json" style="display:none;" onchange="importDatabaseJSON(event)">
+        </div>
+        <p style="font-size: 0.78rem; color: #64748b; margin-top: 8px;">
+          Exporta ou importa projetos, feriados e parâmetros de manutenção.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA 2: CONFIGURAÇÃO -->
+  <div id="screen-config" class="screen">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; flex-wrap: wrap;">
+      <h1 style="color: #38bdf8;">Engenharia de Processo e Roteiro</h1>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+        <button class="btn btn-success" onclick="saveProjectPrompt()">💾 Salvar Projeto</button>
+        <button class="btn" onclick="exportDatabaseJSON()">⬇ Baixar banco_dados.json</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('import-db-file-config').click()">⬆ Carregar JSON</button>
+        <input type="file" id="import-db-file-config" accept=".json,application/json" style="display:none;" onchange="importDatabaseJSON(event)">
+        <button class="btn btn-secondary" onclick="navigateTo('screen-welcome')">Voltar</button>
+      </div>
+    </div>
+
+    <!-- ETAPA 1: MÁQUINAS -->
+    <div class="card">
+      <h2><span class="step-number">1</span> Cadastro das Máquinas / Postos de Trabalho</h2>
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <label>Nome da Máquina ou Posto</label>
+          <input type="text" id="new-machine-name" placeholder="Ex: Laser, Dobra IMAG, Solda MIG...">
+        </div>
+        <div class="form-group" style="flex:2;">
+          <label>Instrução de Trabalho / POP</label>
+          <input type="text" id="new-machine-pop" placeholder="Ex: Gabarito #1, Chapa 1.2mm">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Intervalo Manutenção Preventiva (horas uso)</label>
+          <input type="number" id="new-machine-maint-interval" value="0" min="0" step="0.5" title="0 = desativado">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Duração Manutenção (horas)</label>
+          <input type="number" id="new-machine-maint-duration" value="0" min="0" step="0.5" title="0 = desativado">
+        </div>
+        <div class="form-group" style="flex:1; display:flex; align-items:flex-end;">
+          <button class="btn" style="width:100%;" id="btn-save-machine" onclick="addMachine()">Adicionar Máquina</button>
+        </div>
+      </div>
+      <ul id="machines-list" class="item-list"></ul>
+    </div>
+
+    <!-- ETAPA 2: PEÇAS -->
+    <div class="card">
+      <h2><span class="step-number">2</span> Cadastro de Peças e Roteiros Individuais</h2>
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <label>Nome da Peça / Componente</label>
+          <input type="text" id="new-part-name" placeholder="Ex: NUCLEO, DOBRADICA, TAMPA...">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Espessura (mm)</label>
+          <input type="number" id="new-part-thickness" step="0.1" value="1.2">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Quantidade no Lote</label>
+          <input type="number" id="new-part-qty" value="1" min="1">
+        </div>
+      </div>
+
+      <div class="step-box">
+        <label style="font-weight: bold; color: #38bdf8; display: block; margin-bottom: 8px;">Montar Roteiro Sequencial da Peça:</label>
+        <div class="form-row">
+          <div class="form-group" style="flex:2;">
+            <label>Escolha a Máquina / Posto</label>
+            <select id="step-machine-select"></select>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label>Setup (min)</label>
+            <input type="number" id="step-setup-time" value="1" min="0">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label>Tempo Prod/Peça (min)</label>
+            <input type="number" id="step-prod-time" value="1" min="1">
+          </div>
+          <div class="form-group" style="flex:1.5; display:flex; align-items:flex-end;">
+            <button class="btn btn-secondary" style="width:100%;" onclick="addStepToCurrentPart()">+ Adicionar Etapa</button>
+          </div>
+        </div>
+        <div style="margin-top: 10px;">
+          <label style="font-size:0.8rem; color:#94a3b8;">Sequência Atual para esta Peça:</label>
+          <div id="current-part-steps-container" style="margin-top:5px; min-height: 35px;"></div>
+        </div>
+      </div>
+
+      <div style="margin-top: 15px;">
+        <button class="btn" id="btn-save-part" onclick="savePart()">Salvar e Cadastrar Peça</button>
+        <button class="btn btn-secondary" id="btn-cancel-edit" style="display:none;" onclick="cancelPartEdit()">Cancelar Edição</button>
+      </div>
+      <ul id="parts-list" class="item-list" style="margin-top: 15px;"></ul>
+    </div>
+
+    <!-- ETAPA 3: AGRUPAMENTO -->
+    <div class="card" style="border-color: #0284c7;">
+      <h2 style="color:#38bdf8;"><span class="step-number" style="background:#0284c7;">3</span> Processamento Agrupado (Corte em Conjunto)</h2>
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <label>Setor / Máquina do Agrupamento</label>
+          <select id="group-machine-select"></select>
+        </div>
+        <div class="form-group" style="flex:3;">
+          <label>Selecione as Peças Processadas Juntas:</label>
+          <div id="group-parts-checkboxes" class="checkbox-group"></div>
+        </div>
+        <div class="form-group" style="flex:1.5; display:flex; align-items:flex-end;">
+          <button class="btn btn-secondary" style="width:100%;" id="btn-save-grouping" onclick="addGroupingRule()">Agrupar Peças</button>
+        </div>
+      </div>
+      <ul id="groupings-list" class="item-list"></ul>
+    </div>
+
+    <!-- ETAPA 4: MONTAGEM -->
+    <div class="card" style="border-color: #f59e0b;">
+      <h2 style="color:#f59e0b;"><span class="step-number" style="background:#f59e0b;">4</span> União de Peças e Formação de Subconjuntos</h2>
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <label>Setor da União / Montagem</label>
+          <select id="assembly-machine-select"></select>
+        </div>
+        <div class="form-group" style="flex:2;">
+          <label>Nome do Subconjunto Formado</label>
+          <input type="text" id="assembly-result-name" placeholder="Ex: CONJUNTO TAMPA COMPLETO">
+        </div>
+        <div class="form-group" style="flex:3;">
+          <label>Peças Necessárias para a União:</label>
+          <div id="assembly-parts-checkboxes" class="checkbox-group"></div>
+        </div>
+        <div class="form-group" style="flex:1.5; display:flex; align-items:flex-end;">
+          <button class="btn btn-success" style="width:100%;" id="btn-save-assembly" onclick="addAssemblyRule()">Criar Subconjunto</button>
+        </div>
+      </div>
+      <ul id="assemblies-list" class="item-list"></ul>
+    </div>
+
+    <!-- FERIADOS -->
+    <div class="card">
+      <h2><span class="step-number">5</span> Feriados Cadastrados</h2>
+      <div class="holiday-panel">
+        <div class="form-row">
+          <div class="form-group" style="flex:1;">
+            <label>Data do Feriado</label>
+            <input type="date" id="new-holiday-date">
+          </div>
+          <div class="form-group" style="flex:1; display:flex; align-items:flex-end;">
+            <button class="btn btn-secondary" style="width:100%;" onclick="addHoliday()">Adicionar Feriado</button>
+          </div>
+        </div>
+        <p style="font-size:0.8rem; color:#94a3b8;">Sábados, domingos e feriados são ignorados no calendário de trabalho.</p>
+        <ul id="holidays-list" class="holiday-list"></ul>
+      </div>
+    </div>
+
+    <div class="boxes-qty-bar">
+      <div class="form-group">
+        <label>Qtd. Caixas (1 - 999)</label>
+        <input type="number" id="boxes-qty" value="1" min="1" max="999" step="1">
+      </div>
+      <div class="form-group">
+        <label>Data Inicial</label>
+        <input type="date" id="start-date">
+      </div>
+      <div style="font-size:0.85rem; color:#94a3b8; max-width:480px; line-height:1.4; padding-bottom:6px;">
+        Multiplica a quantidade de peças e o tempo de produção. Setup permanece igual. Turno 07:30–17:18 com almoço 12:00–13:00.
+      </div>
+    </div>
+    <button class="btn" style="padding: 14px 40px; font-size: 1.15rem; width:100%;" onclick="startSimulation()">🚀 Gerar e Rodar Simulação</button>
+  </div>
+
+  <!-- TELA 3: SIMULAÇÃO -->
+  <div id="screen-sim" class="screen">
+    <div class="dashboard">
+      <div>
+        <div style="color:#f8fafc; font-size:1.15rem; font-weight:700; margin-bottom:10px;">SimulaFab - Controle de Chão de Fábrica</div>
+        <div class="sim-controls">
+          <div class="form-group">
+            <label>Qtd. Caixas:</label>
+            <input type="number" id="sim-boxes-qty" value="1" min="1" max="999" disabled>
+          </div>
+          <div class="form-group">
+            <label>Data Inicial:</label>
+            <input type="date" id="sim-start-date" disabled>
+          </div>
+          <div class="playback-btns">
+            <button class="btn btn-play is-paused bg-green-800/60" id="btn-play" onclick="togglePlayPause()">▶ Play</button>
+            <button class="btn btn-stop" id="btn-stop" onclick="stopSimulation()">■ Stop</button>
+            <button class="btn btn-step" onclick="stepMinute(-1)">◀ -1 min</button>
+            <button class="btn btn-step" onclick="stepMinute(1)">+1 min ▶</button>
+          </div>
+        </div>
+        <div class="day-select-wrap" id="day-select-wrap" style="display:none;">
+          <label style="font-size:0.85rem; color:#94a3b8;">Dia de trabalho:</label>
+          <select id="day-select" onchange="onDaySelectChange()"></select>
+        </div>
+      </div>
+      <div class="sim-clock-box" id="kpi-clock">14/09/26 - 07:30:00</div>
+    </div>
+
+    <div class="floor-card">
+      <h2>Status do Chão de Fábrica</h2>
+      <table class="floor-table">
+        <thead>
+          <tr>
+            <th>Peça / Subconjunto</th>
+            <th>Setor Atual</th>
+            <th>Status / Situação</th>
+            <th>Tempo Restante</th>
+          </tr>
+        </thead>
+        <tbody id="floor-status-body"></tbody>
+      </table>
+    </div>
+
+    <div class="timeline-container">
+      <div class="timeline-wrapper">
+        <div id="lunch-overlay" class="timeline-lunch-bg">
+          <span class="timeline-lunch-label">ALMOÇO</span>
+        </div>
+        <input type="range" id="timeline" class="timeline-slider" min="0" max="587" value="0" oninput="onTimelineChange(this.value)">
+      </div>
+      <span id="timeline-label" style="font-size: 0.9rem; color: #94a3b8; min-width: 70px;">07:30</span>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:10px; flex-wrap:wrap;">
+      <div class="kpi">
+        <div class="kpi-title">Status da Produção</div>
+        <div class="kpi-value" id="kpi-status" style="color: #4ade80;">PRODUZINDO</div>
+      </div>
+      <div>
+        <button class="btn btn-success" onclick="generatePDFReport()">📄 Gerar Relatório PDF</button>
+        <button class="btn btn-secondary" onclick="navigateTo('screen-config')">Ajustar Roteiro</button>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h2 style="color: #38bdf8; font-size: 1.2rem; margin-bottom: 10px;">Análise de Eficiência dos Postos de Trabalho</h2>
+      <div class="legend">
+        <div class="legend-item"><div class="color-box" style="background:#f97316;"></div> Setup</div>
+        <div class="legend-item"><div class="color-box" style="background:#22c55e;"></div> Produção</div>
+        <div class="legend-item"><div class="color-box" style="background:#eab308;"></div> Aguardando</div>
+        <div class="legend-item"><div class="color-box" style="background:#a855f7;"></div> Manutenção Preventiva</div>
+        <div class="legend-item"><div class="color-box" style="background:#64748b;"></div> Almoço</div>
+        <div class="legend-item"><div class="color-box" style="background:#334155;"></div> Ocioso</div>
+      </div>
+      <div id="machine-charts-container"></div>
+    </div>
+  </div>
+
+  <script src="js/simulation.js"></script>
+  <script src="js/database.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
