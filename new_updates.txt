@@ -1,0 +1,13 @@
+versão atual: v1.4.2 - banco de dados
+
+cenário: fiz uma simulação com 100 caixas e excede o tempo de 1 dia/turno
+então pra isso rodar bem é preciso:
+1. botão de play and pause verde (rodando) aperta de novo e ele pausa ficando verde opaco, stop faz a simulação voltar no início da simulação. 
+2. adicionar um marcador de data com DD/MM/AA e horário com mostrador HH:MM:SS, 
+3. Escolhe a data junto com a quantidade de caixas para simular. já pode inserir no arquivo banco_dados.json , horários e pular sábados e domingos, também aceitar cadastrar feriados para o simulador pular esses dias.
+4. embaixo do status do chão de fábrica, a barra da timeline ser o início no primeiro horário cadastrado, o almoço no meio da barra e o horário de saída no final da barra, se a simulação extrapolar 1 dia, criar uma lista de menu suspenso com, dia 1, dia 2, dia 3... seguindo o mesmo comportamento.
+5. no layout do relatório acrescentar ao lado direito da coluna peça/componente: quantidade, tempo individual, tempo total. e ao lado da coluna status situação: coluna de crono análise, para o encarregado preencher com o tempo que ele registrou
+6. em cadastro de maquina colocar 2 campos para alimentar com 2 paramentos: um tempo em horas para iniciar uma manutenção, exemplo 3 meses = 36000 horas o corte laser gera um intervalo de 4hrs para manutenção preventiva. estes sao os 2 parametros quanto tempo de distancia de uma manutenção pra outra e quanto tempo leva a manutenção.
+7. crie o botão de editar alguma máquina ao lado de excluir, crie tambem o botao de editar ao lado do botao de excluir ao lado de um processamento agrupado e de uma uniao de peças  
+
+ 

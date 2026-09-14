@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SimulaFab v1.4.2 - Controle de Chão de Fábrica</title>
+  <!-- Biblioteca para Geração do Relatório PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: #0f172a; color: #f8fafc; display: flex; flex-direction: column; min-height: 100vh; }
+    
+    .screen { display: none; padding: 20px; max-width: 1280px; margin: 0 auto; width: 100%; }
+    .screen.active { display: block; }
+
+    /* Cards */
+    .card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 20px; }
+    .card h2 { color: #38bdf8; font-size: 1.2rem; margin-bottom: 15px; border-bottom: 1px solid #334155; padding-bottom: 8px; }
+    .step-number { background: #0284c7; color: white; border-radius: 50%; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; margin-right: 8px; }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: white; }
+    .form-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* Botões */
+    .btn { background: #0284c7; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.95rem; transition: 0.2s; }
+    .btn:hover { background: #0369a1; }
+    .btn-secondary { background: #334155; }
+    .btn-secondary:hover { background: #475569; }
+    .btn-warning { background: #d97706; padding: 4px 10px; font-size: 0.8rem; margin-right: 5px; }
+    .btn-warning:hover { background: #b45309; }
+    .btn-success { background: #16a34a; }
+    .btn-success:hover { background: #15803d; }
+    .btn-danger { background: #ef4444; padding: 4px 8px; font-size: 0.8rem; }
+    .btn-danger:hover { background: #dc2626; }
+
+    /* Listas */
+    .item-list { list-style: none; margin-top: 10px; }
+    .item-list li { background: #0f172a; border: 1px solid #334155; padding: 12px 15px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .machine-badge { background: #38bdf8; color: #0f172a; font-weight: bold; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; margin-right: 10px; }
+    
+    .step-box { background: #0f172a; border: 1px solid #475569; padding: 15px; border-radius: 6px; margin-top: 10px; }
+    .step-tag { display: inline-block; background: #334155; color: #38bdf8; padding: 6px 10px; border-radius: 4px; font-size: 0.85rem; margin-right: 8px; margin-bottom: 6px; border: 1px solid #0284c7; }
+
+    /* Dashboard & Controles do Chão */
+    .dashboard { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 15px 20px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #334155; flex-wrap: wrap; gap: 12px; }
+    .kpi { text-align: center; }
+    .kpi-title { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; }
+    .kpi-value { font-size: 1.4rem; font-weight: bold; color: #38bdf8; }
+    .sim-clock-box { background: #0b0f19; border: 1px solid #64748b; border-radius: 8px; padding: 10px 18px; font-size: 1.6rem; font-weight: bold; font-variant-numeric: tabular-nums; min-width: 90px; text-align: center; }
+
+    .sim-controls { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+    .sim-controls .form-group { margin-bottom: 0; }
+    .sim-controls .form-group input { width: 90px; }
+    .playback-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-play { background: #16a34a; min-width: 88px; }
+    .btn-play:hover { background: #15803d; }
+    .btn-play.is-paused { background: #475569; }
+    .btn-play.is-paused:hover { background: #64748b; }
+    .btn-stop { background: #7f1d1d; min-width: 88px; }
+    .btn-stop:hover { background: #991b1b; }
+    .btn-step { background: #0284c7; }
+    .btn-step:hover { background: #0369a1; }
+
+    /* Tabela Status do Chão de Fábrica */
+    .floor-card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 15px; overflow-x: auto; }
+    .floor-card h2 { color: #f8fafc; font-size: 1.15rem; margin-bottom: 14px; font-weight: 600; }
+    .floor-table { width: 100%; border-collapse: collapse; }
+    .floor-table th { text-align: left; font-size: 0.8rem; color: #94a3b8; font-weight: 600; padding: 10px 12px; border-bottom: 1px solid #334155; }
+    .floor-table td { padding: 12px; border-bottom: 1px solid #273549; font-size: 0.95rem; color: #f8fafc; vertical-align: middle; }
+    .floor-table tr:last-child td { border-bottom: none; }
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
+    .badge-waiting { background: #eab308; color: #0f172a; }
+    .badge-fila { background: #64748b; color: #f8fafc; }
+    .badge-setup { background: #f97316; color: #0f172a; }
+    .badge-working { background: #22c55e; color: #0f172a; }
+    .badge-lunch { background: #94a3b8; color: #0f172a; }
+    .badge-done { background: #334155; color: #cbd5e1; }
+
+    /* Container Customizado do Slider de Tempo com Marcação de Almoço */
+    .timeline-wrapper { position: relative; width: 100%; margin-top: 8px; }
+    .timeline-lunch-bg { position: absolute; top: 0; bottom: 0; background: rgba(148, 163, 184, 0.3); border-left: 2px dashed #cbd5e1; border-right: 2px dashed #cbd5e1; pointer-events: none; border-radius: 2px; }
+    .timeline-lunch-label { position: absolute; top: -20px; font-size: 0.75rem; color: #cbd5e1; font-weight: bold; transform: translateX(-50%); }
+
+    .timeline-container { background: #1e293b; padding: 25px 20px 15px 20px; border-radius: 8px; margin-top: 15px; border: 1px solid #334155; display: flex; align-items: center; gap: 15px; }
+    .timeline-slider { flex: 1; -webkit-appearance: none; appearance: none; height: 10px; border-radius: 50px; background: #475569; outline: none; z-index: 2; position: relative; }
+    .timeline-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #38bdf8; cursor: pointer; box-shadow: 0 0 8px rgba(56, 189, 248, 0.8); }
+
+    /* Gráficos */
+    .chart-card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; margin-top: 20px; }
+    .legend { display: flex; gap: 20px; margin-bottom: 15px; font-size: 0.85rem; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .color-box { width: 14px; height: 14px; border-radius: 3px; }
+
+    .bar-container { margin-bottom: 12px; }
+    .bar-label { font-size: 0.85rem; color: #cbd5e1; margin-bottom: 4px; display: flex; justify-content: space-between; }
+    .bar-track { height: 20px; background: #0f172a; border-radius: 4px; overflow: hidden; display: flex; border: 1px solid #334155; }
+    .bar-segment { height: 100%; transition: width 0.3s; }
+
+    .checkbox-group { background: #0f172a; padding: 10px; border-radius: 4px; border: 1px solid #475569; max-height: 120px; overflow-y: auto; }
+    .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #e2e8f0; margin-bottom: 6px; cursor: pointer; }
+    .checkbox-item input { width: auto; }
+
+    .boxes-qty-bar { background: #0f172a; border: 1px solid #0284c7; border-radius: 8px; padding: 16px 18px; margin-bottom: 16px; display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+    .boxes-qty-bar .form-group { margin-bottom: 0; }
+    .boxes-qty-bar input { width: 120px; }
+  </style>
+</head>
+<body>
+
+  <!-- TELA 1: INICIAL -->
+  <div id="screen-welcome" class="screen active">
+    <div style="background: #1e293b; padding: 40px; border-radius: 12px; border: 1px solid #334155; text-align: center; max-width: 780px; margin: 40px auto;">
+      <h1 style="color: #38bdf8; font-size: 2.3rem; margin-bottom: 15px;">SimulaFab - PPCP Industrial</h1>
+      <p style="color: #94a3b8; font-size: 1.05rem; line-height: 1.6; margin-bottom: 30px;">
+        Simulação de Produção com Turno de Trabalho, Horário de Almoço, Aninhamento e Geração de Relatórios em PDF.
+      </p>
+      
+      <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 25px;">
+        <button class="btn" onclick="loadExampleAndNavigate()">Carregar Exemplo Real</button>
+        <button class="btn btn-secondary" onclick="navigateTo('screen-config')">Criar Projeto do Zero</button>
+      </div>
+
+      <div style="border-top: 1px solid #334155; padding-top: 20px; text-align: left;">
+        <label style="font-size: 0.85rem; color: #94a3b8;">Carregar Projeto Salvo:</label>
+        <div style="display: flex; gap: 10px; margin-top: 5px;">
+          <select id="saved-projects-select" style="flex:1; padding: 8px; border-radius: 4px; background: #0f172a; color: white; border: 1px solid #475569;"></select>
+          <button class="btn btn-success" onclick="loadSelectedProject()">Carregar</button>
+        </div>
+      </div>
+
+      <div style="border-top: 1px solid #334155; padding-top: 20px; margin-top: 20px; text-align: left;">
+        <label style="font-size: 0.85rem; color: #94a3b8;">Banco de Dados (arquivo .json):</label>
+        <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
+          <button class="btn btn-success" onclick="exportDatabaseJSON()">⬇ Baixar banco_dados.json</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('import-db-file').click()">⬆ Carregar banco_dados.json</button>
+          <input type="file" id="import-db-file" accept=".json,application/json" style="display:none;" onchange="importDatabaseJSON(event)">
+        </div>
+        <p style="font-size: 0.78rem; color: #64748b; margin-top: 8px;">
+          Exporta ou importa todos os projetos salvos neste navegador.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA 2: CONFIGURAÇÃO DE ENGENHARIA -->
+  <div id="screen-config" class="screen">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h1 style="color: #38bdf8;">Engenharia de Processo e Roteiro</h1>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+        <button class="btn btn-success" onclick="saveProjectPrompt()">💾 Salvar Projeto</button>
+        <button class="btn" onclick="exportDatabaseJSON()">⬇ Baixar banco_dados.json</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('import-db-file-config').click()">⬆ Carregar JSON</button>
+        <input type="file" id="import-db-file-config" accept=".json,application/json" style="display:none;" onchange="importDatabaseJSON(event)">
+        <button class="btn btn-secondary" onclick="navigateTo('screen-welcome')">Voltar</button>
+      </div>
+    </div>
+
+    <!-- ETAPA 1: MÁQUINAS -->
+    <div class="card">
+      <h2><span class="step-number">1</span> Cadastro das Máquinas / Postos de Trabalho</h2>
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <label>Nome da Máquina ou Posto</label>
+          <input type="text" id="new-machine-name" placeholder="Ex: Laser, Dobra IMAG, Solda MIG, Banho Pintura...">
+        </div>
+        <div class="form-group" style="flex:3;">
+          <label>Instrução de Trabalho / POP</label>
+          <input type="text" id="new-machine-pop" placeholder="Ex: Gabarito #1, Chapa 1.2mm, Pressão de 4 bar">
+        </div>
+        <div class="form-group" style="flex:1; display:flex; align-items:flex-end;">
+          <button class="btn" style="width:100%;" onclick="addMachine()">Adicionar Máquina</button>
+        </div>
+      </div>
+      <ul id="machines-list" class="item-list"></ul>
+    </div>
+
+    <!-- ETAPA 2: PEÇAS E ROTEIRO INDIVIDUAL -->
+    <div class="card">
+      <h2><span class="step-number">2</span> Cadastro de Peças e Roteiros Individuais</h2>
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <label>Nome da Peça / Componente</label>
+          <input type="text" id="new-part-name" placeholder="Ex: NUCLEO, DOBRADICA, TAMPA, ORGANIZADOR...">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Espessura (mm)</label>
+          <input type="number" id="new-part-thickness" step="0.1" value="1.2">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Quantidade no Lote</label>
+          <input type="number" id="new-part-qty" value="1" min="1">
+        </div>
+      </div>
+
+      <!-- Construtor do Roteiro -->
+      <div class="step-box">
+        <label style="font-weight: bold; color: #38bdf8; display: block; margin-bottom: 8px;">Montar Roteiro Sequencial da Peça:</label>
+        <div class="form-row">
+          <div class="form-group" style="flex:2;">
+            <label>Escolha a Máquina / Posto</label>
+            <select id="step-machine-select"></select>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label>Setup (min)</label>
+            <input type="number" id="step-setup-time" value="1" min="0">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label>Tempo Prod/Peça (min)</label>
+            <input type="number" id="step-prod-time" value="1" min="1">
+          </div>
+          <div class="form-group" style="flex:1.5; display:flex; align-items:flex-end;">
+            <button class="btn btn-secondary" style="width:100%;" onclick="addStepToCurrentPart()">+ Adicionar Etapa</button>
+          </div>
+        </div>
+
+        <div style="margin-top: 10px;">
+          <label style="font-size:0.8rem; color:#94a3b8;">Sequência Atual para esta Peça:</label>
+          <div id="current-part-steps-container" style="margin-top:5px; min-height: 35px;"></div>
+        </div>
+      </div>
+
+      <div style="margin-top: 15px;">
+        <button class="btn" id="btn-save-part" onclick="savePart()">Salvar e Cadastrar Peça</button>
+        <button class="btn btn-secondary" id="btn-cancel-edit" style="display:none;" onclick="cancelPartEdit()">Cancelar Edição</button>
+      </div>
+
+      <ul id="parts-list" class="item-list" style="margin-top: 15px;"></ul>
+    </div>
+
+    <!-- ETAPA 3: PROCESSAMENTO AGRUPADO -->
+    <div class="card" style="border-color: #0284c7;">
+      <h2 style="color:#38bdf8;"><span class="step-number" style="background:#0284c7;">3</span> Processamento Agrupado (Corte em Conjunto)</h2>
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <label>Setor / Máquina do Agrupamento</label>
+          <select id="group-machine-select"></select>
+        </div>
+        <div class="form-group" style="flex:3;">
+          <label>Selecione as Peças Processadas Juntas:</label>
+          <div id="group-parts-checkboxes" class="checkbox-group"></div>
+        </div>
+        <div class="form-group" style="flex:1.5; display:flex; align-items:flex-end;">
+          <button class="btn btn-secondary" style="width:100%;" onclick="addGroupingRule()">Agrupar Peças</button>
+        </div>
+      </div>
+      <ul id="groupings-list" class="item-list"></ul>
+    </div>
+
+    <!-- ETAPA 4: UNIÃO E SUBCONJUNTOS -->
+    <div class="card" style="border-color: #f59e0b;">
+      <h2 style="color:#f59e0b;"><span class="step-number" style="background:#f59e0b;">4</span> União de Peças e Formação de Subconjuntos</h2>
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <label>Setor da União / Montagem</label>
+          <select id="assembly-machine-select"></select>
+        </div>
+        <div class="form-group" style="flex:2;">
+          <label>Nome do Subconjunto Formado</label>
+          <input type="text" id="assembly-result-name" placeholder="Ex: CONJUNTO TAMPA COMPLETO">
+        </div>
+        <div class="form-group" style="flex:3;">
+          <label>Peças Necessárias para a União:</label>
+          <div id="assembly-parts-checkboxes" class="checkbox-group"></div>
+        </div>
+        <div class="form-group" style="flex:1.5; display:flex; align-items:flex-end;">
+          <button class="btn btn-success" style="width:100%;" onclick="addAssemblyRule()">Criar Subconjunto</button>
+        </div>
+      </div>
+      <ul id="assemblies-list" class="item-list"></ul>
+    </div>
+
+    <div class="boxes-qty-bar">
+      <div class="form-group">
+        <label>Qtd. Caixas (1 - 999)</label>
+        <input type="number" id="boxes-qty" value="1" min="1" max="999" step="1">
+      </div>
+      <div style="font-size:0.85rem; color:#94a3b8; max-width:520px; line-height:1.4; padding-bottom:6px;">
+        Multiplica a quantidade de peças e o tempo de produção. O tempo de setup permanece o mesmo (uma vez por peça/processo).
+      </div>
+    </div>
+    <button class="btn" style="padding: 14px 40px; font-size: 1.15rem; width:100%;" onclick="startSimulation()">🚀 Gerar e Rodar Simulação</button>
+  </div>
+
+  <!-- TELA 3: SIMULAÇÃO DINÂMICA -->
+  <div id="screen-sim" class="screen">
+    <div class="dashboard">
+      <div>
+        <div style="color:#f8fafc; font-size:1.15rem; font-weight:700; margin-bottom:10px;">SimulaFab - Controle de Chão de Fábrica</div>
+        <div class="sim-controls">
+          <div class="form-group">
+            <label>Qtd. Caixas (1 - 999):</label>
+            <input type="number" id="sim-boxes-qty" value="1" min="1" max="999" disabled>
+          </div>
+          <div class="playback-btns">
+            <button class="btn btn-play" id="btn-play" onclick="playSimulation()">▶ Play</button>
+            <button class="btn btn-stop" id="btn-stop" onclick="stopSimulation()">■ Stop</button>
+            <button class="btn btn-step" onclick="stepMinute(-1)">◀ -1 min</button>
+            <button class="btn btn-step" onclick="stepMinute(1)">+1 min ▶</button>
+          </div>
+        </div>
+      </div>
+      <div class="sim-clock-box" id="kpi-clock">07:30</div>
+    </div>
+
+    <div class="floor-card">
+      <h2>Status do Chão de Fábrica</h2>
+      <table class="floor-table">
+        <thead>
+          <tr>
+            <th>Peça / Subconjunto</th>
+            <th>Setor Atual</th>
+            <th>Status / Situação</th>
+            <th>Tempo Restante</th>
+          </tr>
+        </thead>
+        <tbody id="floor-status-body"></tbody>
+      </table>
+    </div>
+
+    <div class="timeline-container">
+      <div class="timeline-wrapper">
+        <div id="lunch-overlay" class="timeline-lunch-bg">
+          <span class="timeline-lunch-label">ALMOÇO</span>
+        </div>
+        <input type="range" id="timeline" class="timeline-slider" min="0" max="588" value="0" oninput="onTimelineChange(this.value)">
+      </div>
+      <span id="timeline-label" style="font-size: 0.9rem; color: #94a3b8; min-width: 70px;">07:30</span>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:10px; flex-wrap:wrap;">
+      <div class="kpi">
+        <div class="kpi-title">Status da Produção</div>
+        <div class="kpi-value" id="kpi-status" style="color: #4ade80;">PRODUZINDO</div>
+      </div>
+      <div>
+        <button class="btn btn-success" onclick="generatePDFReport()">📄 Gerar Relatório PDF</button>
+        <button class="btn btn-secondary" onclick="navigateTo('screen-config')">Ajustar Roteiro</button>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h2 style="color: #38bdf8; font-size: 1.2rem; margin-bottom: 10px;">Análise de Eficiência dos Postos de Trabalho</h2>
+      <div class="legend">
+        <div class="legend-item"><div class="color-box" style="background:#f97316;"></div> Setup (Laranja)</div>
+        <div class="legend-item"><div class="color-box" style="background:#22c55e;"></div> Produção (Verde)</div>
+        <div class="legend-item"><div class="color-box" style="background:#eab308;"></div> Aguardando Peças (Amarelo)</div>
+        <div class="legend-item"><div class="color-box" style="background:#64748b;"></div> Horário de Almoço (Cinza Claro)</div>
+        <div class="legend-item"><div class="color-box" style="background:#334155;"></div> Ocioso (Cinza Escuro)</div>
+      </div>
+      <div id="machine-charts-container"></div>
+    </div>
+  </div>
+
+  <script>
+    // --- PARÂMETROS DO TURNO DE TRABALHO ---
+    const SHIFT_START_MINUTES = 7 * 60 + 30; // 07:30 = 450 min a partir de 00:00
+    const SHIFT_END_MINUTES = 17 * 60 + 18;  // 17:18 = 1038 min a partir de 00:00
+    const TOTAL_SHIFT_DURATION = SHIFT_END_MINUTES - SHIFT_START_MINUTES; // 588 minutos
+    const LUNCH_START_OFFSET = (12 * 60) - SHIFT_START_MINUTES; // 270 min após início (12:00)
+    const LUNCH_END_OFFSET = (13 * 60) - SHIFT_START_MINUTES;   // 330 min após início (13:00)
+
+    // --- ESTADO GLOBAL ---
+    let machines = [];
+    let parts = [];
+    let currentBuildingRoute = [];
+    let editingPartIndex = -1;
+    let groupingRules = [];
+    let assemblyRules = [];
+
+    let simulationHistory = [];
+    let currentMinute = 0;
+    let isPlaying = false;
+    let timerInterval = null;
+    let boxesQty = 1;
+    let rawEvents = [];
+
+    // --- CARREGAR EXEMPLO COMPLETO ---
+    function loadExampleAndNavigate() {
+      machines = [
+        { id: "m1", name: "01. Corte Laser", pop: "Programa #102. Chapa 1.2mm e 1.5mm." },
+        { id: "m2", name: "02. Dobra IMAG", pop: "Dobra do Núcleo e Dobradiça." },
+        { id: "m3", name: "03. Solda MIG", pop: "Unir NUCLEO + TAMPA + ORGANIZADOR." },
+        { id: "m4", name: "04. Banho / Pintura", pop: "Pintura Eletrostática do Subconjunto." },
+        { id: "m5", name: "05. Montagem Final", pop: "Montar Conjunto Tampa no CORPO." },
+        { id: "m6", name: "06. Embalagem / Expedição", pop: "Caixa finalizada e embalada." }
+      ];
+
+      parts = [
+        {
+          name: "NUCLEO", thickness: 1.2, qty: 1,
+          route: [
+            { machineId: "m1", setup: 30, prodUnit: 40 },
+            { machineId: "m2", setup: 20, prodUnit: 30 },
+            { machineId: "m3", setup: 30, prodUnit: 40 }
+          ]
+        },
+        {
+          name: "DOBRADICA", thickness: 1.2, qty: 1,
+          route: [
+            { machineId: "m1", setup: 30, prodUnit: 20 },
+            { machineId: "m2", setup: 15, prodUnit: 25 }
+          ]
+        },
+        {
+          name: "TAMPA", thickness: 1.2, qty: 1,
+          route: [
+            { machineId: "m1", setup: 20, prodUnit: 30 },
+            { machineId: "m3", setup: 20, prodUnit: 30 }
+          ]
+        },
+        {
+          name: "ORGANIZADOR", thickness: 1.0, qty: 1,
+          route: [
+            { machineId: "m1", setup: 15, prodUnit: 25 },
+            { machineId: "m3", setup: 20, prodUnit: 25 }
+          ]
+        },
+        {
+          name: "CORPO", thickness: 1.5, qty: 1,
+          route: [
+            { machineId: "m1", setup: 40, prodUnit: 50 },
+            { machineId: "m2", setup: 30, prodUnit: 40 },
+            { machineId: "m5", setup: 20, prodUnit: 30 }
+          ]
+        }
+      ];
+
+      groupingRules = [{ machineId: "m1", partNames: ["NUCLEO", "DOBRADICA"] }];
+      assemblyRules = [
+        { machineId: "m3", resultName: "CONJUNTO TAMPA COMPLETO", requiredPartNames: ["NUCLEO", "TAMPA", "ORGANIZADOR"] },
+        { machineId: "m5", resultName: "CAIXA COMPLETA EMBALADA", requiredPartNames: ["CONJUNTO TAMPA COMPLETO", "CORPO"] }
+      ];
+
+      renderConfigUI();
+      navigateTo('screen-config');
+    }
+
+    // --- CADASTRO E EDIÇÃO DE PEÇAS ---
+    function addMachine() {
+      const name = document.getElementById('new-machine-name').value.trim();
+      const pop = document.getElementById('new-machine-pop').value.trim();
+      if (!name) { alert('Informe o nome da máquina.'); return; }
+      machines.push({ id: "m" + Date.now(), name, pop: pop || "Procedimento Padrão." });
+      document.getElementById('new-machine-name').value = '';
+      document.getElementById('new-machine-pop').value = '';
+      renderConfigUI();
+    }
+
+    function removeMachine(idx) {
+      const removedId = machines[idx].id;
+      machines.splice(idx, 1);
+      parts.forEach(p => p.route = p.route.filter(s => s.machineId !== removedId));
+      renderConfigUI();
+    }
+
+    function addStepToCurrentPart() {
+      const mId = document.getElementById('step-machine-select').value;
+      const setup = parseInt(document.getElementById('step-setup-time').value) || 0;
+      const prodUnit = parseInt(document.getElementById('step-prod-time').value) || 1;
+      if (!mId) return;
+      currentBuildingRoute.push({ machineId: mId, setup, prodUnit });
+      renderCurrentBuildingRoute();
+    }
+
+    function removeStepFromCurrentPart(idx) {
+      currentBuildingRoute.splice(idx, 1);
+      renderCurrentBuildingRoute();
+    }
+
+    function renderCurrentBuildingRoute() {
+      const container = document.getElementById('current-part-steps-container');
+      container.innerHTML = '';
+      if (currentBuildingRoute.length === 0) {
+        container.innerHTML = '<span style="font-size:0.85rem; color:#64748b;">Nenhuma etapa adicionada.</span>';
+        return;
+      }
+      currentBuildingRoute.forEach((step, idx) => {
+        const m = machines.find(item => item.id === step.machineId);
+        container.innerHTML += `
+          <span class="step-tag">
+            ${idx + 1}º: <strong>${m ? m.name : '?'}</strong> (Setup: ${step.setup}m | Prod/u: ${step.prodUnit}m)
+            <span style="color:#ef4444; cursor:pointer; font-weight:bold; margin-left:5px;" onclick="removeStepFromCurrentPart(${idx})">×</span>
+          </span>`;
+      });
+    }
+
+    function savePart() {
+      const name = document.getElementById('new-part-name').value.trim().toUpperCase();
+      const thick = parseFloat(document.getElementById('new-part-thickness').value) || 1.0;
+      const qty = parseInt(document.getElementById('new-part-qty').value) || 1;
+
+      if (!name) { alert('Informe o nome da peça.'); return; }
+      if (currentBuildingRoute.length === 0) { alert('Adicione etapas ao roteiro.'); return; }
+
+      const partData = { name, thickness: thick, qty, route: [...currentBuildingRoute] };
+
+      if (editingPartIndex >= 0) {
+        parts[editingPartIndex] = partData;
+        editingPartIndex = -1;
+      } else {
+        parts.push(partData);
+      }
+
+      resetPartForm();
+      renderConfigUI();
+    }
+
+    function editPart(idx) {
+      const p = parts[idx];
+      editingPartIndex = idx;
+      document.getElementById('new-part-name').value = p.name;
+      document.getElementById('new-part-thickness').value = p.thickness;
+      document.getElementById('new-part-qty').value = p.qty;
+      currentBuildingRoute = [...p.route];
+
+      document.getElementById('btn-save-part').innerText = 'Atualizar Peça';
+      document.getElementById('btn-cancel-edit').style.display = 'inline-block';
+      renderCurrentBuildingRoute();
+    }
+
+    function cancelPartEdit() {
+      editingPartIndex = -1;
+      resetPartForm();
+    }
+
+    function resetPartForm() {
+      document.getElementById('new-part-name').value = '';
+      document.getElementById('btn-save-part').innerText = 'Salvar e Cadastrar Peça';
+      document.getElementById('btn-cancel-edit').style.display = 'none';
+      currentBuildingRoute = [];
+      renderCurrentBuildingRoute();
+    }
+
+    function removePart(idx) {
+      parts.splice(idx, 1);
+      renderConfigUI();
+    }
+
+    // Regras Etapas 3 e 4
+    function addGroupingRule() {
+      const mId = document.getElementById('group-machine-select').value;
+      const selected = [];
+      document.querySelectorAll('.group-part-cb:checked').forEach(cb => selected.push(cb.value));
+      if (selected.length < 2) { alert('Selecione pelo menos 2 peças.'); return; }
+      groupingRules.push({ machineId: mId, partNames: selected });
+      renderConfigUI();
+    }
+
+    function removeGroupingRule(idx) { groupingRules.splice(idx, 1); renderConfigUI(); }
+
+    function addAssemblyRule() {
+      const mId = document.getElementById('assembly-machine-select').value;
+      const resultName = document.getElementById('assembly-result-name').value.trim().toUpperCase();
+      const selected = [];
+      document.querySelectorAll('.assembly-part-cb:checked').forEach(cb => selected.push(cb.value));
+      if (!resultName) { alert('Informe o nome do subconjunto.'); return; }
+      if (selected.length < 2) { alert('Selecione ao menos 2 peças componentes.'); return; }
+      assemblyRules.push({ machineId: mId, resultName, requiredPartNames: selected });
+      document.getElementById('assembly-result-name').value = '';
+      renderConfigUI();
+    }
+
+    function removeAssemblyRule(idx) { assemblyRules.splice(idx, 1); renderConfigUI(); }
+
+    function renderConfigUI() {
+      // Lista Máquinas
+      const mList = document.getElementById('machines-list');
+      mList.innerHTML = '';
+      machines.forEach((m, idx) => {
+        mList.innerHTML += `
+          <li>
+            <div><span class="machine-badge">M${idx + 1}</span><strong>${m.name}</strong><div style="font-size:0.8rem; color:#94a3b8;">POP: ${m.pop}</div></div>
+            <button class="btn btn-danger" onclick="removeMachine(${idx})">Excluir</button>
+          </li>`;
+      });
+
+      ['step-machine-select', 'group-machine-select', 'assembly-machine-select'].forEach(id => {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '';
+        machines.forEach((m, idx) => sel.innerHTML += `<option value="${m.id}">M${idx + 1}: ${m.name}</option>`);
+      });
+
+      // Lista Peças com Botão Editar
+      const pList = document.getElementById('parts-list');
+      pList.innerHTML = '';
+      parts.forEach((p, idx) => {
+        const rText = p.route.map(s => {
+          const m = machines.find(item => item.id === s.machineId);
+          return m ? m.name : '?';
+        }).join(' ➔ ');
+
+        pList.innerHTML += `
+          <li>
+            <div style="flex:1;">
+              <strong>${p.name}</strong> (${p.qty} un | ${p.thickness}mm)
+              <div style="font-size:0.82rem; color:#38bdf8; margin-top:3px;"><strong>Roteiro:</strong> ${rText}</div>
+            </div>
+            <div>
+              <button class="btn btn-warning" onclick="editPart(${idx})">Editar</button>
+              <button class="btn btn-danger" onclick="removePart(${idx})">Excluir</button>
+            </div>
+          </li>`;
+      });
+
+      // Checkboxes Agrupamento
+      const groupCBContainer = document.getElementById('group-parts-checkboxes');
+      groupCBContainer.innerHTML = '';
+      parts.forEach(p => {
+        groupCBContainer.innerHTML += `<label class="checkbox-item"><input type="checkbox" class="group-part-cb" value="${p.name}"> ${p.name} (${p.thickness}mm)</label>`;
+      });
+
+      const gList = document.getElementById('groupings-list');
+      gList.innerHTML = '';
+      groupingRules.forEach((g, idx) => {
+        const m = machines.find(item => item.id === g.machineId);
+        gList.innerHTML += `<li><div><strong>Setor: ${m ? m.name : '?'}</strong><div style="font-size:0.85rem; color:#38bdf8;">Cortadas Juntas: ${g.partNames.join(' + ')}</div></div><button class="btn btn-danger" onclick="removeGroupingRule(${idx})">Excluir</button></li>`;
+      });
+
+      // Checkboxes Montagem
+      const assCBContainer = document.getElementById('assembly-parts-checkboxes');
+      assCBContainer.innerHTML = '';
+      let availableForAssembly = parts.map(p => p.name);
+      assemblyRules.forEach(a => { if (!availableForAssembly.includes(a.resultName)) availableForAssembly.push(a.resultName); });
+
+      availableForAssembly.forEach(pName => {
+        assCBContainer.innerHTML += `<label class="checkbox-item"><input type="checkbox" class="assembly-part-cb" value="${pName}"> ${pName}</label>`;
+      });
+
+      const aList = document.getElementById('assemblies-list');
+      aList.innerHTML = '';
+      assemblyRules.forEach((a, idx) => {
+        const m = machines.find(item => item.id === a.machineId);
+        aList.innerHTML += `<li><div><strong>Setor: ${m ? m.name : '?'}</strong> ➔ <span style="color:#22c55e;">${a.resultName}</span><div style="font-size:0.85rem; color:#f59e0b;">União de: ${a.requiredPartNames.join(' + ')}</div></div><button class="btn btn-danger" onclick="removeAssemblyRule(${idx})">Excluir</button></li>`;
+      });
+    }
+
+    // --- SALVAR / CARREGAR PROJETOS ---
+    const DB_STORAGE_KEY = 'simulafab_projects_v4';
+
+    function getProjectsDatabase() {
+      try {
+        return JSON.parse(localStorage.getItem(DB_STORAGE_KEY) || '{}');
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function setProjectsDatabase(db) {
+      localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(db));
+    }
+
+    function saveProjectPrompt() {
+      const name = prompt('Nome para salvar o projeto:');
+      if (!name) return;
+      const projectData = { name, machines, parts, groupingRules, assemblyRules };
+      let saved = getProjectsDatabase();
+      saved[name] = projectData;
+      setProjectsDatabase(saved);
+      alert(`Projeto "${name}" salvo!`);
+      updateSavedProjectsSelect();
+    }
+
+    function updateSavedProjectsSelect() {
+      const select = document.getElementById('saved-projects-select');
+      select.innerHTML = '<option value="">-- Selecione um Projeto --</option>';
+      const saved = getProjectsDatabase();
+      Object.keys(saved).forEach(k => select.innerHTML += `<option value="${k}">${k}</option>`);
+    }
+
+    function loadSelectedProject() {
+      const val = document.getElementById('saved-projects-select').value;
+      if (!val) return;
+      const saved = getProjectsDatabase();
+      const proj = saved[val];
+      if (proj) {
+        machines = proj.machines || [];
+        parts = proj.parts || [];
+        groupingRules = proj.groupingRules || [];
+        assemblyRules = proj.assemblyRules || [];
+        renderConfigUI();
+        navigateTo('screen-config');
+      }
+    }
+
+    // --- EXPORTAR / IMPORTAR BANCO DE DADOS (.json) ---
+    function exportDatabaseJSON() {
+      const saved = getProjectsDatabase();
+      const payload = {
+        app: 'SimulaFab',
+        version: '1.4.2',
+        exportedAt: new Date().toISOString(),
+        projects: saved
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'banco_dados.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function normalizeImportedDatabase(parsed) {
+      // Aceita formato novo { projects: {...} } ou o objeto direto de projetos
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('JSON inválido: esperado um objeto de banco de dados.');
+      }
+      if (parsed.projects && typeof parsed.projects === 'object' && !Array.isArray(parsed.projects)) {
+        return parsed.projects;
+      }
+      // Formato legado: chaves = nomes de projetos
+      const keys = Object.keys(parsed);
+      if (keys.length === 0) return {};
+      const looksLikeProjects = keys.every(k => {
+        const p = parsed[k];
+        return p && typeof p === 'object' && (Array.isArray(p.machines) || Array.isArray(p.parts) || p.name);
+      });
+      if (looksLikeProjects) return parsed;
+      throw new Error('JSON inválido: não contém a estrutura de projetos do SimulaFab.');
+    }
+
+    function importDatabaseJSON(event) {
+      const input = event.target;
+      const file = input.files && input.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(reader.result);
+          const projects = normalizeImportedDatabase(parsed);
+          const count = Object.keys(projects).length;
+          const current = getProjectsDatabase();
+          const currentCount = Object.keys(current).length;
+
+          const msg = currentCount > 0
+            ? `Importar "${file.name}"?\n\nIsso SUBSTITUIRÁ o banco atual (${currentCount} projeto(s)) por ${count} projeto(s) do arquivo.`
+            : `Importar "${file.name}" com ${count} projeto(s)?`;
+
+          if (!confirm(msg)) {
+            input.value = '';
+            return;
+          }
+
+          setProjectsDatabase(projects);
+          updateSavedProjectsSelect();
+          alert(`Banco de dados carregado com sucesso!\n${count} projeto(s) disponível(is).`);
+        } catch (err) {
+          alert('Falha ao importar o JSON.\n' + (err.message || err));
+        } finally {
+          input.value = '';
+        }
+      };
+      reader.onerror = () => {
+        alert('Não foi possível ler o arquivo.');
+        input.value = '';
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    // --- MOTOR DE SIMULAÇÃO (COM HORÁRIO DE ALMOÇO) ---
+    function getBoxesQtyFromInput() {
+      let qty = parseInt(document.getElementById('boxes-qty').value, 10);
+      if (isNaN(qty) || qty < 1) qty = 1;
+      if (qty > 999) qty = 999;
+      document.getElementById('boxes-qty').value = qty;
+      return qty;
+    }
+
+    function getPartReadyForMachine(partName, machineId, readyMap) {
+      const part = parts.find(p => p.name === partName);
+      if (!part) {
+        const prevAsm = assemblyRules.find(a => a.resultName === partName);
+        if (prevAsm) return readyMap[`${partName}_${prevAsm.machineId}`] || 0;
+        return 0;
+      }
+      const asmIdx = part.route.findIndex(s => s.machineId === machineId);
+      if (asmIdx < 0) return 0;
+      if (asmIdx === 0) return 0;
+      const prevStep = part.route[asmIdx - 1];
+      return readyMap[`${partName}_${prevStep.machineId}`] || 0;
+    }
+
+    function calculateSimulationHistory() {
+      simulationHistory = [];
+      rawEvents = [];
+      boxesQty = getBoxesQtyFromInput();
+
+      // Múltiplas passagens: resolve espera de união entre peças processadas em ordens diferentes
+      let knownReady = {};
+      for (let pass = 0; pass < 10; pass++) {
+        const machineFreeUntil = {};
+        machines.forEach(m => machineFreeUntil[m.id] = 0);
+        const readyTimeOfParts = {};
+        const passEvents = [];
+
+        parts.forEach(part => {
+          let partAvailableTime = 0;
+          const effectiveQty = part.qty * boxesQty;
+
+          part.route.forEach((step, stepIndex) => {
+            let setupTime = step.setup;
+            let prodTime = step.prodUnit * effectiveQty;
+
+            const groupRule = groupingRules.find(g => g.machineId === step.machineId && g.partNames.includes(part.name));
+            if (groupRule) setupTime = Math.ceil(step.setup / groupRule.partNames.length);
+
+            const assemblyRule = assemblyRules.find(a => a.machineId === step.machineId && a.requiredPartNames.includes(part.name));
+            let waitAssemblyUntil = 0;
+            let waitingForAssembly = false;
+
+            if (assemblyRule) {
+              waitingForAssembly = true;
+              assemblyRule.requiredPartNames.forEach(reqName => {
+                const t = (reqName === part.name)
+                  ? partAvailableTime
+                  : getPartReadyForMachine(reqName, step.machineId, knownReady);
+                if (t > waitAssemblyUntil) waitAssemblyUntil = t;
+              });
+            }
+
+            const arrivalTime = partAvailableTime;
+            const assemblyGate = waitingForAssembly ? waitAssemblyUntil : arrivalTime;
+            const readyForMachine = Math.max(arrivalTime, assemblyGate);
+            const setupStart = Math.max(readyForMachine, machineFreeUntil[step.machineId]);
+            const prodStart = setupStart + setupTime;
+            const end = prodStart + prodTime;
+
+            machineFreeUntil[step.machineId] = end;
+            partAvailableTime = end;
+            readyTimeOfParts[`${part.name}_${step.machineId}`] = end;
+
+            if (assemblyRule) {
+              readyTimeOfParts[`${assemblyRule.resultName}_${assemblyRule.machineId}`] = end;
+            }
+
+            passEvents.push({
+              partName: part.name,
+              machineId: step.machineId,
+              stepIndex,
+              arrivalTime,
+              assemblyGate,
+              setupStart,
+              prodStart,
+              end,
+              setupTime,
+              prodTime,
+              waitingForAssembly,
+              isLastStep: stepIndex === part.route.length - 1
+            });
+          });
+        });
+
+        knownReady = readyTimeOfParts;
+        rawEvents = passEvents;
+      }
+
+      // 2. Construção Minuto a Minuto com Ajuste do Almoço (12:00 às 13:00)
+      for (let min = 0; min <= TOTAL_SHIFT_DURATION; min++) {
+        let snapshot = { minute: min, partsActive: [], floorRows: [], machinesStatus: {} };
+        const isLunchTime = (min >= LUNCH_START_OFFSET && min < LUNCH_END_OFFSET);
+
+        machines.forEach(m => snapshot.machinesStatus[m.id] = { state: isLunchTime ? 'lunch' : 'idle', partName: null });
+
+        rawEvents.forEach(evt => {
+          if (min >= evt.arrivalTime && min < evt.setupStart) {
+            const waitReason = (evt.waitingForAssembly && min < evt.assemblyGate) ? 'waiting' : 'fila';
+            snapshot.machinesStatus[evt.machineId] = {
+              state: isLunchTime ? 'lunch' : 'waiting',
+              partName: evt.partName
+            };
+            snapshot.partsActive.push({
+              name: evt.partName,
+              machineId: evt.machineId,
+              status: isLunchTime ? 'lunch' : waitReason,
+              remaining: '-'
+            });
+          } else if (min >= evt.setupStart && min < evt.prodStart) {
+            snapshot.machinesStatus[evt.machineId] = { state: isLunchTime ? 'lunch' : 'setup', partName: evt.partName };
+            snapshot.partsActive.push({
+              name: evt.partName,
+              machineId: evt.machineId,
+              status: isLunchTime ? 'lunch' : 'setup',
+              remaining: Math.max(0, evt.prodStart - min) + ' min'
+            });
+          } else if (min >= evt.prodStart && min < evt.end) {
+            snapshot.machinesStatus[evt.machineId] = { state: isLunchTime ? 'lunch' : 'working', partName: evt.partName };
+            snapshot.partsActive.push({
+              name: evt.partName,
+              machineId: evt.machineId,
+              status: isLunchTime ? 'lunch' : 'working',
+              remaining: Math.max(0, evt.end - min) + ' min'
+            });
+          }
+        });
+
+        // Linhas do chão: uma por peça cadastrada (status corrente ou próximo setor)
+        parts.forEach(part => {
+          const partEvents = rawEvents.filter(e => e.partName === part.name);
+          let row = null;
+
+          for (const evt of partEvents) {
+            if (min >= evt.arrivalTime && min < evt.end) {
+              let status = 'fila';
+              let remaining = '-';
+              if (min >= evt.prodStart) {
+                status = isLunchTime ? 'lunch' : 'working';
+                remaining = Math.max(0, evt.end - min) + ' min';
+              } else if (min >= evt.setupStart) {
+                status = isLunchTime ? 'lunch' : 'setup';
+                remaining = Math.max(0, evt.prodStart - min) + ' min';
+              } else if (evt.waitingForAssembly && min < evt.assemblyGate) {
+                status = isLunchTime ? 'lunch' : 'waiting';
+              } else {
+                status = isLunchTime ? 'lunch' : 'fila';
+              }
+              const mObj = machines.find(m => m.id === evt.machineId);
+              row = {
+                name: part.name,
+                sector: mObj ? mObj.name : '-',
+                status,
+                remaining
+              };
+              break;
+            }
+          }
+
+          if (!row) {
+            const nextEvt = partEvents.find(e => min < e.arrivalTime);
+            const lastEvt = partEvents[partEvents.length - 1];
+            if (nextEvt) {
+              const mObj = machines.find(m => m.id === nextEvt.machineId);
+              row = {
+                name: part.name,
+                sector: mObj ? mObj.name : '-',
+                status: isLunchTime ? 'lunch' : 'fila',
+                remaining: '-'
+              };
+            } else if (lastEvt && min >= lastEvt.end) {
+              const mObj = machines.find(m => m.id === lastEvt.machineId);
+              row = {
+                name: part.name,
+                sector: mObj ? mObj.name : '-',
+                status: 'done',
+                remaining: '-'
+              };
+            } else {
+              row = { name: part.name, sector: '-', status: 'fila', remaining: '-' };
+            }
+          }
+
+          snapshot.floorRows.push(row);
+        });
+
+        // Subconjuntos formados (aparecem após união)
+        assemblyRules.forEach(rule => {
+          const asmEvents = rawEvents.filter(e =>
+            rule.requiredPartNames.includes(e.partName) && e.machineId === rule.machineId
+          );
+          if (asmEvents.length === 0) return;
+          const asmEnd = Math.max(...asmEvents.map(e => e.end));
+          const asmStart = Math.min(...asmEvents.map(e => e.setupStart));
+          const mObj = machines.find(m => m.id === rule.machineId);
+
+          if (min >= asmStart && min < asmEnd) {
+            const active = asmEvents.find(e => min >= e.setupStart && min < e.end);
+            let status = 'working';
+            let remaining = '-';
+            if (active) {
+              if (min >= active.prodStart) {
+                status = isLunchTime ? 'lunch' : 'working';
+                remaining = Math.max(0, active.end - min) + ' min';
+              } else {
+                status = isLunchTime ? 'lunch' : 'setup';
+                remaining = Math.max(0, active.prodStart - min) + ' min';
+              }
+            }
+            snapshot.floorRows.push({
+              name: rule.resultName,
+              sector: mObj ? mObj.name : '-',
+              status,
+              remaining
+            });
+          }
+        });
+
+        simulationHistory.push(snapshot);
+      }
+
+      // Configurar a barra de almoço no visual
+      const pStart = (LUNCH_START_OFFSET / TOTAL_SHIFT_DURATION) * 100;
+      const pWidth = ((LUNCH_END_OFFSET - LUNCH_START_OFFSET) / TOTAL_SHIFT_DURATION) * 100;
+      const overlay = document.getElementById('lunch-overlay');
+      overlay.style.left = pStart + '%';
+      overlay.style.width = pWidth + '%';
+    }
+
+    function statusLabel(status) {
+      if (status === 'waiting') return { text: 'Aguardando Outras Peças para União', cls: 'badge-waiting' };
+      if (status === 'fila') return { text: 'FILA', cls: 'badge-fila' };
+      if (status === 'setup') return { text: 'SETUP', cls: 'badge-setup' };
+      if (status === 'working') return { text: 'EM PRODUÇÃO', cls: 'badge-working' };
+      if (status === 'lunch') return { text: 'ALMOÇO', cls: 'badge-lunch' };
+      if (status === 'done') return { text: 'CONCLUÍDO', cls: 'badge-done' };
+      return { text: status, cls: 'badge-fila' };
+    }
+
+    function renderFloorTable(state) {
+      const tbody = document.getElementById('floor-status-body');
+      if (!tbody || !state) return;
+      tbody.innerHTML = '';
+      state.floorRows.forEach(row => {
+        const badge = statusLabel(row.status);
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${row.name}</strong></td>
+            <td>${row.sector}</td>
+            <td><span class="status-badge ${badge.cls}">${badge.text}</span></td>
+            <td>${row.remaining}</td>
+          </tr>`;
+      });
+    }
+
+    function renderMinute(min) {
+      if (!simulationHistory[min]) return;
+      const state = simulationHistory[min];
+
+      renderFloorTable(state);
+
+      const currentRealMinutes = SHIFT_START_MINUTES + min;
+      const h = Math.floor(currentRealMinutes / 60);
+      const m = currentRealMinutes % 60;
+      const timeStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+
+      document.getElementById('kpi-clock').innerText = timeStr;
+      document.getElementById('timeline').value = min;
+      document.getElementById('timeline-label').innerText = timeStr;
+
+      const kpiStatus = document.getElementById('kpi-status');
+      if (min >= LUNCH_START_OFFSET && min < LUNCH_END_OFFSET) {
+        kpiStatus.innerText = 'HORÁRIO DE ALMOÇO';
+        kpiStatus.style.color = '#94a3b8';
+      } else {
+        kpiStatus.innerText = 'PRODUZINDO';
+        kpiStatus.style.color = '#4ade80';
+      }
+    }
+
+    function updatePlayButtonUI() {
+      const btn = document.getElementById('btn-play');
+      if (!btn) return;
+      if (isPlaying) {
+        btn.classList.remove('is-paused');
+        btn.innerText = '▶ Play';
+      } else {
+        btn.classList.add('is-paused');
+        btn.innerText = '▶ Play';
+      }
+    }
+
+    // --- RENDERIZAR GRÁFICOS DE EFICIÊNCIA ---
+    function renderCharts() {
+      const container = document.getElementById('machine-charts-container');
+      container.innerHTML = '';
+
+      machines.forEach((m, idx) => {
+        let setupTime = 0, workTime = 0, waitTime = 0, lunchTime = 0, idleTime = 0;
+
+        simulationHistory.forEach(snap => {
+          const st = snap.machinesStatus[m.id] ? snap.machinesStatus[m.id].state : 'idle';
+          if (st === 'setup') setupTime++;
+          else if (st === 'working') workTime++;
+          else if (st === 'waiting') waitTime++;
+          else if (st === 'lunch') lunchTime++;
+          else idleTime++;
+        });
+
+        const total = simulationHistory.length;
+        const pSetup = ((setupTime / total) * 100).toFixed(1);
+        const pWork = ((workTime / total) * 100).toFixed(1);
+        const pWait = ((waitTime / total) * 100).toFixed(1);
+        const pLunch = ((lunchTime / total) * 100).toFixed(1);
+        const pIdle = ((idleTime / total) * 100).toFixed(1);
+
+        container.innerHTML += `
+          <div class="bar-container">
+            <div class="bar-label">
+              <span><strong>M${idx + 1}: ${m.name}</strong></span>
+              <span>Setup: ${setupTime}m | Prod: ${workTime}m | Espera: ${waitTime}m | Almoço: ${lunchTime}m | Ocioso: ${idleTime}m</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-segment" style="width: ${pSetup}%; background: #f97316;"></div>
+              <div class="bar-segment" style="width: ${pWork}%; background: #22c55e;"></div>
+              <div class="bar-segment" style="width: ${pWait}%; background: #eab308;"></div>
+              <div class="bar-segment" style="width: ${pLunch}%; background: #64748b;"></div>
+              <div class="bar-segment" style="width: ${pIdle}%; background: #334155;"></div>
+            </div>
+          </div>`;
+      });
+    }
+
+    // --- GERAÇÃO DO RELATÓRIO PDF ---
+    function generatePDFReport() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.setTextColor(2, 132, 199);
+      doc.text('Relatório de Cronograma da Produção - SimulaFab', 14, 20);
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100);
+      doc.text(`Turno: 07:30–17:18 | Almoço: 12:00–13:00 | Qtd. Caixas: ${boxesQty}`, 14, 27);
+      doc.text(`Data do Relatório: ${new Date().toLocaleDateString('pt-BR')}`, 14, 32);
+
+      const tableData = [];
+
+      // Mapear eventos relevantes no tempo
+      simulationHistory.forEach(snap => {
+        const realMins = SHIFT_START_MINUTES + snap.minute;
+        const h = Math.floor(realMins / 60);
+        const m = realMins % 60;
+        const timeStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+
+        snap.partsActive.forEach(partInfo => {
+          const mObj = machines.find(mach => mach.id === partInfo.machineId);
+          let statusText = '';
+
+          if (partInfo.status === 'setup') statusText = 'Em Ajuste / Setup';
+          else if (partInfo.status === 'working') statusText = 'Em Processamento / Corte / Dobra';
+          else if (partInfo.status === 'waiting') statusText = 'Aguardando Outras Peças para União';
+          else if (partInfo.status === 'fila') statusText = 'Em Fila';
+          else if (partInfo.status === 'lunch') statusText = 'Pausado (Horário de Almoço)';
+
+          // Adicionar no relatório apenas mudanças relevantes a cada 10 min ou inicio/fim
+          if (snap.minute % 15 === 0 || partInfo.status === 'waiting') {
+            tableData.push([timeStr, partInfo.name, mObj ? mObj.name : '-', statusText]);
+          }
+        });
+      });
+
+      doc.autoTable({
+        startY: 38,
+        head: [['Horário', 'Peça / Componente', 'Setor / Máquina', 'Status / Situação']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [2, 132, 199] },
+        styles: { fontSize: 8 }
+      });
+
+      doc.save('Relatorio_Producao_SimulaFab.pdf');
+    }
+
+    // --- CONTROLES DE SIMULAÇÃO ---
+    function startSimulation() {
+      if (machines.length === 0 || parts.length === 0) {
+        alert('Cadastre máquinas e peças na Etapa 1 e 2.');
+        return;
+      }
+      calculateSimulationHistory();
+      document.getElementById('sim-boxes-qty').value = boxesQty;
+      renderCharts();
+      navigateTo('screen-sim');
+      currentMinute = 0;
+      isPlaying = true;
+      updatePlayButtonUI();
+      renderMinute(0);
+      runLoop();
+    }
+
+    function runLoop() {
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (isPlaying) {
+          currentMinute++;
+          if (currentMinute > TOTAL_SHIFT_DURATION) {
+            currentMinute = TOTAL_SHIFT_DURATION;
+            isPlaying = false;
+            updatePlayButtonUI();
+          }
+          renderMinute(currentMinute);
+        }
+      }, 300);
+    }
+
+    function playSimulation() {
+      if (currentMinute >= TOTAL_SHIFT_DURATION) currentMinute = 0;
+      isPlaying = true;
+      updatePlayButtonUI();
+      renderMinute(currentMinute);
+      runLoop();
+    }
+
+    function stopSimulation() {
+      isPlaying = false;
+      updatePlayButtonUI();
+    }
+
+    function stepMinute(delta) {
+      isPlaying = false;
+      updatePlayButtonUI();
+      currentMinute = Math.max(0, Math.min(TOTAL_SHIFT_DURATION, currentMinute + delta));
+      renderMinute(currentMinute);
+    }
+
+    function onTimelineChange(val) {
+      isPlaying = false;
+      updatePlayButtonUI();
+      currentMinute = parseInt(val, 10);
+      renderMinute(currentMinute);
+    }
+
+    function navigateTo(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+      if (screenId !== 'screen-sim') {
+        clearInterval(timerInterval);
+        isPlaying = false;
+      }
+    }
+
+    window.onload = () => {
+      updateSavedProjectsSelect();
+      renderConfigUI();
+    };
+  </script>
+</body>
+</html>
