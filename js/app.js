@@ -110,7 +110,6 @@ window.onload = () => {
     document.getElementById('start-date').value = todayISODate();
   }
   startDateStr = document.getElementById('start-date').value;
-  updateSavedProjectsSelect();
   renderConfigUI();
   updatePlayButtonUI();
   updateSpeedButtonsUI();

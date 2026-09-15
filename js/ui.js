@@ -66,11 +66,104 @@
       startDateStr = '2026-09-14';
       document.getElementById('start-date').value = startDateStr;
       document.getElementById('boxes-qty').value = 1;
+      currentProjectName = '';
       if (!holidays.includes('2026-11-02')) holidays.push('2026-11-02');
       persistDatabaseWrapper();
 
       renderConfigUI();
       navigateTo('screen-config');
+    }
+
+    function startNewProject() {
+      const hasWork = machines.length > 0 || parts.length > 0 || employees.length > 0
+        || groupingRules.length > 0 || assemblyRules.length > 0;
+      if (hasWork && !confirm('Iniciar um projeto em branco? O roteiro em memória que não foi salvo será perdido.')) {
+        return;
+      }
+      currentProjectName = '';
+      machines = [];
+      parts = [];
+      employees = [];
+      groupingRules = [];
+      assemblyRules = [];
+      currentBuildingRoute = [];
+      editingPartIndex = -1;
+      editingMachineIndex = -1;
+      editingEmployeeIndex = -1;
+      editingGroupingIndex = -1;
+      editingAssemblyIndex = -1;
+      boxesQty = 1;
+      startDateStr = todayISODate();
+      const boxesEl = document.getElementById('boxes-qty');
+      const dateEl = document.getElementById('start-date');
+      if (boxesEl) boxesEl.value = 1;
+      if (dateEl) dateEl.value = startDateStr;
+      renderConfigUI();
+      navigateTo('screen-config');
+    }
+
+    function updateCurrentProjectLabel() {
+      const el = document.getElementById('current-project-label');
+      if (!el) return;
+      el.textContent = currentProjectName ? currentProjectName : 'Não salvo (sem nome)';
+    }
+
+    function renderSavedProjectsList() {
+      const list = document.getElementById('saved-projects-list');
+      if (!list) return;
+      list.innerHTML = '';
+      const saved = getProjectsDatabase();
+      const names = Object.keys(saved).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+      if (names.length === 0) {
+        const empty = document.createElement('li');
+        empty.style.color = '#64748b';
+        empty.textContent = 'Nenhum projeto salvo.';
+        list.appendChild(empty);
+        return;
+      }
+      names.forEach(name => {
+        const li = document.createElement('li');
+        const info = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = name;
+        info.appendChild(title);
+        if (name === currentProjectName) {
+          const tag = document.createElement('span');
+          tag.className = 'saved-projects-current-tag';
+          tag.textContent = 'Em edição';
+          info.appendChild(tag);
+        }
+        const meta = document.createElement('div');
+        meta.style.cssText = 'font-size:0.78rem; color:#94a3b8; margin-top:4px;';
+        const proj = saved[name] || {};
+        const nMachines = Array.isArray(proj.machines) ? proj.machines.length : 0;
+        const nParts = Array.isArray(proj.parts) ? proj.parts.length : 0;
+        meta.textContent = `${nMachines} máquina(s) · ${nParts} peça(s) · ${proj.boxesQty || 1} caixa(s)`;
+        info.appendChild(meta);
+
+        const actions = document.createElement('div');
+        const btnLoad = document.createElement('button');
+        btnLoad.className = 'btn btn-success';
+        btnLoad.style.cssText = 'padding:4px 10px; font-size:0.8rem; margin-right:5px;';
+        btnLoad.textContent = 'Carregar';
+        btnLoad.onclick = () => loadSavedProjectByName(name);
+        const btnDel = document.createElement('button');
+        btnDel.className = 'btn btn-danger';
+        btnDel.textContent = 'Excluir';
+        btnDel.onclick = () => deleteSavedProject(name);
+        actions.appendChild(btnLoad);
+        actions.appendChild(btnDel);
+
+        li.appendChild(info);
+        li.appendChild(actions);
+        list.appendChild(li);
+      });
+    }
+
+    function refreshSavedProjectsUI() {
+      updateSavedProjectsSelect();
+      renderSavedProjectsList();
+      updateCurrentProjectLabel();
     }
 
     // --- FUNCIONÁRIOS ---
@@ -402,6 +495,7 @@
     // --- UI CONFIG ---
     function renderConfigUI() {
       normalizeAllMachines();
+      refreshSavedProjectsUI();
 
       const eList = document.getElementById('employees-list');
       if (eList) {

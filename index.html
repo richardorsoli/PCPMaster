@@ -21,7 +21,7 @@
 
       <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 25px; flex-wrap: wrap;">
         <button class="btn" onclick="loadExampleAndNavigate()">Carregar Exemplo Real</button>
-        <button class="btn btn-secondary" onclick="navigateTo('screen-config')">Criar Projeto do Zero</button>
+        <button class="btn btn-secondary" onclick="startNewProject()">Criar Projeto do Zero</button>
       </div>
 
       <div style="border-top: 1px solid #334155; padding-top: 20px; text-align: left;">
@@ -29,6 +29,7 @@
         <div style="display: flex; gap: 10px; margin-top: 5px;">
           <select id="saved-projects-select" style="flex:1; padding: 8px; border-radius: 4px; background: #0f172a; color: white; border: 1px solid #475569;"></select>
           <button class="btn btn-success" onclick="loadSelectedProject()">Carregar</button>
+          <button class="btn btn-danger btn-danger-lg" onclick="deleteSelectedSavedProject()">Excluir</button>
         </div>
       </div>
 
@@ -57,6 +58,13 @@
         <input type="file" id="import-db-file-config" accept=".json,application/json" style="display:none;" onchange="importDatabaseJSON(event)">
         <button class="btn btn-secondary" onclick="navigateTo('screen-welcome')">Voltar</button>
       </div>
+    </div>
+
+    <div class="card">
+      <h2>Projetos Salvos</h2>
+      <p class="current-project-banner">Projeto em edição: <strong id="current-project-label">Não salvo (sem nome)</strong></p>
+      <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:8px;">Salvar pergunta se já existe uma versão com o mesmo nome. Excluir remove apenas o registro salvo no banco local.</p>
+      <ul id="saved-projects-list" class="item-list saved-projects-list"></ul>
     </div>
 
     <!-- ETAPA 1: FUNCIONÁRIOS -->

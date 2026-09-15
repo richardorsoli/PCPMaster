@@ -21,6 +21,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
     let groupingRules = [];
     let assemblyRules = [];
     let holidays = [];
+    let currentProjectName = '';
 
     let simulationHistory = [];
     let rawEvents = [];
