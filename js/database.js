@@ -62,6 +62,7 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
         name,
         machines: machines.map(normalizeMachine),
         parts,
+        employees: employees.slice(),
         groupingRules,
         assemblyRules,
         startDate: document.getElementById('start-date').value || startDateStr || todayISODate(),
@@ -89,6 +90,7 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
       if (proj) {
         machines = (proj.machines || []).map(normalizeMachine);
         parts = proj.parts || [];
+        employees = Array.isArray(proj.employees) ? proj.employees.slice() : [];
         groupingRules = proj.groupingRules || [];
         assemblyRules = proj.assemblyRules || [];
         if (proj.startDate) {
@@ -149,6 +151,9 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
         const p = projects[k];
         if (p && Array.isArray(p.machines)) {
           p.machines = p.machines.map(normalizeMachine);
+        }
+        if (p && !Array.isArray(p.employees)) {
+          p.employees = [];
         }
       });
 

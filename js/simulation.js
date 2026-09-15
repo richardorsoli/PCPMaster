@@ -11,9 +11,11 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
 // --- ESTADO GLOBAL ---
     let machines = [];
     let parts = [];
+    let employees = [];
     let currentBuildingRoute = [];
     let editingPartIndex = -1;
     let editingMachineIndex = -1;
+    let editingEmployeeIndex = -1;
     let editingGroupingIndex = -1;
     let editingAssemblyIndex = -1;
     let groupingRules = [];
@@ -130,12 +132,31 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       return {
         ...m,
         maintIntervalHours: Number(m.maintIntervalHours) || 0,
-        maintDurationHours: Number(m.maintDurationHours) || 0
+        maintDurationHours: Number(m.maintDurationHours) || 0,
+        defaultOperatorId: m.defaultOperatorId || ''
       };
     }
 
     function normalizeAllMachines() {
       machines = machines.map(normalizeMachine);
+    }
+
+    function getEmployeeById(id) {
+      if (!id) return null;
+      return employees.find(e => e.id === id) || null;
+    }
+
+    function formatEmployeeLabel(emp) {
+      if (!emp) return '-';
+      return `${emp.name} (${emp.matricula})`;
+    }
+
+    function getMachineOperatorLabel(machineOrId) {
+      const m = typeof machineOrId === 'string'
+        ? machines.find(x => x.id === machineOrId)
+        : machineOrId;
+      if (!m || !m.defaultOperatorId) return '-';
+      return formatEmployeeLabel(getEmployeeById(m.defaultOperatorId));
     }
 
 // --- MOTOR DE SIMULAÇÃO ---
@@ -387,7 +408,13 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
               if (mMaint && (status === 'fila' || status === 'waiting')) {
                 sector = (mObj ? mObj.name : '-') + ' (MANUT.)';
               }
-              row = { name: part.name, sector, status, remaining };
+              row = {
+                name: part.name,
+                sector,
+                operator: getMachineOperatorLabel(mObj),
+                status,
+                remaining
+              };
               break;
             }
           }
@@ -400,6 +427,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
               row = {
                 name: part.name,
                 sector: mObj ? mObj.name : '-',
+                operator: getMachineOperatorLabel(mObj),
                 status: isLunchTime ? 'lunch' : 'fila',
                 remaining: '-'
               };
@@ -408,11 +436,12 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
               row = {
                 name: part.name,
                 sector: mObj ? mObj.name : '-',
+                operator: getMachineOperatorLabel(mObj),
                 status: 'done',
                 remaining: '-'
               };
             } else {
-              row = { name: part.name, sector: '-', status: 'fila', remaining: '-' };
+              row = { name: part.name, sector: '-', operator: '-', status: 'fila', remaining: '-' };
             }
           }
 
@@ -426,6 +455,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
             snapshot.floorRows.push({
               name: '— Manutenção —',
               sector: mObj ? mObj.name : '-',
+              operator: getMachineOperatorLabel(mObj),
               status: isLunchTime ? 'lunch' : 'maintenance',
               remaining: Math.max(0, me.end - absMin) + ' min'
             });
@@ -457,6 +487,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
             snapshot.floorRows.push({
               name: rule.resultName,
               sector: mObj ? mObj.name : '-',
+              operator: getMachineOperatorLabel(mObj),
               status,
               remaining
             });

@@ -2,7 +2,7 @@
 
     function startSimulation() {
       if (machines.length === 0 || parts.length === 0) {
-        alert('Cadastre máquinas e peças na Etapa 1 e 2.');
+        alert('Cadastre máquinas e peças nas etapas de engenharia.');
         return;
       }
       selectedDayIndex = 0;

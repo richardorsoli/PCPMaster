@@ -2,13 +2,19 @@
 
     // --- EXEMPLO ---
     function loadExampleAndNavigate() {
+      employees = [
+        { id: 'e1', name: 'Carlos Operador', matricula: '1001' },
+        { id: 'e2', name: 'Ana Soldadora', matricula: '1002' },
+        { id: 'e3', name: 'Pedro Montagem', matricula: '1003' }
+      ];
+
       machines = [
-        { id: "m1", name: "01. Corte Laser", pop: "Programa #102. Chapa 1.2mm e 1.5mm.", maintIntervalHours: 8, maintDurationHours: 1 },
-        { id: "m2", name: "02. Dobra IMAG", pop: "Dobra do Núcleo e Dobradiça.", maintIntervalHours: 8, maintDurationHours: 1 },
-        { id: "m3", name: "03. Solda MIG", pop: "Unir NUCLEO + TAMPA + ORGANIZADOR.", maintIntervalHours: 0, maintDurationHours: 0 },
-        { id: "m4", name: "04. Banho / Pintura", pop: "Pintura Eletrostática do Subconjunto.", maintIntervalHours: 0, maintDurationHours: 0 },
-        { id: "m5", name: "05. Montagem Final", pop: "Montar Conjunto Tampa no CORPO.", maintIntervalHours: 8, maintDurationHours: 1 },
-        { id: "m6", name: "06. Embalagem / Expedição", pop: "Caixa finalizada e embalada.", maintIntervalHours: 0, maintDurationHours: 0 }
+        { id: "m1", name: "01. Corte Laser", pop: "Programa #102. Chapa 1.2mm e 1.5mm.", maintIntervalHours: 8, maintDurationHours: 1, defaultOperatorId: 'e1' },
+        { id: "m2", name: "02. Dobra IMAG", pop: "Dobra do Núcleo e Dobradiça.", maintIntervalHours: 8, maintDurationHours: 1, defaultOperatorId: 'e1' },
+        { id: "m3", name: "03. Solda MIG", pop: "Unir NUCLEO + TAMPA + ORGANIZADOR.", maintIntervalHours: 0, maintDurationHours: 0, defaultOperatorId: 'e2' },
+        { id: "m4", name: "04. Banho / Pintura", pop: "Pintura Eletrostática do Subconjunto.", maintIntervalHours: 0, maintDurationHours: 0, defaultOperatorId: '' },
+        { id: "m5", name: "05. Montagem Final", pop: "Montar Conjunto Tampa no CORPO.", maintIntervalHours: 8, maintDurationHours: 1, defaultOperatorId: 'e3' },
+        { id: "m6", name: "06. Embalagem / Expedição", pop: "Caixa finalizada e embalada.", maintIntervalHours: 0, maintDurationHours: 0, defaultOperatorId: 'e3' }
       ];
 
       parts = [
@@ -67,12 +73,81 @@
       navigateTo('screen-config');
     }
 
+    // --- FUNCIONÁRIOS ---
+    function addEmployee() {
+      const name = document.getElementById('new-employee-name').value.trim();
+      const matricula = document.getElementById('new-employee-matricula').value.trim();
+      if (!name) { alert('Informe o nome do funcionário.'); return; }
+      if (!matricula) { alert('Informe a matrícula.'); return; }
+
+      const duplicate = employees.some((e, i) =>
+        e.matricula.toLowerCase() === matricula.toLowerCase() && i !== editingEmployeeIndex
+      );
+      if (duplicate) { alert('Já existe um funcionário com esta matrícula.'); return; }
+
+      const data = {
+        id: editingEmployeeIndex >= 0 ? employees[editingEmployeeIndex].id : ('e' + Date.now()),
+        name,
+        matricula
+      };
+
+      if (editingEmployeeIndex >= 0) {
+        employees[editingEmployeeIndex] = data;
+        editingEmployeeIndex = -1;
+        document.getElementById('btn-save-employee').innerText = 'Adicionar Funcionário';
+      } else {
+        employees.push(data);
+      }
+
+      document.getElementById('new-employee-name').value = '';
+      document.getElementById('new-employee-matricula').value = '';
+      renderConfigUI();
+    }
+
+    function editEmployee(idx) {
+      const e = employees[idx];
+      editingEmployeeIndex = idx;
+      document.getElementById('new-employee-name').value = e.name;
+      document.getElementById('new-employee-matricula').value = e.matricula;
+      document.getElementById('btn-save-employee').innerText = 'Salvar Alterações';
+    }
+
+    function removeEmployee(idx) {
+      const removedId = employees[idx].id;
+      employees.splice(idx, 1);
+      machines.forEach(m => {
+        if (m.defaultOperatorId === removedId) m.defaultOperatorId = '';
+      });
+      if (editingEmployeeIndex === idx) {
+        editingEmployeeIndex = -1;
+        document.getElementById('btn-save-employee').innerText = 'Adicionar Funcionário';
+        document.getElementById('new-employee-name').value = '';
+        document.getElementById('new-employee-matricula').value = '';
+      } else if (editingEmployeeIndex > idx) {
+        editingEmployeeIndex--;
+      }
+      renderConfigUI();
+    }
+
+    function fillMachineOperatorSelect(selectedId) {
+      const sel = document.getElementById('new-machine-operator');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">— Sem operador —</option>';
+      employees.forEach(e => {
+        sel.innerHTML += `<option value="${e.id}">${e.name} (${e.matricula})</option>`;
+      });
+      if (selectedId && [...sel.options].some(o => o.value === selectedId)) {
+        sel.value = selectedId;
+      }
+    }
+
     // --- MÁQUINAS ---
     function addMachine() {
       const name = document.getElementById('new-machine-name').value.trim();
       const pop = document.getElementById('new-machine-pop').value.trim();
       const maintIntervalHours = parseFloat(document.getElementById('new-machine-maint-interval').value) || 0;
       const maintDurationHours = parseFloat(document.getElementById('new-machine-maint-duration').value) || 0;
+      const defaultOperatorId = document.getElementById('new-machine-operator').value || '';
       if (!name) { alert('Informe o nome da máquina.'); return; }
 
       const data = {
@@ -80,7 +155,8 @@
         name,
         pop: pop || "Procedimento Padrão.",
         maintIntervalHours,
-        maintDurationHours
+        maintDurationHours,
+        defaultOperatorId
       };
 
       if (editingMachineIndex >= 0) {
@@ -95,6 +171,7 @@
       document.getElementById('new-machine-pop').value = '';
       document.getElementById('new-machine-maint-interval').value = '0';
       document.getElementById('new-machine-maint-duration').value = '0';
+      fillMachineOperatorSelect('');
       renderConfigUI();
     }
 
@@ -105,6 +182,7 @@
       document.getElementById('new-machine-pop').value = m.pop || '';
       document.getElementById('new-machine-maint-interval').value = m.maintIntervalHours || 0;
       document.getElementById('new-machine-maint-duration').value = m.maintDurationHours || 0;
+      fillMachineOperatorSelect(m.defaultOperatorId || '');
       document.getElementById('btn-save-machine').innerText = 'Salvar Alterações';
     }
 
@@ -312,17 +390,46 @@
     // --- UI CONFIG ---
     function renderConfigUI() {
       normalizeAllMachines();
+
+      const eList = document.getElementById('employees-list');
+      if (eList) {
+        eList.innerHTML = '';
+        if (employees.length === 0) {
+          eList.innerHTML = '<li style="color:#64748b;">Nenhum funcionário cadastrado.</li>';
+        } else {
+          employees.forEach((e, idx) => {
+            eList.innerHTML += `
+              <li>
+                <div>
+                  <strong>${e.name}</strong>
+                  <div style="font-size:0.8rem; color:#94a3b8;">Matrícula: ${e.matricula}</div>
+                </div>
+                <div>
+                  <button class="btn btn-warning" onclick="editEmployee(${idx})">Editar</button>
+                  <button class="btn btn-danger" onclick="removeEmployee(${idx})">Excluir</button>
+                </div>
+              </li>`;
+          });
+        }
+      }
+
+      fillMachineOperatorSelect(
+        editingMachineIndex >= 0 ? (machines[editingMachineIndex]?.defaultOperatorId || '') : (document.getElementById('new-machine-operator')?.value || '')
+      );
+
       const mList = document.getElementById('machines-list');
       mList.innerHTML = '';
       machines.forEach((m, idx) => {
         const maintTxt = (m.maintIntervalHours > 0)
           ? `Manutenção a cada ${m.maintIntervalHours}h de uso (${m.maintDurationHours}h)`
           : 'Manutenção preventiva desativada';
+        const opTxt = getMachineOperatorLabel(m);
         mList.innerHTML += `
           <li>
             <div>
               <span class="machine-badge">M${idx + 1}</span><strong>${m.name}</strong>
               <div style="font-size:0.8rem; color:#94a3b8;">POP: ${m.pop}</div>
+              <div style="font-size:0.78rem; color:#38bdf8;">Operador padrão: ${opTxt}</div>
               <div style="font-size:0.78rem; color:#a855f7;">${maintTxt}</div>
             </div>
             <div>
@@ -444,6 +551,7 @@
           <tr>
             <td><strong>${row.name}</strong></td>
             <td>${row.sector}</td>
+            <td>${row.operator || '-'}</td>
             <td><span class="status-badge ${badge.cls}">${badge.text}</span></td>
             <td>${row.remaining}</td>
           </tr>`;
@@ -567,7 +675,10 @@
       rawEvents.forEach(evt => {
         const mObj = machines.find(mach => mach.id === evt.machineId);
         const sector = mObj ? mObj.name : '-';
+        const operador = getMachineOperatorLabel(mObj);
         const qty = evt.qty;
+        const tempoSimuladoSetup = String(evt.setupTime);
+        const tempoSimuladoProd = String(evt.prodTime);
 
         if (evt.setupTime > 0) {
           tableRows.push({
@@ -577,9 +688,11 @@
               evt.partName,
               String(qty),
               String(evt.setupUnit),
-              String(evt.setupTime),
+              tempoSimuladoSetup,
               sector,
+              operador,
               'Em Ajuste / Setup',
+              '',
               ''
             ]
           });
@@ -592,9 +705,11 @@
             evt.partName,
             String(qty),
             String(evt.prodUnit),
-            String(evt.prodTime),
+            tempoSimuladoProd,
             sector,
+            operador,
             'Em Processamento / Produção',
+            '',
             ''
           ]
         });
@@ -611,7 +726,9 @@
             '—',
             String(me.duration),
             mObj ? mObj.name : '-',
+            getMachineOperatorLabel(mObj),
             'Manutenção Preventiva',
+            '',
             ''
           ]
         });
@@ -622,12 +739,28 @@
 
       doc.autoTable({
         startY: 34,
-        head: [['Horário', 'Peça / Componente', 'Quantidade (un)', 'Tempo Indiv. (min)', 'Tempo Total (min)', 'Setor / Máquina', 'Status / Situação', 'Cronoanálise (Registrado)']],
+        head: [[
+          'Horário',
+          'Peça / Componente',
+          'Quantidade (un)',
+          'Tempo Indiv. (min)',
+          'Tempo Total Simulado (min)',
+          'Setor / Máquina',
+          'Operador Responsável',
+          'Status / Situação',
+          'Tempo Registrado (min)',
+          'Desempenho (Reg. vs Sim.)'
+        ]],
         body: tableData,
         theme: 'striped',
         headStyles: { fillColor: [2, 132, 199] },
-        styles: { fontSize: 7, cellPadding: 2 }
+        styles: { fontSize: 6.5, cellPadding: 1.5 }
       });
+
+      const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 8 : 180;
+      doc.setFontSize(8);
+      doc.setTextColor(90);
+      doc.text('Premiação: preencha "Tempo Registrado" e use "Desempenho (Reg. vs Sim.)" para validar se o operador bateu/melhorou o tempo simulado.', 14, finalY);
 
       doc.save('Relatorio_Producao_SimulaFab.pdf');
     }
