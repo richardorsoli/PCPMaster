@@ -74,30 +74,78 @@
       navigateTo('screen-config');
     }
 
-    function startNewProject() {
-      const hasWork = machines.length > 0 || parts.length > 0 || employees.length > 0
-        || groupingRules.length > 0 || assemblyRules.length > 0;
-      if (hasWork && !confirm('Iniciar um projeto em branco? O roteiro em memória que não foi salvo será perdido.')) {
+    function startNewProject(fromSim) {
+      const hasUnsavedProduction = fromSim
+        || parts.length > 0
+        || groupingRules.length > 0
+        || assemblyRules.length > 0
+        || !!currentProjectName
+        || simulationHistory.length > 0;
+      if (hasUnsavedProduction && !confirm('Deseja iniciar um novo projeto? As alterações não salvas do projeto atual serão perdidas.')) {
         return;
       }
-      currentProjectName = '';
-      machines = [];
-      parts = [];
-      employees = [];
-      groupingRules = [];
-      assemblyRules = [];
-      currentBuildingRoute = [];
-      editingPartIndex = -1;
-      editingMachineIndex = -1;
-      editingEmployeeIndex = -1;
-      editingGroupingIndex = -1;
-      editingAssemblyIndex = -1;
-      boxesQty = 1;
-      startDateStr = todayISODate();
+      resetToNewProjectSession();
+    }
+
+    function resetSimulationView() {
+      const tbody = document.getElementById('floor-status-body');
+      if (tbody) tbody.innerHTML = '';
+      const charts = document.getElementById('machine-charts-container');
+      if (charts) charts.innerHTML = '';
+      const dayWrap = document.getElementById('day-select-wrap');
+      if (dayWrap) dayWrap.style.display = 'none';
+      const timeline = document.getElementById('timeline');
+      if (timeline) {
+        timeline.value = 0;
+        timeline.max = MINUTES_PER_DAY - 1;
+      }
+      const timelineLabel = document.getElementById('timeline-label');
+      if (timelineLabel) timelineLabel.textContent = minuteInDayToTimeStr(0);
+      const simBoxes = document.getElementById('sim-boxes-qty');
+      if (simBoxes) simBoxes.value = boxesQty || 1;
+      const simDate = document.getElementById('sim-start-date');
+      if (simDate) simDate.value = startDateStr || todayISODate();
+      const kpi = document.getElementById('kpi-status');
+      if (kpi) {
+        kpi.textContent = 'AGUARDANDO';
+        kpi.style.color = '#94a3b8';
+      }
+      ensureWorkDaysCapacity(1);
+      currentAbsSecond = 0;
+      renderClockOnly();
+      updatePlayButtonUI();
+      updateSpeedButtonsUI();
+    }
+
+    function resetToNewProjectSession() {
+      clearSimulationRuntime();
+      resetProductionPlanState();
+      loadBaseCatalogIntoState();
+      persistBaseCatalog();
       const boxesEl = document.getElementById('boxes-qty');
       const dateEl = document.getElementById('start-date');
       if (boxesEl) boxesEl.value = 1;
       if (dateEl) dateEl.value = startDateStr;
+      resetPartForm();
+      const asmName = document.getElementById('assembly-result-name');
+      if (asmName) asmName.value = '';
+      const btnGroup = document.getElementById('btn-save-grouping');
+      if (btnGroup) btnGroup.innerText = 'Agrupar Peças';
+      const btnAsm = document.getElementById('btn-save-assembly');
+      if (btnAsm) btnAsm.innerText = 'Criar Subconjunto';
+      const btnEmp = document.getElementById('btn-save-employee');
+      if (btnEmp) btnEmp.innerText = 'Adicionar Funcionário';
+      const btnMach = document.getElementById('btn-save-machine');
+      if (btnMach) btnMach.innerText = 'Adicionar Máquina';
+      document.getElementById('new-employee-name').value = '';
+      document.getElementById('new-employee-matricula').value = '';
+      document.getElementById('new-machine-name').value = '';
+      document.getElementById('new-machine-pop').value = '';
+      document.getElementById('new-machine-maint-interval').value = '0';
+      document.getElementById('new-machine-maint-duration').value = '0';
+      document.getElementById('new-machine-last-maint').value = '';
+      document.getElementById('new-machine-next-maint').value = '';
+      resetSimulationView();
       renderConfigUI();
       navigateTo('screen-config');
     }
@@ -194,6 +242,7 @@
 
       document.getElementById('new-employee-name').value = '';
       document.getElementById('new-employee-matricula').value = '';
+      persistBaseCatalog();
       renderConfigUI();
     }
 
@@ -219,6 +268,7 @@
       } else if (editingEmployeeIndex > idx) {
         editingEmployeeIndex--;
       }
+      persistBaseCatalog();
       renderConfigUI();
     }
 
@@ -275,6 +325,7 @@
       document.getElementById('new-machine-last-maint').value = '';
       document.getElementById('new-machine-next-maint').value = '';
       fillMachineOperatorSelect('');
+      persistBaseCatalog();
       renderConfigUI();
     }
 
@@ -299,6 +350,7 @@
         editingMachineIndex = -1;
         document.getElementById('btn-save-machine').innerText = 'Adicionar Máquina';
       }
+      persistBaseCatalog();
       renderConfigUI();
     }
 
@@ -564,6 +616,9 @@
 
       const pList = document.getElementById('parts-list');
       pList.innerHTML = '';
+      if (parts.length === 0) {
+        pList.innerHTML = '<li style="color:#64748b;">Nenhuma peça cadastrada neste projeto.</li>';
+      }
       parts.forEach((p, idx) => {
         const rText = p.route.map(s => {
           const m = machines.find(item => item.id === s.machineId);
@@ -584,12 +639,18 @@
 
       const groupCBContainer = document.getElementById('group-parts-checkboxes');
       groupCBContainer.innerHTML = '';
+      if (parts.length === 0) {
+        groupCBContainer.innerHTML = '<span style="font-size:0.8rem; color:#64748b;">Cadastre peças neste projeto para agrupar.</span>';
+      }
       parts.forEach(p => {
         groupCBContainer.innerHTML += `<label class="checkbox-item"><input type="checkbox" class="group-part-cb" value="${p.name}"> ${p.name} (${p.thickness}mm)</label>`;
       });
 
       const gList = document.getElementById('groupings-list');
       gList.innerHTML = '';
+      if (groupingRules.length === 0) {
+        gList.innerHTML = '<li style="color:#64748b;">Nenhum agrupamento neste projeto.</li>';
+      }
       groupingRules.forEach((g, idx) => {
         const m = machines.find(item => item.id === g.machineId);
         gList.innerHTML += `<li>
@@ -612,6 +673,9 @@
 
       const aList = document.getElementById('assemblies-list');
       aList.innerHTML = '';
+      if (assemblyRules.length === 0) {
+        aList.innerHTML = '<li style="color:#64748b;">Nenhuma união neste projeto.</li>';
+      }
       assemblyRules.forEach((a, idx) => {
         const m = machines.find(item => item.id === a.machineId);
         aList.innerHTML += `<li>

@@ -39,6 +39,35 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
     let simulationSpeed = 1; // 1x | 5x | 10x
     const BASE_TICK_MS = 80;
 
+    function clearSimulationRuntime() {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      isPlaying = false;
+      currentAbsSecond = 0;
+      selectedDayIndex = 0;
+      lastRenderedMinute = -1;
+      simulationHistory = [];
+      rawEvents = [];
+      maintenanceEvents = [];
+      workDays = [];
+      totalAbsMinutes = MINUTES_PER_DAY;
+    }
+
+    function resetProductionPlanState() {
+      currentProjectName = '';
+      parts = [];
+      groupingRules = [];
+      assemblyRules = [];
+      currentBuildingRoute = [];
+      editingPartIndex = -1;
+      editingMachineIndex = -1;
+      editingEmployeeIndex = -1;
+      editingGroupingIndex = -1;
+      editingAssemblyIndex = -1;
+      boxesQty = 1;
+      startDateStr = todayISODate();
+    }
+
     /** Intervalo do setInterval; reduzido proporcionalmente à velocidade (mín. 16ms). */
     function getTickIntervalMs() {
       return Math.max(16, Math.round(BASE_TICK_MS / Math.max(1, simulationSpeed)));
