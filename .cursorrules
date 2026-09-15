@@ -55,7 +55,7 @@ Antes de mudar regra de negócio, localizar o módulo certo. Preferir editar os 
 - **Setup permanece inalterado** (exceto divisão por agrupamento: `ceil(setup / nPeças)`).
 
 ### Agrupamento e união
-- Agrupamento: peças cortadas juntas no mesmo setor (setup compartilhado).
+- Agrupamento: peças cortadas juntas no mesmo setor (setup compartilhado **no mesmo horário inicial**; todas entram em produção **no mesmo minuto** após o setup; o término segue o volume individual).
 - União/subconjunto: espera peças/componentes (`assemblyGate`); status “Aguardando Outras Peças para União” vs “FILA”.
 - Motor usa múltiplas passagens para estabilizar waits entre peças.
 
@@ -84,7 +84,7 @@ Campos finais em branco para preenchimento manual / premiação.
 
 ### Runtime
 - Source of truth: **localStorage** chave `simulafab_projects_v4`.
-- Export arquivo: `banco_dados.json`.
+- Export arquivo: `banco_dados.json` (botão **Atualizar banco_dados.json** persiste o estado atual e gera o download).
 
 ### Formato export/import (v1.4.3)
 

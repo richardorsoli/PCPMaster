@@ -295,6 +295,7 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
     }
 
     function exportDatabaseJSON() {
+      persistDatabaseWrapper();
       const payload = buildDatabasePayload(getProjectsDatabase());
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
       const url = URL.createObjectURL(blob);
@@ -305,6 +306,15 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      return payload;
+    }
+
+    function updateDatabaseJSONFromStorage() {
+      persistDatabaseWrapper();
+      const assigned = (currentProjectName || '').trim();
+      if (assigned) persistSavedProject(assigned);
+      exportDatabaseJSON();
+      alert('banco_dados.json gerado a partir do estado atual do navegador (localStorage).\nSalve o arquivo na pasta do SimulaFab para atualizar a cópia local.');
     }
 
     function normalizeImportedDatabase(parsed) {

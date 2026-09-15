@@ -36,12 +36,12 @@
       <div style="border-top: 1px solid #334155; padding-top: 20px; margin-top: 20px; text-align: left;">
         <label style="font-size: 0.85rem; color: #94a3b8;">Banco de Dados (arquivo .json):</label>
         <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
-          <button class="btn btn-success" onclick="exportDatabaseJSON()">⬇ Baixar banco_dados.json</button>
+          <button class="btn btn-success" onclick="updateDatabaseJSONFromStorage()">⬇ Atualizar banco_dados.json</button>
           <button class="btn btn-secondary" onclick="document.getElementById('import-db-file').click()">⬆ Carregar banco_dados.json</button>
           <input type="file" id="import-db-file" accept=".json,application/json" style="display:none;" onchange="importDatabaseJSON(event)">
         </div>
         <p style="font-size: 0.78rem; color: #64748b; margin-top: 8px;">
-          Exporta ou importa projetos, feriados e parâmetros de manutenção.
+          Exporta o estado do localStorage (máquinas, peças, regras e feriados) como banco_dados.json, ou importa um arquivo.
         </p>
       </div>
     </div>
@@ -53,7 +53,7 @@
       <h1 style="color: #38bdf8;">Engenharia de Processo e Roteiro</h1>
       <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
         <button class="btn btn-success" onclick="saveProjectPrompt()">💾 Salvar Projeto</button>
-        <button class="btn" onclick="exportDatabaseJSON()">⬇ Baixar banco_dados.json</button>
+        <button class="btn" onclick="updateDatabaseJSONFromStorage()">⬇ Atualizar banco_dados.json</button>
         <button class="btn btn-secondary" onclick="document.getElementById('import-db-file-config').click()">⬆ Carregar JSON</button>
         <input type="file" id="import-db-file-config" accept=".json,application/json" style="display:none;" onchange="importDatabaseJSON(event)">
         <button class="btn btn-secondary" onclick="navigateTo('screen-welcome')">Voltar</button>

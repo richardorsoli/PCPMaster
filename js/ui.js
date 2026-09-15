@@ -859,7 +859,7 @@
 
       const tableRows = [];
 
-      rawEvents.forEach(evt => {
+      rawEvents.forEach((evt, evtIdx) => {
         const mObj = machines.find(mach => mach.id === evt.machineId);
         const sector = mObj ? mObj.name : '-';
         const operador = getMachineOperatorLabel(mObj);
@@ -870,6 +870,8 @@
         if (evt.setupTime > 0) {
           tableRows.push({
             abs: evt.setupStart,
+            kind: 0,
+            seq: evtIdx,
             cells: [
               absMinuteToTimeLabel(evt.setupStart),
               evt.partName,
@@ -888,6 +890,8 @@
 
         tableRows.push({
           abs: evt.prodStart,
+          kind: 1,
+          seq: evtIdx,
           cells: [
             absMinuteToTimeLabel(evt.prodStart),
             evt.partName,
@@ -908,6 +912,8 @@
         const mObj = machines.find(mach => mach.id === me.machineId);
         tableRows.push({
           abs: me.start,
+          kind: 2,
+          seq: 100000,
           cells: [
             absMinuteToTimeLabel(me.start),
             '—',
@@ -924,7 +930,7 @@
         });
       });
 
-      tableRows.sort((a, b) => a.abs - b.abs);
+      tableRows.sort((a, b) => (a.abs - b.abs) || ((a.kind || 0) - (b.kind || 0)) || ((a.seq || 0) - (b.seq || 0)));
       const tableData = tableRows.map(r => r.cells);
 
       doc.autoTable({

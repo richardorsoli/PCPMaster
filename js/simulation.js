@@ -175,6 +175,78 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       return `${pad2(Math.floor(realMins / 60))}:${pad2(realMins % 60)}`;
     }
 
+    function minuteOfDay(absMin) {
+      return ((absMin % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+    }
+
+    function isLunchAbsMinute(absMin) {
+      const m = minuteOfDay(absMin);
+      return m >= LUNCH_START_OFFSET && m < LUNCH_END_OFFSET;
+    }
+
+    /** Se cair no almoço, avança para 13:00 do mesmo dia. */
+    function snapToProductive(absMin) {
+      let t = Math.max(0, absMin);
+      if (isLunchAbsMinute(t)) {
+        t = Math.floor(t / MINUTES_PER_DAY) * MINUTES_PER_DAY + LUNCH_END_OFFSET;
+      }
+      return t;
+    }
+
+    function lunchMinutesInRange(start, end) {
+      if (end <= start) return 0;
+      let total = 0;
+      const startDay = Math.floor(start / MINUTES_PER_DAY);
+      const endDay = Math.floor((end - 1) / MINUTES_PER_DAY);
+      for (let d = startDay; d <= endDay; d++) {
+        const lunchStart = d * MINUTES_PER_DAY + LUNCH_START_OFFSET;
+        const lunchEnd = d * MINUTES_PER_DAY + LUNCH_END_OFFSET;
+        const a = Math.max(start, lunchStart);
+        const b = Math.min(end, lunchEnd);
+        if (b > a) total += (b - a);
+      }
+      return total;
+    }
+
+    function productiveMinutesBetween(start, end) {
+      return Math.max(0, end - start - lunchMinutesInRange(start, end));
+    }
+
+    /** Soma minutos de produção/setup pulando [12:00, 13:00). Retorno exclusivo. */
+    function addProductiveMinutes(startAbsMin, duration) {
+      let t = snapToProductive(startAbsMin);
+      let left = Math.max(0, Number(duration) || 0);
+      if (left === 0) return t;
+      let guard = 0;
+      while (left > 0 && guard++ < 2000) {
+        const dayStart = Math.floor(t / MINUTES_PER_DAY) * MINUTES_PER_DAY;
+        const m = t - dayStart;
+        if (m < LUNCH_START_OFFSET) {
+          const beforeLunch = LUNCH_START_OFFSET - m;
+          if (left <= beforeLunch) return t + left;
+          left -= beforeLunch;
+          t = dayStart + LUNCH_END_OFFSET;
+        } else {
+          const untilEod = MINUTES_PER_DAY - m;
+          if (left <= untilEod) return t + left;
+          left -= untilEod;
+          t = dayStart + MINUTES_PER_DAY;
+        }
+      }
+      return t;
+    }
+
+    /** Durante o almoço, o restante congela no valor de 11:59. */
+    function lunchPauseReferenceAbsMin(absMin) {
+      if (!isLunchAbsMinute(absMin)) return absMin;
+      return Math.floor(absMin / MINUTES_PER_DAY) * MINUTES_PER_DAY + LUNCH_START_OFFSET - 1;
+    }
+
+    function remainingMinutesLabel(absMin, untilAbsMin) {
+      const ref = lunchPauseReferenceAbsMin(absMin);
+      return Math.max(0, productiveMinutesBetween(ref, untilAbsMin)) + ' min';
+    }
+
     function normalizeMachine(m) {
       return {
         ...m,
@@ -301,8 +373,8 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       if (intervalMin <= 0 || durationMin <= 0) return;
       if ((machineOperated[machineId] || 0) < intervalMin) return;
 
-      const start = machineFreeUntil[machineId] || 0;
-      const end = start + durationMin;
+      const start = snapToProductive(machineFreeUntil[machineId] || 0);
+      const end = addProductiveMinutes(start, durationMin);
       localMaintEvents.push({
         machineId,
         start,
@@ -410,14 +482,14 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
 
       maybeInsertMaintenance(machineId, machineFreeUntil, machineOperated, passMaint);
 
-      const sharedSetupStart = Math.max(
+      const sharedSetupStart = snapToProductive(Math.max(
         machineFreeUntil[machineId] || 0,
         ...members.map(m => m.readyForMachine)
-      );
+      ));
       const sharedSetupDur = members.reduce((max, m) => Math.max(max, m.setupTime), 0);
-      const sharedProdStart = sharedSetupStart + sharedSetupDur;
+      const sharedProdStart = addProductiveMinutes(sharedSetupStart, sharedSetupDur);
       const maxProdTime = members.reduce((max, m) => Math.max(max, m.prodTime), 0);
-      const batchEnd = sharedProdStart + maxProdTime;
+      const batchEnd = addProductiveMinutes(sharedProdStart, maxProdTime);
 
       members.forEach(m => {
         const evt = buildProcessEvent(m.part, m.step, m.stepIndex, {
@@ -427,7 +499,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
           setupStart: sharedSetupStart,
           setupEnd: sharedProdStart,
           prodStart: sharedProdStart,
-          end: sharedProdStart + m.prodTime,
+          end: addProductiveMinutes(sharedProdStart, m.prodTime),
           setupTime: m.setupTime,
           prodTime: m.prodTime,
           waitingForAssembly: m.waitingForAssembly,
@@ -504,9 +576,9 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       maybeInsertMaintenance(step.machineId, machineFreeUntil, machineOperated, maintEvents);
 
       const readyForMachine = Math.max(arrivalTime, assemblyGate);
-      const setupStart = Math.max(readyForMachine, machineFreeUntil[step.machineId] || 0);
-      const prodStart = setupStart + setupTime;
-      const end = prodStart + prodTime;
+      const setupStart = snapToProductive(Math.max(readyForMachine, machineFreeUntil[step.machineId] || 0));
+      const prodStart = addProductiveMinutes(setupStart, setupTime);
+      const end = addProductiveMinutes(prodStart, prodTime);
 
       machineFreeUntil[step.machineId] = end;
       machineOperated[step.machineId] = (machineOperated[step.machineId] || 0) + setupTime + prodTime;
@@ -558,7 +630,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
           if (!ignoreAssembly && members.some(m => !assemblyDependenciesMet(m.part, m.step, readyTimeOfParts))) return;
 
           const readyForMachine = members.reduce((max, m) => Math.max(max, m.readyForMachine), 0);
-          const setupStart = Math.max(machineFreeUntil[step.machineId] || 0, readyForMachine);
+          const setupStart = snapToProductive(Math.max(machineFreeUntil[step.machineId] || 0, readyForMachine));
           candidates.push({
             type: 'group',
             groupRule,
@@ -577,7 +649,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
         const arrivalTime = partReady[part.name] || 0;
         const asm = resolveAssemblyWait(part, step, arrivalTime, readyTimeOfParts);
         const readyForMachine = Math.max(arrivalTime, asm.assemblyGate);
-        const setupStart = Math.max(readyForMachine, machineFreeUntil[step.machineId] || 0);
+        const setupStart = snapToProductive(Math.max(readyForMachine, machineFreeUntil[step.machineId] || 0));
         candidates.push({
           type: 'single',
           part,
@@ -700,7 +772,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
 
       for (let absMin = 0; absMin < totalAbsMinutes; absMin++) {
         const minuteInDay = absMin % MINUTES_PER_DAY;
-        const isLunchTime = (minuteInDay >= LUNCH_START_OFFSET && minuteInDay < LUNCH_END_OFFSET);
+        const isLunchTime = isLunchAbsMinute(absMin);
         let snapshot = {
           absMinute: absMin,
           minuteInDay,
@@ -719,7 +791,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
             snapshot.machinesStatus[me.machineId] = {
               state: isLunchTime ? 'lunch' : 'maintenance',
               partName: null,
-              remaining: Math.max(0, me.end - absMin) + ' min'
+              remaining: remainingMinutesLabel(absMin, me.end)
             };
           }
         });
@@ -752,7 +824,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
               name: evt.partName,
               machineId: evt.machineId,
               status: isLunchTime ? 'lunch' : 'setup',
-              remaining: Math.max(0, setupEnd - absMin) + ' min'
+              remaining: remainingMinutesLabel(absMin, setupEnd)
             });
           } else if (absMin >= setupEnd && absMin < evt.prodStart) {
             if (!mMaint && !isActiveMachineState(machineState && machineState.state)) {
@@ -775,7 +847,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
               name: evt.partName,
               machineId: evt.machineId,
               status: isLunchTime ? 'lunch' : 'working',
-              remaining: Math.max(0, evt.end - absMin) + ' min'
+              remaining: remainingMinutesLabel(absMin, evt.end)
             });
           }
         });
@@ -796,10 +868,10 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
                 status = isLunchTime ? 'lunch' : 'fila';
               } else if (absMin >= evt.prodStart) {
                 status = isLunchTime ? 'lunch' : 'working';
-                remaining = Math.max(0, evt.end - absMin) + ' min';
+                remaining = remainingMinutesLabel(absMin, evt.end);
               } else if (absMin >= evt.setupStart && absMin < setupEnd) {
                 status = isLunchTime ? 'lunch' : 'setup';
-                remaining = Math.max(0, setupEnd - absMin) + ' min';
+                remaining = remainingMinutesLabel(absMin, setupEnd);
               } else if (evt.waitingForAssembly && absMin < evt.assemblyGate) {
                 status = isLunchTime ? 'lunch' : 'waiting';
               } else {
@@ -859,7 +931,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
               sector: mObj ? mObj.name : '-',
               operator: getMachineOperatorLabel(mObj),
               status: isLunchTime ? 'lunch' : 'maintenance',
-              remaining: Math.max(0, me.end - absMin) + ' min'
+              remaining: remainingMinutesLabel(absMin, me.end)
             });
           }
         });
@@ -880,10 +952,10 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
             if (active) {
               if (absMin >= active.prodStart) {
                 status = isLunchTime ? 'lunch' : 'working';
-                remaining = Math.max(0, active.end - absMin) + ' min';
+                remaining = remainingMinutesLabel(absMin, active.end);
               } else {
                 status = isLunchTime ? 'lunch' : 'setup';
-                remaining = Math.max(0, active.prodStart - absMin) + ' min';
+                remaining = remainingMinutesLabel(absMin, active.prodStart);
               }
             }
             snapshot.floorRows.push({
