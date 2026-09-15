@@ -68,7 +68,11 @@
       document.getElementById('boxes-qty').value = 1;
       currentProjectName = '';
       if (!holidays.includes('2026-11-02')) holidays.push('2026-11-02');
-      persistDatabaseWrapper();
+      const catalogBefore = getBaseCatalogFromDatabase();
+      setProjectsDatabase(getProjectsDatabase(), {
+        employees: catalogBefore.employees.length ? catalogBefore.employees : employees,
+        machines: catalogBefore.machines.length ? catalogBefore.machines : machines
+      });
 
       renderConfigUI();
       navigateTo('screen-config');
@@ -184,9 +188,9 @@
         const meta = document.createElement('div');
         meta.style.cssText = 'font-size:0.78rem; color:#94a3b8; margin-top:4px;';
         const proj = saved[name] || {};
-        const nMachines = Array.isArray(proj.machines) ? proj.machines.length : 0;
+        const nMachines = countActiveMachinesInProject(proj);
         const nParts = Array.isArray(proj.parts) ? proj.parts.length : 0;
-        meta.textContent = `${nMachines} máquina(s) · ${nParts} peça(s) · ${proj.boxesQty || 1} caixa(s)`;
+        meta.textContent = `${nMachines} máquina(s) ativas · ${nParts} peça(s) · ${proj.boxesQty || 1} caixa(s)`;
         info.appendChild(meta);
 
         const actions = document.createElement('div');
@@ -346,9 +350,13 @@
       const removedId = machines[idx].id;
       machines.splice(idx, 1);
       parts.forEach(p => p.route = p.route.filter(s => s.machineId !== removedId));
+      groupingRules = groupingRules.filter(g => g.machineId !== removedId);
+      assemblyRules = assemblyRules.filter(a => a.machineId !== removedId);
       if (editingMachineIndex === idx) {
         editingMachineIndex = -1;
         document.getElementById('btn-save-machine').innerText = 'Adicionar Máquina';
+      } else if (editingMachineIndex > idx) {
+        editingMachineIndex--;
       }
       persistBaseCatalog();
       renderConfigUI();
@@ -518,7 +526,7 @@
       if (!holidays.includes(val)) {
         holidays.push(val);
         holidays.sort();
-        persistDatabaseWrapper();
+        persistHolidays();
       }
       document.getElementById('new-holiday-date').value = '';
       renderHolidaysList();
@@ -526,7 +534,7 @@
 
     function removeHoliday(iso) {
       holidays = holidays.filter(h => h !== iso);
-      persistDatabaseWrapper();
+      persistHolidays();
       renderHolidaysList();
     }
 
@@ -575,6 +583,7 @@
         editingMachineIndex >= 0 ? (machines[editingMachineIndex]?.defaultOperatorId || '') : (document.getElementById('new-machine-operator')?.value || '')
       );
 
+      const usedMachineIds = collectUsedMachineIds(parts, groupingRules, assemblyRules);
       const mList = document.getElementById('machines-list');
       mList.innerHTML = '';
       machines.forEach((m, idx) => {
@@ -589,6 +598,10 @@
           ? '#64748b'
           : (remainingInfo.overdue ? '#f87171' : '#4ade80');
         const remainingLabel = getMaintenanceRemainingLabel(m);
+        const inUse = !!usedMachineIds[m.id];
+        const useTag = inUse
+          ? '<span style="font-size:0.72rem; color:#4ade80; font-weight:600;">Em uso neste projeto</span>'
+          : '<span style="font-size:0.72rem; color:#64748b;">Catálogo (sem roteiro neste projeto)</span>';
         mList.innerHTML += `
           <li>
             <div>
@@ -598,6 +611,7 @@
               <div style="font-size:0.78rem; color:#a855f7;">${maintTxt}</div>
               <div style="font-size:0.78rem; color:#94a3b8;">Última manutenção: ${lastTxt} · Próxima: ${nextTxt}</div>
               <div style="font-size:0.78rem; color:${remainingColor}; font-weight:600;">⏱ ${remainingLabel}</div>
+              <div>${useTag}</div>
             </div>
             <div>
               <button class="btn btn-warning" onclick="editMachine(${idx})">Editar</button>
@@ -802,7 +816,8 @@
       const container = document.getElementById('machine-charts-container');
       container.innerHTML = '';
 
-      machines.forEach((m, idx) => {
+      const chartMachines = getActiveMachines();
+      chartMachines.forEach((m, idx) => {
         let setupTime = 0, workTime = 0, waitTime = 0, lunchTime = 0, idleTime = 0, maintTime = 0;
 
         simulationHistory.forEach(snap => {

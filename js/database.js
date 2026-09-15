@@ -39,17 +39,40 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
       }
     }
 
+    function mergeEntitiesById(baseList, extraList, normalizeItem) {
+      const map = {};
+      const order = [];
+      function add(item, overwrite) {
+        if (!item || !item.id) return;
+        const norm = normalizeItem ? normalizeItem(item) : item;
+        if (!map[norm.id]) {
+          order.push(norm.id);
+          map[norm.id] = norm;
+        } else if (overwrite) {
+          map[norm.id] = norm;
+        }
+      }
+      (baseList || []).forEach(item => add(item, true));
+      (extraList || []).forEach(item => add(item, false));
+      return order.map(id => map[id]);
+    }
+
     function resolveCatalogArrays(wrap, catalog) {
-      const source = catalog || {};
-      const catalogEmployees = Array.isArray(source.employees)
-        ? source.employees
-        : (employees.length ? employees : ((wrap && wrap.employees) || []));
-      const catalogMachines = Array.isArray(source.machines)
-        ? source.machines
-        : (machines.length ? machines : ((wrap && wrap.machines) || []));
+      if (catalog && typeof catalog === 'object') {
+        const catalogEmployees = Array.isArray(catalog.employees)
+          ? catalog.employees
+          : ((wrap && wrap.employees) || []);
+        const catalogMachines = Array.isArray(catalog.machines)
+          ? catalog.machines
+          : ((wrap && wrap.machines) || []);
+        return {
+          employees: cloneJson(catalogEmployees, []),
+          machines: (catalogMachines || []).map(normalizeMachine)
+        };
+      }
       return {
-        employees: cloneJson(catalogEmployees, []),
-        machines: (catalogMachines || []).map(normalizeMachine)
+        employees: cloneJson(employees || [], []),
+        machines: (machines || []).map(normalizeMachine)
       };
     }
 
@@ -69,7 +92,21 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
 
     function persistDatabaseWrapper() {
       const wrap = getDatabaseWrapper();
-      localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(buildDatabasePayload(wrap.projects || {})));
+      localStorage.setItem(
+        DB_STORAGE_KEY,
+        JSON.stringify(buildDatabasePayload(wrap.projects || {}, {
+          employees,
+          machines
+        }))
+      );
+    }
+
+    function persistHolidays() {
+      const wrap = getDatabaseWrapper();
+      setProjectsDatabase(wrap.projects || {}, {
+        employees: Array.isArray(wrap.employees) && wrap.employees.length ? wrap.employees : employees,
+        machines: Array.isArray(wrap.machines) && wrap.machines.length ? wrap.machines : machines
+      });
     }
 
     function persistBaseCatalog() {
@@ -126,13 +163,13 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
     }
 
     function loadBaseCatalogIntoState() {
-      if (machines.length === 0 && employees.length === 0) {
-        const catalog = getBaseCatalogFromDatabase();
+      const catalog = getBaseCatalogFromDatabase();
+      if (catalog.employees.length > 0 || catalog.machines.length > 0) {
         employees = catalog.employees;
         machines = catalog.machines;
         return;
       }
-      machines = machines.map(normalizeMachine);
+      machines = (machines || []).map(normalizeMachine);
       employees = cloneJson(employees, []);
     }
 
@@ -149,7 +186,7 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
     function buildCurrentProjectData(name) {
       return {
         name,
-        machines: machines.map(normalizeMachine),
+        machines: getActiveMachines().map(normalizeMachine),
         parts: cloneJson(parts, []),
         employees: cloneJson(employees, []),
         groupingRules: cloneJson(groupingRules, []),
@@ -165,7 +202,7 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
       const saved = getProjectsDatabase();
       saved[trimmed] = buildCurrentProjectData(trimmed);
       currentProjectName = trimmed;
-      setProjectsDatabase(saved);
+      setProjectsDatabase(saved, { employees, machines });
       if (typeof refreshSavedProjectsUI === 'function') refreshSavedProjectsUI();
       return true;
     }
@@ -225,9 +262,14 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
 
     function applyProjectToState(name, proj) {
       currentProjectName = name;
-      machines = (proj.machines || []).map(normalizeMachine);
+      const catalog = getBaseCatalogFromDatabase();
+      machines = mergeEntitiesById(catalog.machines, proj.machines || [], normalizeMachine);
+      employees = mergeEntitiesById(
+        catalog.employees,
+        Array.isArray(proj.employees) ? proj.employees : [],
+        item => ({ id: item.id, name: item.name, matricula: item.matricula })
+      );
       parts = cloneJson(proj.parts || [], []);
-      employees = Array.isArray(proj.employees) ? cloneJson(proj.employees, []) : [];
       groupingRules = cloneJson(proj.groupingRules || [], []);
       assemblyRules = cloneJson(proj.assemblyRules || [], []);
       currentBuildingRoute = [];
@@ -245,6 +287,7 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
         const boxesEl = document.getElementById('boxes-qty');
         if (boxesEl) boxesEl.value = proj.boxesQty;
       }
+      persistBaseCatalog();
     }
 
     function loadSavedProjectByName(name) {
@@ -279,7 +322,7 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
         return;
       }
       delete saved[name];
-      setProjectsDatabase(saved);
+      setProjectsDatabase(saved, { employees, machines });
       if (currentProjectName === name) currentProjectName = '';
       if (typeof refreshSavedProjectsUI === 'function') refreshSavedProjectsUI();
     }
@@ -396,15 +439,13 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
           }
 
           holidays = importedHolidays || [];
+          employees = cloneJson(importedEmployees || [], []);
+          machines = (importedMachines || []).map(normalizeMachine);
           setProjectsDatabase(projects, {
-            employees: importedEmployees || [],
-            machines: importedMachines || []
+            employees,
+            machines
           });
           if (currentProjectName && !projects[currentProjectName]) currentProjectName = '';
-          if (machines.length === 0 && employees.length === 0) {
-            employees = cloneJson(importedEmployees || [], []);
-            machines = (importedMachines || []).map(normalizeMachine);
-          }
           if (typeof refreshSavedProjectsUI === 'function') refreshSavedProjectsUI();
           if (typeof renderConfigUI === 'function') renderConfigUI();
           renderHolidaysList();

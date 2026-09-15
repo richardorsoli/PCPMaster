@@ -262,6 +262,42 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       machines = machines.map(normalizeMachine);
     }
 
+    /** IDs de máquinas citadas em roteiros, agrupamentos ou uniões. */
+    function collectUsedMachineIds(srcParts, srcGroups, srcAsms) {
+      const ids = {};
+      (srcParts || []).forEach(p => {
+        (p.route || []).forEach(step => {
+          if (step && step.machineId) ids[step.machineId] = true;
+        });
+      });
+      (srcGroups || []).forEach(g => {
+        if (g && g.machineId) ids[g.machineId] = true;
+      });
+      (srcAsms || []).forEach(a => {
+        if (a && a.machineId) ids[a.machineId] = true;
+      });
+      return ids;
+    }
+
+    function getActiveMachines(srcParts, srcGroups, srcAsms, srcMachines) {
+      const ids = collectUsedMachineIds(
+        srcParts || parts,
+        srcGroups || groupingRules,
+        srcAsms || assemblyRules
+      );
+      return (srcMachines || machines).filter(m => m && ids[m.id]);
+    }
+
+    function getSimulationMachines() {
+      const active = getActiveMachines();
+      return active.length > 0 ? active : [];
+    }
+
+    function countActiveMachinesInProject(proj) {
+      if (!proj) return 0;
+      return Object.keys(collectUsedMachineIds(proj.parts, proj.groupingRules, proj.assemblyRules)).length;
+    }
+
     /** Diferença entre duas datas ISO (YYYY-MM-DD). Retorna { totalHours, days, hours, overdue, label }. */
     function getTimeBetweenDates(fromIso, toIso) {
       if (!fromIso || !toIso) {
@@ -668,7 +704,8 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
     function scheduleProductionEvents() {
       const machineFreeUntil = {};
       const machineOperated = {};
-      machines.forEach(m => {
+      const simMachines = getSimulationMachines();
+      simMachines.forEach(m => {
         machineFreeUntil[m.id] = 0;
         machineOperated[m.id] = 0;
       });
@@ -782,7 +819,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
           machinesStatus: {}
         };
 
-        machines.forEach(m => {
+        getSimulationMachines().forEach(m => {
           snapshot.machinesStatus[m.id] = { state: isLunchTime ? 'lunch' : 'idle', partName: null };
         });
 

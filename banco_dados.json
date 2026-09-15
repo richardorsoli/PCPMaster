@@ -1,7 +1,7 @@
 {
   "app": "SimulaFab",
   "version": "1.4.3",
-  "exportedAt": "2026-09-15T17:46:40.842Z",
+  "exportedAt": "2026-09-15T19:00:52.609Z",
   "holidays": [
     "2026-10-12",
     "2026-11-02",
@@ -766,16 +766,6 @@
           "nextMaintenanceDate": ""
         },
         {
-          "id": "m1789391570242",
-          "name": "MURATA",
-          "pop": "Procedimento Padrão.",
-          "maintIntervalHours": 7200,
-          "maintDurationHours": 20,
-          "defaultOperatorId": "e1789484388430",
-          "lastMaintenanceDate": "",
-          "nextMaintenanceDate": ""
-        },
-        {
           "id": "m1789391576850",
           "name": "IMAG",
           "pop": "Procedimento Padrão.",
@@ -796,26 +786,6 @@
           "nextMaintenanceDate": ""
         },
         {
-          "id": "m1789391593505",
-          "name": "DOBRA NUCLEO",
-          "pop": "Procedimento Padrão.",
-          "maintIntervalHours": 0,
-          "maintDurationHours": 0,
-          "defaultOperatorId": "e1789484402381",
-          "lastMaintenanceDate": "",
-          "nextMaintenanceDate": ""
-        },
-        {
-          "id": "m1789391598762",
-          "name": "DOBRA DOBRADIÇA",
-          "pop": "Procedimento Padrão.",
-          "maintIntervalHours": 0,
-          "maintDurationHours": 0,
-          "defaultOperatorId": "e1789484537303",
-          "lastMaintenanceDate": "",
-          "nextMaintenanceDate": ""
-        },
-        {
           "id": "m1789391604678",
           "name": "SOLDA MIG",
           "pop": "Procedimento Padrão.",
@@ -832,26 +802,6 @@
           "maintIntervalHours": 7200,
           "maintDurationHours": 4,
           "defaultOperatorId": "e1789484578079",
-          "lastMaintenanceDate": "",
-          "nextMaintenanceDate": ""
-        },
-        {
-          "id": "m1789391647617",
-          "name": "LIXAMENTO",
-          "pop": "Procedimento Padrão.",
-          "maintIntervalHours": 0,
-          "maintDurationHours": 0,
-          "defaultOperatorId": "e1789484402381",
-          "lastMaintenanceDate": "",
-          "nextMaintenanceDate": ""
-        },
-        {
-          "id": "m1789391652436",
-          "name": "PINO STUD",
-          "pop": "Procedimento Padrão.",
-          "maintIntervalHours": 0,
-          "maintDurationHours": 0,
-          "defaultOperatorId": "e1789484402381",
           "lastMaintenanceDate": "",
           "nextMaintenanceDate": ""
         },
@@ -1208,7 +1158,7 @@
         }
       ],
       "startDate": "2026-09-15",
-      "boxesQty": 100
+      "boxesQty": 280
     }
   }
 }
