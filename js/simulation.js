@@ -1,4 +1,4 @@
-/* SimulaFab v1.4.3 — Motor de simulação, calendário e manutenção preventiva */
+/* SimulaFab v1.5.0 — Motor de simulação, calendário e manutenção preventiva */
 
 // --- PARÂMETROS DO TURNO ---
 const SHIFT_START_MINUTES = 7 * 60 + 30;

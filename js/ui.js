@@ -1,4 +1,4 @@
-/* SimulaFab v1.4.3 — Manipulação de DOM, timeline, relógio, tabelas e PDF */
+/* SimulaFab v1.5.0 — Manipulação de DOM, timeline, relógio, tabelas e PDF */
 
     // --- EXEMPLO ---
     function loadExampleAndNavigate() {
@@ -70,8 +70,10 @@
       if (!holidays.includes('2026-11-02')) holidays.push('2026-11-02');
       const catalogBefore = getBaseCatalogFromDatabase();
       setProjectsDatabase(getProjectsDatabase(), {
-        employees: catalogBefore.employees.length ? catalogBefore.employees : employees,
-        machines: catalogBefore.machines.length ? catalogBefore.machines : machines
+        employees: mergeEntitiesById(employees, catalogBefore.employees, item => ({
+          id: item.id, name: item.name, matricula: item.matricula
+        })),
+        machines: machines
       });
 
       renderConfigUI();
@@ -124,7 +126,8 @@
     function resetToNewProjectSession() {
       clearSimulationRuntime();
       resetProductionPlanState();
-      loadBaseCatalogIntoState();
+      loadEmployeesFromCatalog();
+      machines = [];
       persistBaseCatalog();
       const boxesEl = document.getElementById('boxes-qty');
       const dateEl = document.getElementById('start-date');
@@ -188,7 +191,9 @@
         const meta = document.createElement('div');
         meta.style.cssText = 'font-size:0.78rem; color:#94a3b8; margin-top:4px;';
         const proj = saved[name] || {};
-        const nMachines = countActiveMachinesInProject(proj);
+      const nMachines = Array.isArray(proj.machines) && proj.machines.length
+        ? proj.machines.length
+        : countActiveMachinesInProject(proj);
         const nParts = Array.isArray(proj.parts) ? proj.parts.length : 0;
         meta.textContent = `${nMachines} máquina(s) ativas · ${nParts} peça(s) · ${proj.boxesQty || 1} caixa(s)`;
         info.appendChild(meta);
@@ -347,7 +352,12 @@
     }
 
     function removeMachine(idx) {
-      const removedId = machines[idx].id;
+      const target = machines[idx];
+      if (!target) return;
+      if (!confirm(`Remover "${target.name}" deste projeto?\n\nO cadastro permanece no Catálogo Global e poderá ser incluído novamente.`)) {
+        return;
+      }
+      const removedId = target.id;
       machines.splice(idx, 1);
       parts.forEach(p => p.route = p.route.filter(s => s.machineId !== removedId));
       groupingRules = groupingRules.filter(g => g.machineId !== removedId);
@@ -355,10 +365,67 @@
       if (editingMachineIndex === idx) {
         editingMachineIndex = -1;
         document.getElementById('btn-save-machine').innerText = 'Adicionar Máquina';
+        document.getElementById('new-machine-name').value = '';
+        document.getElementById('new-machine-pop').value = '';
+        document.getElementById('new-machine-maint-interval').value = '0';
+        document.getElementById('new-machine-maint-duration').value = '0';
+        document.getElementById('new-machine-last-maint').value = '';
+        document.getElementById('new-machine-next-maint').value = '';
+        fillMachineOperatorSelect('');
       } else if (editingMachineIndex > idx) {
         editingMachineIndex--;
       }
-      persistBaseCatalog();
+      renderConfigUI();
+    }
+
+    function fillCatalogMachineSelect() {
+      const sel = document.getElementById('catalog-machine-select');
+      const hint = document.getElementById('catalog-machine-hint');
+      if (!sel) return;
+      const available = getCatalogMachinesAvailableForProject();
+      const catalogCount = getCatalogMachines().length;
+      sel.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      if (available.length === 0) {
+        placeholder.textContent = catalogCount === 0
+          ? '— Catálogo vazio: cadastre uma máquina —'
+          : '— Todas as máquinas do catálogo já estão neste projeto —';
+      } else {
+        placeholder.textContent = '— Selecione uma máquina do catálogo —';
+      }
+      sel.appendChild(placeholder);
+      available.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        const op = getMachineOperatorLabel(m);
+        opt.textContent = op && op !== '-' ? `${m.name} · ${op}` : m.name;
+        sel.appendChild(opt);
+      });
+      if (hint) {
+        hint.textContent = `Catálogo Global: ${catalogCount} máquina(s) · ${available.length} disponível(is) para este projeto.`;
+      }
+    }
+
+    function addCatalogMachineToProject() {
+      const sel = document.getElementById('catalog-machine-select');
+      const id = sel ? sel.value : '';
+      if (!id) {
+        alert('Selecione uma máquina do Catálogo Global para incluir neste projeto.');
+        return;
+      }
+      if (machines.some(m => m.id === id)) {
+        alert('Esta máquina já está ativa neste projeto.');
+        renderConfigUI();
+        return;
+      }
+      const found = getCatalogMachines().find(m => m.id === id);
+      if (!found) {
+        alert('Máquina não encontrada no Catálogo Global.');
+        renderConfigUI();
+        return;
+      }
+      machines.push(normalizeMachine(cloneJson(found, found)));
       renderConfigUI();
     }
 
@@ -385,7 +452,7 @@
         return;
       }
       currentBuildingRoute.forEach((step, idx) => {
-        const m = machines.find(item => item.id === step.machineId);
+        const m = lookupMachine(step.machineId);
         container.innerHTML += `
           <span class="step-tag">
             ${idx + 1}º: <strong>${m ? m.name : '?'}</strong> (Setup: ${step.setup}m | Prod/u: ${step.prodUnit}m)
@@ -586,6 +653,10 @@
       const usedMachineIds = collectUsedMachineIds(parts, groupingRules, assemblyRules);
       const mList = document.getElementById('machines-list');
       mList.innerHTML = '';
+      fillCatalogMachineSelect();
+      if (machines.length === 0) {
+        mList.innerHTML = '<li style="color:#64748b;">Nenhuma máquina neste projeto. Cadastre uma nova ou use o dropdown do Catálogo Global.</li>';
+      }
       machines.forEach((m, idx) => {
         const maintTxt = (m.maintIntervalHours > 0)
           ? `Manutenção a cada ${m.maintIntervalHours}h de uso (${m.maintDurationHours}h)`
@@ -601,7 +672,7 @@
         const inUse = !!usedMachineIds[m.id];
         const useTag = inUse
           ? '<span style="font-size:0.72rem; color:#4ade80; font-weight:600;">Em uso neste projeto</span>'
-          : '<span style="font-size:0.72rem; color:#64748b;">Catálogo (sem roteiro neste projeto)</span>';
+          : '<span style="font-size:0.72rem; color:#64748b;">Vinculada ao projeto (sem roteiro ainda)</span>';
         mList.innerHTML += `
           <li>
             <div>
@@ -615,7 +686,7 @@
             </div>
             <div>
               <button class="btn btn-warning" onclick="editMachine(${idx})">Editar</button>
-              <button class="btn btn-danger" onclick="removeMachine(${idx})">Excluir</button>
+              <button class="btn btn-danger" onclick="removeMachine(${idx})">Remover do Projeto</button>
             </div>
           </li>`;
       });
@@ -635,7 +706,7 @@
       }
       parts.forEach((p, idx) => {
         const rText = p.route.map(s => {
-          const m = machines.find(item => item.id === s.machineId);
+          const m = lookupMachine(s.machineId);
           return m ? m.name : '?';
         }).join(' ➔ ');
         pList.innerHTML += `
@@ -666,7 +737,7 @@
         gList.innerHTML = '<li style="color:#64748b;">Nenhum agrupamento neste projeto.</li>';
       }
       groupingRules.forEach((g, idx) => {
-        const m = machines.find(item => item.id === g.machineId);
+        const m = lookupMachine(g.machineId);
         gList.innerHTML += `<li>
           <div><strong>Setor: ${m ? m.name : '?'}</strong>
           <div style="font-size:0.85rem; color:#38bdf8;">Cortadas Juntas: ${g.partNames.join(' + ')}</div></div>
@@ -691,7 +762,7 @@
         aList.innerHTML = '<li style="color:#64748b;">Nenhuma união neste projeto.</li>';
       }
       assemblyRules.forEach((a, idx) => {
-        const m = machines.find(item => item.id === a.machineId);
+        const m = lookupMachine(a.machineId);
         aList.innerHTML += `<li>
           <div><strong>Setor: ${m ? m.name : '?'}</strong> ➔ <span style="color:#22c55e;">${a.resultName}</span>
           <div style="font-size:0.85rem; color:#f59e0b;">União de: ${a.requiredPartNames.join(' + ')}</div></div>
@@ -858,7 +929,7 @@
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(16);
       doc.setTextColor(2, 132, 199);
-      doc.text('Relatório de Cronograma da Produção - SimulaFab v1.4.3', 14, 16);
+      doc.text('Relatório de Cronograma da Produção - SimulaFab v1.5.0', 14, 16);
 
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');

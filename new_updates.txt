@@ -108,6 +108,34 @@ SPRINT 1 (CONCLUÍDO)
 
 Arquivos alterados recentemente: index.html, js/simulation.js, js/database.js, js/ui.js, new_updates.txt, .cursorrules
 
+SPRINT 8 (CONCLUÍDO)
+Atue no SimulaFab v1.5.0 (Ambiente: Cursor IDE + Live Server).
+Atualize a indicação de versão no topo da UI (index.html), em app.js e registre no new_updates.txt que estamos executando a SPRINT 8 (Catálogo Global Infinito e Seleção Dinâmica de Máquinas).
+
+OBJETIVO DA SPRINT 8:
+Implementar a gestão de Catálogo Mestre Infinito e o mecanismo de Inclusão por Dropdown nos Projetos em `@js/database.js` e `@js/ui.js`.
+
+REQUISITOS DA SPRINT 8:
+
+1. PERSISTÊNCIA EM BANCO GLOBAL (banco_dados.json / localStorage):
+   - O Catálogo Global de Máquinas é a 'Fonte da Verdade' (sem limite de máquinas: 1, 18, 50+).
+   - Toda nova máquina cadastrada pelo formulário padrão deve persistir no Catálogo Global.
+
+2. MENU SUSPENSO DE INCLUSÃO (DROPDOWN NO PROJETO):
+   - No painel de configuração do 'Novo Projeto' e ao editar 'Projetos Existentes/Consolidados', inclua um campo de seleção (Dropdown) alimentado pelo Catálogo Global.
+   - O Dropdown deve listar apenas as máquinas do Catálogo Global que ainda NÃO estão ativas no projeto selecionado.
+   - Ao selecionar uma máquina no menu e clicar em 'Adicionar ao Projeto', ela é vinculada ao projeto ativo e Herda 100% de seus metadados salvos (POP, Operador Padrão, Tempos/Intervalos e Datas de Manutenção).
+
+3. ROTEIROS E REMOÇÕES SEM PERDA DE DADOS:
+   - As opções de máquinas nos seletores de Roteiro de Peças devem ser atualizadas dinamicamente para incluir as máquinas recém-adicionadas.
+   - Remover uma máquina do projeto apenas desativa/oculta sua presença daquele projeto específico, mantendo o cadastro perfeitamente preservado no Catálogo Global.
+
+REGRAS CRÍTICAS:
+- Mantenha a arquitetura Vanilla JS (scripts clássicos simulation.js -> database.js -> ui.js -> app.js). Não usar ESM/bundlers.
+- Preserve o funcionamento do despacho job-shop, pausa do almoço (12:00-13:00) e agrupamento de corte já consolidados.
+
+
+
 ========================================
  PRÓXIMAS SPRINTS (A FAZER)
 ========================================
@@ -121,6 +149,48 @@ SPRINT 7
 1. SAI NO RELATORIO A ANALISE DE EFICIENCIA
 2. GERAR NO RELATÓRIO O GARFICO DE GANTT DO PROJETO
 3. GERAR RELATORIO DE HORA TRABALHADA POR FUNCIONARIO
+4. EDIÇÃO DAS ORDENS DO ROTEIRO DAS PEÇAS
+
+SPRINT 9
+Estamos iniciando a **Sprint 9** do SimulaFab v1.5.0, focada em transformar a estrutura de roteiros de uma linha reta simples para uma **Estrutura de Produto em Árvore (BOM - Bill of Materials)** com eventos de **Junção (`JOIN`) e Transformação de SKU**.
+
+### CONTEXTO DA REGRA DE NEGÓCIO (Exemplo DAE JUNDIAI):
+1. **Corte Inicial (Nesting/Agrupamento):** Batedor, Corpo, Suporte e Laterais são cortados juntos.
+2. **Processamento Individual:** Cada peça segue para sua respectiva dobra em tempos e máquinas distintas.
+3. **Ponto de Espera / Sincronismo (JOIN 1):** 
+   - `Corpo` (após dobra) aguarda `Laterais` na máquina de Martelamento.
+   - A tarefa de martelamento só pode iniciar quando AMBOS estiverem prontos: `DataInicioDisponivel = MAX(Fim(Corpo), Fim(Laterais))`.
+   - Ao concluir, o conjunto se transforma na entidade `CORPO_MARTELAMENTO`.
+4. **Segunda Junção (JOIN 2):** 
+   - `CORPO_MARTELAMENTO` aguarda `Suporte` na Solda MIG.
+   - O Suporte NÃO possui tarefa individual na Solda MIG; sua presença é um insumo exigido pela tarefa do conjunto.
+   - Ao concluir a Solda MIG, vira a entidade `SOLDA_CORPO`.
+5. **Terceira Junção e Novo Roteiro (JOIN 3 + Sub-roteiro):** 
+   - `SOLDA_CORPO` aguarda `Batedor` na Solda Ponto C30.
+   - Ao concluir, se transforma na entidade `CORPO_COMPLETO`.
+   - O `CORPO_COMPLETO` ganha um novo roteiro sequencial próprio: **Banho -> Cabine -> Estufa**.
+6. **Junção Final (JOIN 4):**
+   - `CORPO_COMPLETO` aguarda `Tampa` (que possui seu próprio roteiro prévio) na Montagem Final para virar o produto final `DAE JUNDIAI`, avançando para **Embalagem**.
+
+---
+
+### O QUE DEVE SER IMPLEMENTADO / AJUSTADO NO CÓDIGO:
+
+1. **Atualização da Estrutura de Dados (BOM + Roteiros):**
+   - Modifique o modelo de dados dos projetos/jobs para suportar nós de junção (`juncao: { requer: [...], maquina: "..." }`) e subconjuntos descendentes.
+   - Garanta que peças como o `Suporte` não fiquem com "tarefas fantasma" isoladas, figurando apenas como dependências (`requer`) na operação de junção.
+
+2. **Lógica de Liberação no Motor de Agendamento (Dispatch Engine):**
+   - Na fila de priorização das máquinas de junção/montagem/solda, uma tarefa só muda seu status para `PRONTA_PARA_PROGRAMAR` se **todos** os itens da lista `requer` já tiverem suas datas/horários de término concluídos.
+   - Respeite o cálculo da data de início: `DataInicioDisponivel = MAX(Fim(Insumo_1), Fim(Insumo_2), ..., Fim(Insumo_N))`.
+
+3. **Troca de Identidade e Disparo de Sub-Roteiros:**
+   - Ao finalizar a operação de junção, o motor deve consumir/dar baixa nos insumos primários e criar dinamicamente a nova entidade (ex: `CORPO_COMPLETO`), engatando-a no seu novo pipeline de roteiro (Ex: Banho -> Cabine -> Estufa).
+
+4. **Preservação e Persistência:**
+   - Atualize a rotina de salvar/carregar no `localStorage` (`banco_dados.json`) para que a estrutura do `DAE JUNDIAI` e outros projetos reflitam esses novos parâmetros sem quebrar a união do Catálogo Global Mestre implementada na Sprint 8.
+
+Por favor, apresente as alterações nos arquivos correspondentes (módulos do motor, estrutura de dados e renderizadores) mantendo o alinhamento com os recursos atuais (pausa do almoço 12:00-13:00 e despacho job-shop).
 
 ========================================
       INICIAR NOVO CHAT NO CURSOR
@@ -147,7 +217,24 @@ Próxima etapa — Sprint 4 (new_updates.txt)
 Testador de trajetos: melhor ordem de start de peças para gerar menos tempo ocioso.
 Leia o .cursorrules e os módulos em /js antes de alterar regra de negócio. Não quebrar calendário, setup vs produção nem o schema do banco.
 
-REGRAS CRÍTICAS: 
-- Ler o .cursorrules e os módulos em /js antes de alterar regras de negócio.
-- Não converter para ESM/bundler.
-- Não quebrar calendário, lógica de setup vs. produção nem o schema do banco.
+------------------------------------------------------------
+Atue no SimulaFab v1.5.0 (Ambiente: Cursor IDE + Live Server).
+O projeto está sendo atualizado de v1.4.3 para v1.5.0 no topo da UI e nos arquivos de configuração.
+
+ARQUITETURA & REGRAS CRÍTICAS:
+- Ordem de scripts: simulation.js -> database.js -> ui.js -> app.js.
+- Runtime Source of Truth: localStorage ('simulafab_projects_v4').
+- Turno base: 07:30–17:18 (588 min útil/dia), Almoço: 12:00–13:00. Pula finais de semana e feriados.
+- NUNCA converter para ESM/bundler (manter Vanilla JS modular).
+- Ler o .cursorrules e os módulos em /js antes de alterar qualquer regra de negócio.
+- Não quebrar o calendário, lógica de setup vs. produção nem o schema do banco (catálogo no wrapper + machines ativas no projeto).
+
+ESTADO ATUAL CONCLUÍDO (Working tree clean):
+1. Despacho Dinâmico (job-shop): ao zerar o tempo de uma etapa, a primeira peça entra em SETUP/EM PRODUÇÃO no minuto seguinte se a máquina estiver livre.
+2. Pausa de Almoço: congelamento rigoroso do 'Tempo Restante' na janela [12:00, 13:00).
+3. Catálogo Global Infinito: projetos armazenam e exibem apenas máquinas/funcionários ATIVOS no roteiro. O catálogo completo permanece protegido em banco_dados.json/localStorage.
+4. Sincronização: função de download/merge de banco_dados.json via Live Server 100% operacional.
+
+PRÓXIMAS TAREFAS DESTE CHAT:
+1. Atualizar visivelmente a versão do sistema de v1.4.3 para v1.5.0 na UI (index.html), no topo do app.js e no new_updates.txt.
+2. Iniciar a Sprint 4: Implementação do Testador de Trajetos (Analisador de melhor ordem de start das peças para minimizar ociosidade e setup).

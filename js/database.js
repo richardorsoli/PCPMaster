@@ -1,4 +1,4 @@
-/* SimulaFab v1.4.3 — Persistência localStorage e import/export banco_dados.json */
+/* SimulaFab v1.5.0 — Persistência localStorage e import/export banco_dados.json */
 
 const DB_STORAGE_KEY = 'simulafab_projects_v4';
 
@@ -57,36 +57,97 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
       return order.map(id => map[id]);
     }
 
-    function resolveCatalogArrays(wrap, catalog) {
-      if (catalog && typeof catalog === 'object') {
+    function collectMachinesFromProjects(projects) {
+      let union = [];
+      Object.keys(projects || {}).forEach(key => {
+        const p = projects[key] || {};
+        if (!Array.isArray(p.machines) || p.machines.length === 0) return;
+        union = mergeEntitiesById(union, p.machines.map(normalizeMachine), normalizeMachine);
+      });
+      return union;
+    }
+
+    function collectEmployeesFromProjects(projects) {
+      const normEmp = item => ({ id: item.id, name: item.name, matricula: item.matricula });
+      let union = [];
+      Object.keys(projects || {}).forEach(key => {
+        const p = projects[key] || {};
+        if (!Array.isArray(p.employees) || p.employees.length === 0) return;
+        union = mergeEntitiesById(union, p.employees, normEmp);
+      });
+      return union;
+    }
+
+    function unionMachineLists() {
+      let union = [];
+      for (let i = 0; i < arguments.length; i++) {
+        const list = arguments[i];
+        if (!list || !list.length) continue;
+        union = mergeEntitiesById(union, (list || []).map(normalizeMachine), normalizeMachine);
+      }
+      return union;
+    }
+
+    /** Catálogo mestre = união de wrap + todos os projetos salvos + sessão atual. */
+    function getCatalogMachines() {
+      const wrap = getDatabaseWrapper();
+      return unionMachineLists(
+        wrap.machines,
+        collectMachinesFromProjects(wrap.projects),
+        machines
+      );
+    }
+
+    function resolveCatalogArrays(wrap, catalog, options, projectsForUnion) {
+      const replaceCatalog = options && options.replaceCatalog;
+      const projects = projectsForUnion || (wrap && wrap.projects) || {};
+      if (replaceCatalog && catalog && typeof catalog === 'object') {
         const catalogEmployees = Array.isArray(catalog.employees)
           ? catalog.employees
           : ((wrap && wrap.employees) || []);
         const catalogMachines = Array.isArray(catalog.machines)
-          ? catalog.machines
-          : ((wrap && wrap.machines) || []);
+          ? catalog.machines.map(normalizeMachine)
+          : ((wrap && wrap.machines) || []).map(normalizeMachine);
         return {
           employees: cloneJson(catalogEmployees, []),
-          machines: (catalogMachines || []).map(normalizeMachine)
+          machines: unionMachineLists(catalogMachines, collectMachinesFromProjects(projects))
         };
       }
+      return mergeGlobalCatalog(catalog, projects);
+    }
+
+    function mergeGlobalCatalog(catalog, projectsForUnion) {
+      const wrap = getDatabaseWrapper();
+      const projects = projectsForUnion || wrap.projects || {};
+      const existingMachines = Array.isArray(wrap.machines) ? wrap.machines.map(normalizeMachine) : [];
+      const incomingEmployees = catalog && Array.isArray(catalog.employees)
+        ? catalog.employees
+        : (employees || []);
+      const incomingMachines = catalog && Array.isArray(catalog.machines)
+        ? catalog.machines.map(normalizeMachine)
+        : (machines || []).map(normalizeMachine);
       return {
-        employees: cloneJson(employees || [], []),
-        machines: (machines || []).map(normalizeMachine)
+        employees: cloneJson(incomingEmployees, []),
+        machines: unionMachineLists(
+          incomingMachines,
+          existingMachines,
+          collectMachinesFromProjects(projects)
+        )
       };
     }
 
-    function buildDatabasePayload(projects, catalog) {
+    function buildDatabasePayload(projects, catalog, options) {
       const wrap = getDatabaseWrapper();
-      const resolved = resolveCatalogArrays(wrap, catalog);
+      const projectMap = projects || wrap.projects || {};
+      const resolved = resolveCatalogArrays(wrap, catalog, options, projectMap);
       return {
         app: 'SimulaFab',
-        version: '1.4.3',
+        version: '1.5.0',
         exportedAt: new Date().toISOString(),
         holidays: holidays.slice(),
         employees: resolved.employees,
         machines: resolved.machines,
-        projects: projects || wrap.projects || {}
+        projects: projectMap
       };
     }
 
@@ -103,74 +164,100 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
 
     function persistHolidays() {
       const wrap = getDatabaseWrapper();
-      setProjectsDatabase(wrap.projects || {}, {
-        employees: Array.isArray(wrap.employees) && wrap.employees.length ? wrap.employees : employees,
-        machines: Array.isArray(wrap.machines) && wrap.machines.length ? wrap.machines : machines
-      });
+      setProjectsDatabase(wrap.projects || {}, mergeGlobalCatalog());
     }
 
     function persistBaseCatalog() {
       persistDatabaseWrapper();
     }
 
+    function getGlobalMachineCatalog() {
+      return getCatalogMachines();
+    }
+
+    function getCatalogMachinesAvailableForProject() {
+      const inProject = {};
+      (machines || []).forEach(m => {
+        if (m && m.id) inProject[m.id] = true;
+      });
+      return getCatalogMachines().filter(m => m && m.id && !inProject[m.id]);
+    }
+
+    function hydrateProjectMachines(proj, catalogMachines) {
+      const catalogList = (catalogMachines || []).map(normalizeMachine);
+      const catalogMap = {};
+      catalogList.forEach(m => {
+        if (m && m.id) catalogMap[m.id] = m;
+      });
+      const ordered = [];
+      const seen = {};
+
+      function pushMachine(raw) {
+        if (!raw || !raw.id || seen[raw.id]) return;
+        seen[raw.id] = true;
+        const cat = catalogMap[raw.id];
+        ordered.push(normalizeMachine(cat ? { ...raw, ...cat } : raw));
+      }
+
+      (proj && Array.isArray(proj.machines) ? proj.machines : []).forEach(pushMachine);
+
+      const usedIds = collectUsedMachineIds(
+        proj && proj.parts,
+        proj && proj.groupingRules,
+        proj && proj.assemblyRules
+      );
+      Object.keys(usedIds).forEach(id => {
+        if (!seen[id] && catalogMap[id]) pushMachine(catalogMap[id]);
+      });
+
+      return ordered;
+    }
+
+    function lookupMachine(id) {
+      const inProject = (machines || []).find(m => m && m.id === id);
+      if (inProject) return inProject;
+      return getCatalogMachines().find(m => m && m.id === id) || null;
+    }
+
     function getProjectsDatabase() {
       return getDatabaseWrapper().projects || {};
     }
 
-    function setProjectsDatabase(projects, catalog) {
-      localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(buildDatabasePayload(projects || {}, catalog)));
+    function setProjectsDatabase(projects, catalog, options) {
+      localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(buildDatabasePayload(projects || {}, catalog, options)));
     }
 
     function deriveCatalogFromProjects(projects) {
-      const list = projects || {};
-      let best = null;
-      let bestScore = -1;
-      Object.keys(list).forEach(k => {
-        const p = list[k] || {};
-        const score = (Array.isArray(p.machines) ? p.machines.length : 0)
-          + (Array.isArray(p.employees) ? p.employees.length : 0);
-        if (score > bestScore) {
-          bestScore = score;
-          best = p;
-        }
-      });
-      if (!best) return { employees: [], machines: [] };
       return {
-        employees: cloneJson(best.employees || [], []),
-        machines: (best.machines || []).map(normalizeMachine)
+        employees: collectEmployeesFromProjects(projects),
+        machines: collectMachinesFromProjects(projects)
       };
     }
 
     function getBaseCatalogFromDatabase() {
       const wrap = getDatabaseWrapper();
-      let catalogEmployees = Array.isArray(wrap.employees) ? wrap.employees : [];
-      let catalogMachines = Array.isArray(wrap.machines) ? wrap.machines : [];
-      if (catalogEmployees.length === 0 && catalogMachines.length === 0) {
-        const derived = deriveCatalogFromProjects(wrap.projects);
-        catalogEmployees = derived.employees;
-        catalogMachines = derived.machines;
-      }
-      if (catalogEmployees.length === 0 && employees.length > 0) {
-        catalogEmployees = employees;
-      }
-      if (catalogMachines.length === 0 && machines.length > 0) {
-        catalogMachines = machines;
-      }
+      const fromProjects = deriveCatalogFromProjects(wrap.projects);
+      const normEmp = item => ({ id: item.id, name: item.name, matricula: item.matricula });
+      const catalogEmployees = mergeEntitiesById(
+        mergeEntitiesById(employees || [], wrap.employees || [], normEmp),
+        fromProjects.employees,
+        normEmp
+      );
       return {
         employees: cloneJson(catalogEmployees, []),
-        machines: (catalogMachines || []).map(normalizeMachine)
+        machines: getCatalogMachines()
       };
     }
 
     function loadBaseCatalogIntoState() {
       const catalog = getBaseCatalogFromDatabase();
-      if (catalog.employees.length > 0 || catalog.machines.length > 0) {
-        employees = catalog.employees;
-        machines = catalog.machines;
-        return;
-      }
+      employees = catalog.employees.length > 0 ? catalog.employees : cloneJson(employees, []);
       machines = (machines || []).map(normalizeMachine);
-      employees = cloneJson(employees, []);
+    }
+
+    function loadEmployeesFromCatalog() {
+      const catalog = getBaseCatalogFromDatabase();
+      employees = catalog.employees.length > 0 ? catalog.employees : cloneJson(employees, []);
     }
 
     const SAVE_OVERWRITE_MSG = 'Já existe uma versão salva deste projeto. Deseja sobrescrever os dados existentes?';
@@ -186,7 +273,7 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
     function buildCurrentProjectData(name) {
       return {
         name,
-        machines: getActiveMachines().map(normalizeMachine),
+        machines: (machines || []).map(normalizeMachine),
         parts: cloneJson(parts, []),
         employees: cloneJson(employees, []),
         groupingRules: cloneJson(groupingRules, []),
@@ -263,7 +350,7 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
     function applyProjectToState(name, proj) {
       currentProjectName = name;
       const catalog = getBaseCatalogFromDatabase();
-      machines = mergeEntitiesById(catalog.machines, proj.machines || [], normalizeMachine);
+      machines = hydrateProjectMachines(proj, catalog.machines);
       employees = mergeEntitiesById(
         catalog.employees,
         Array.isArray(proj.employees) ? proj.employees : [],
@@ -396,11 +483,13 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
 
       let catalogEmployees = Array.isArray(parsed.employees) ? parsed.employees.slice() : [];
       let catalogMachines = Array.isArray(parsed.machines) ? parsed.machines.map(normalizeMachine) : [];
-      if (catalogEmployees.length === 0 && catalogMachines.length === 0) {
-        const derived = deriveCatalogFromProjects(projects);
-        catalogEmployees = derived.employees;
-        catalogMachines = derived.machines;
-      }
+      const derived = deriveCatalogFromProjects(projects);
+      catalogEmployees = mergeEntitiesById(
+        catalogEmployees,
+        derived.employees,
+        item => ({ id: item.id, name: item.name, matricula: item.matricula })
+      );
+      catalogMachines = unionMachineLists(catalogMachines, derived.machines);
 
       return {
         projects,
@@ -440,11 +529,17 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
 
           holidays = importedHolidays || [];
           employees = cloneJson(importedEmployees || [], []);
-          machines = (importedMachines || []).map(normalizeMachine);
+          machines = [];
+          currentBuildingRoute = [];
+          editingPartIndex = -1;
+          editingMachineIndex = -1;
+          editingEmployeeIndex = -1;
+          editingGroupingIndex = -1;
+          editingAssemblyIndex = -1;
           setProjectsDatabase(projects, {
             employees,
-            machines
-          });
+            machines: importedMachines
+          }, { replaceCatalog: true });
           if (currentProjectName && !projects[currentProjectName]) currentProjectName = '';
           if (typeof refreshSavedProjectsUI === 'function') refreshSavedProjectsUI();
           if (typeof renderConfigUI === 'function') renderConfigUI();

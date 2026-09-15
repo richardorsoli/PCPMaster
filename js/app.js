@@ -1,4 +1,4 @@
-/* SimulaFab v1.4.3 — Inicialização, playback e integração dos módulos */
+/* SimulaFab v1.5.0 — Inicialização, playback e integração dos módulos */
 
     function startSimulation() {
       if (machines.length === 0 || parts.length === 0) {
