@@ -1,0 +1,148 @@
+# SimulaFab v1.4.3 — Regras do Projeto
+
+App web de simulação PPCP / chão de fábrica (HTML + JS vanilla + CSS). UI em português (pt-BR). Tema escuro industrial. Entry point: `index.html`.
+
+## Arquitetura modular
+
+```
+SimulaFab/
+├── index.html          # Estrutura DOM + imports (sem lógica de negócio)
+├── css/styles.css      # Estilos próprios (+ Tailwind CDN no HTML)
+├── js/
+│   ├── simulation.js   # Estado global, calendário, motor, manutenção, velocidade
+│   ├── database.js     # localStorage + import/export banco_dados.json
+│   ├── ui.js           # DOM, CRUD config, chão, timeline, relógio, PDF
+│   └── app.js          # Init, Play/Pause/Stop, speed, scrubbing timeline
+├── banco_dados.json    # Exemplo/export de referência (não é source of truth em runtime)
+└── antigos/            # Monólitos HTML legados — NÃO editar salvo pedido explícito
+```
+
+### Ordem obrigatória dos scripts
+`simulation.js` → `database.js` → `ui.js` → `app.js`
+
+Scripts clássicos no escopo global (não ES modules), para `onclick` e abertura via `file://` funcionarem.
+
+### Responsabilidades (não misturar)
+
+| Arquivo | Contém | Não colocar aqui |
+|---------|--------|------------------|
+| `simulation.js` | Constantes de turno, estado, `calculateSimulationHistory`, calendário multi-dia, manutenção preventiva, helpers de data/tempo/velocidade | Persistência, PDF, markup |
+| `database.js` | `DB_STORAGE_KEY`, save/load/export/import, normalização de import | Motor de simulação, render de tela |
+| `ui.js` | CRUD (funcionários, máquinas, peças, regras), `renderConfigUI`, chão, charts, `generatePDFReport` | Persistência bruta, loop de playback |
+| `app.js` | `startSimulation`, `runLoop`, play/stop/step/speed, `onTimelineChange` | Cálculo de eventos, schema DB |
+| `index.html` | Telas welcome / config / sim | Lógica JS |
+
+Antes de mudar regra de negócio, localizar o módulo certo. Preferir editar os arquivos em `/js` e `index.html`/`css/` — não recriar monólito.
+
+## Telas
+
+1. **welcome** — exemplo, projeto novo, carregar projeto, import/export JSON  
+2. **config** — engenharia: funcionários → máquinas → peças/roteiros → agrupamento → união → feriados → qtd. caixas + data inicial  
+3. **sim** — play/pause/stop, ±1 min, velocidade 1x/5x/10x, relógio `DD/MM/AA - HH:MM:SS`, tabela do chão, timeline full-width no card, dropdown de dias, gráficos, PDF  
+
+## Regras de negócio ativas
+
+### Turno e calendário
+- Turno: **07:30–17:18** (`MINUTES_PER_DAY` = 588).
+- Almoço: **12:00–13:00** (overlay/status; minutos do dia 270–329).
+- Tempo absoluto em minutos/segundos de trabalho; ao terminar um dia, continua às **07:30 do próximo dia útil**.
+- Pula **sábado, domingo e feriados** (`holidays[]` em `YYYY-MM-DD`).
+- Data inicial (`startDateStr` / input `type="date"`); se cair em não-útil, avança para o próximo útil.
+- Timeline representa **um dia selecionado**; dropdown `Dia N (dd/mm/aa)` quando há multi-dia.
+
+### Produção e caixas
+- `boxesQty` (1–999) multiplica **quantidade efetiva** e **tempo de produção** (`prodUnit * qty * boxesQty`).
+- **Setup permanece inalterado** (exceto divisão por agrupamento: `ceil(setup / nPeças)`).
+
+### Agrupamento e união
+- Agrupamento: peças cortadas juntas no mesmo setor (setup compartilhado).
+- União/subconjunto: espera peças/componentes (`assemblyGate`); status “Aguardando Outras Peças para União” vs “FILA”.
+- Motor usa múltiplas passagens para estabilizar waits entre peças.
+
+### Manutenção preventiva (uso)
+- Máquina: `maintIntervalHours`, `maintDurationHours` (0 = desativado).
+- Acumula minutos de setup+produção; ao atingir intervalo, insere bloco `MANUTENÇÃO PREVENTIVA`.
+
+### Datas de manutenção (calendário)
+- `lastMaintenanceDate`, `nextMaintenanceDate` (ISO).
+- Helpers: `getTimeBetweenDates`, `getMaintenanceRemainingLabel` — indicador dias/horas (atraso em destaque).
+
+### Funcionários / operadores
+- `employees[]`: `{ id, name, matricula }`.
+- Máquina: `defaultOperatorId` → coluna **Operador** no chão e **Operador Responsável** no PDF.
+
+### Playback
+- Play/Pause (verde ativo / verde opaco pausado); Stop → Dia 1, 07:30:00.
+- Velocidade **1x / 5x / 10x** (`simulationSpeed`, `getTickIntervalMs`, `getSecondsPerTick`).
+- Timeline full-width no `floor-card`; scrubbing pausa e atualiza estado imediatamente.
+
+### PDF (landscape, jsPDF + autotable)
+Colunas típicas: Horário | Peça | Qtd | Tempo Indiv. | Tempo Total Simulado | Setor | Operador | Status | Tempo Registrado | Descrição / Como foi feito | Desempenho (Reg. vs Sim.).  
+Campos finais em branco para preenchimento manual / premiação.
+
+## Banco de dados
+
+### Runtime
+- Source of truth: **localStorage** chave `simulafab_projects_v4`.
+- Export arquivo: `banco_dados.json`.
+
+### Formato export/import (v1.4.3)
+
+```json
+{
+  "app": "SimulaFab",
+  "version": "1.4.3",
+  "exportedAt": "<ISO>",
+  "holidays": ["YYYY-MM-DD"],
+  "projects": {
+    "<nome>": {
+      "name": "...",
+      "machines": [/* ver schema máquina */],
+      "parts": [/* name, thickness, qty, route[] */],
+      "employees": [{ "id", "name", "matricula" }],
+      "groupingRules": [{ "machineId", "partNames": [] }],
+      "assemblyRules": [{ "machineId", "resultName", "requiredPartNames": [] }],
+      "startDate": "YYYY-MM-DD",
+      "boxesQty": 1
+    }
+  }
+}
+```
+
+### Schema máquina (`normalizeMachine`)
+
+```js
+{
+  id, name, pop,
+  maintIntervalHours,      // horas de uso; 0 = off
+  maintDurationHours,      // duração da parada
+  defaultOperatorId,       // id de employee ou ""
+  lastMaintenanceDate,     // YYYY-MM-DD ou ""
+  nextMaintenanceDate      // YYYY-MM-DD ou ""
+}
+```
+
+### Schema peça / rota
+- Peça: `{ name, thickness, qty, route: [{ machineId, setup, prodUnit }] }`.
+
+### Compatibilidade
+- Import deve aceitar JSON legado (sem `holidays`, `employees`, campos de manutenção/datas).
+- Defaults: arrays vazios, números `0`, strings `""`.
+- Sempre normalizar máquinas com `normalizeMachine` no load/import/save.
+
+## Diretrizes para próximos chats
+
+1. **Não quebrar regras de negócio existentes** sem pedido explícito (turno, almoço, multi-dia, setup vs produção, feriados).
+2. **Editar módulo correto**; manter ordem dos scripts; não converter para bundler/ESM sem solicitação (quebra `file://`).
+3. **Novos campos de entidade** → incluir em: estado (`simulation.js`), formulário/`renderConfigUI` (`ui.js` + `index.html`), `normalizeMachine`/save/load (`database.js` + `simulation.js`), exemplo `loadExampleAndNavigate` se fizer sentido.
+4. **UI**: pt-BR, tema escuro existente (`css/styles.css`); Tailwind CDN já no HTML — usar com parcimônia e alinhar ao visual atual.
+5. **CDNs em uso**: Tailwind, jsPDF 2.5.1, jspdf-autotable 3.5.28 — manter versões a menos que o usuário peça upgrade.
+6. **`antigos/`** e monólitos: somente leitura / referência; fonte ativa é a árvore modular.
+7. **Commits**: não incluir `new_updates.txt` nem artefatos não relacionados, salvo pedido.
+8. **Teste mental mínimo** após mudanças: carregar exemplo → gerar simulação → play/speed/timeline → export/import JSON → PDF.
+9. Preferir funções pequenas e nomes em português ou inglês já estabelecidos no código (`calculateSimulationHistory`, `renderFloorTable`, etc.) — não renomear APIs globais usadas em `onclick` sem atualizar o HTML.
+10. Estado é global compartilhado; ao resetar/carregar projeto, atualizar arrays (`machines`, `parts`, `employees`, `groupingRules`, `assemblyRules`, `holidays`) e chamar `renderConfigUI()`.
+
+## Versão
+
+Documento alinhado à **v1.4.3 modular** (pós: funcionários, datas de manutenção, PDF cronoanálise/descrição, velocidade 1x/5x/10x, timeline full-width).
