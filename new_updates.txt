@@ -1,4 +1,20 @@
-versão atual: v1.4.2 - banco de dados
+==================================================
+ PROJETO: SimulaFab
+ VERSÃO ATUAL: v1.5.0 (Em desenvolvimento)
+ REGRA DE VERSIONAMENTO: 
+   - v1.5.x: Correções de bugs (Patch)
+   - v1.6.0: Novas Sprints/Recursos (Minor)
+==================================================
+==================================================
+ HISTÓRICO DE VERSÕES (CONCLUÍDAS)
+==================================================
+
+[v1.4.2] - Banco de Dados (CONCLUÍDO)
+- Sincronização via localStorage configurada.
+- Separação da estrutura do banco_dados.json.
+
+
+v1.4.2 - banco de dados (CONCLUÍDO)
 
 cenário: fiz uma simulação com 100 caixas e excede o tempo de 1 dia/turno
 então pra isso rodar bem é preciso:
@@ -12,9 +28,98 @@ então pra isso rodar bem é preciso:
 
 versão atual: v1.4.3 - manutenção
 
-1. pedir data da ultima atualização. pedir data da proxima manutenção, calular tempo de uma pra outra.
-2. velocidade da passagem de tempo da simulação com 3 velocidades padrao, 5x e 10x
-3. a barra de tempo onde permite rolar e acelerar, procurar um tempo específico, deve correr a pagina inteira na horizontal.
-4. o comportamento da função de agrupar o corte das peças não está ocorrendo como esperado, se ele estivesse funcionando como esperado as primeira linhas do relatorio deveria ser, setup corte laser nucleo e setup corte laser dobradica as 07:30, em processamento nucleo 07:31 e processamento dobradica 07:31
-5. dentro de relatório: abra uma coluna ao lado de cronoanalise para o encarregado relatar e descrever oque foi feito e como foi feito para chegar nesse tempo que foi registrado
- 
+SPRINT 0 (CONCLUÍDO)
+Atue no projeto SimulaFab v1.4.3 e adicione a funcionalidade de vinculo de Funcionarios/Operadores:
+
+1. CADASTRO DE FUNCIONÁRIOS (database.js / ui.js):
+   - Adicione na aba de configurações o cadastro de Funcionários (Nome e Matrícula). Salve no banco_dados.json.
+   - Permita associar um "Operador Padrão" a cada máquina no cadastro de Máquinas.
+
+2. EXIBIÇÃO NO CHÃO DE FÁBRICA (index.html / ui.js):
+   - Adicione uma coluna "Operador" na tabela de Status do Chão de Fábrica exibindo quem está alocado naquela máquina/tarefa.
+
+3. COLUNA NO RELATÓRIO PDF (ui.js):
+   - Inclua a coluna "Operador Responsável" no Relatório PDF ao lado da Máquina/Setor e adicione um campo de verificação de desempenho (Tempo Registrado vs Tempo Simulado) para facilitar o programa de premiação da fábrica.
+
+SPRINT 2 (CONCLUÍDO)
+Atue no projeto SimulaFab v1.4.3 e aplique os seguintes recursos no controle de tempo da simulação:
+
+1. VELOCIDADE DE SIMULAÇÃO (1x, 5x, 10x):
+   - Ao lado dos botões Play/Pause, adicione um seletor ou conjunto de botões de velocidade (1x, 5x, 10x).
+   - Ajuste o interval do temporizador no simulation.js para acelerar a passagem do relógio digital (HH:MM:SS) e os cálculos no fator selecionado.
+
+2. TIMELINE FULL-WIDTH (ui.js / index.html):
+   - A barra do slider de tempo da simulação (timeline) deve ocupar 100% da largura horizontal do card do chão de fábrica (correndo de ponta a ponta na horizontal).
+   - Garanta que arrastar a barra de tempo atualize o estado da simulação instantaneamente para o horário selecionado.
+
+SPRINT 3 (CONCLUÍDO)
+Atue no projeto SimulaFab v1.4.3 para finalizar as seguintes melhorias de interface e relatórios:
+
+1. DATAS DE MANUTENÇÃO NAS MÁQUINAS (database.js / ui.js):
+   - No cadastro/edição de máquinas, adicione os campos: "Data da Última Manutenção" e "Data da Próxima Manutenção".
+   - Crie uma função utilitária que calcule automaticamente o tempo restante (em dias/horas) entre uma data e outra e exiba esse indicador na lista de máquinas.
+
+2. COLUNA DE OBSERVAÇÕES NO RELATÓRIO PDF (ui.js):
+   - No gerador de relatório PDF, adicione uma nova coluna ao lado direito de "Cronoanálise (Registrado)" com o título "Descrição / Como foi feito".
+   - Deixe o espaço dessa coluna formatado para que o encarregado de fábrica possa relatar à mão como o tempo registrado foi atingido na prática.
+
+SPRINT 5 (CONCLUÍDO)
+Atue no projeto SimulaFab v1.4.3 e implemente um sistema de gestão de projetos/versões salvas na interface e no gerenciador de dados:
+
+1. GERENCIAMENTO DE NOME E LISTA DE PROJETOS (database.js / ui.js):
+   - Ao clicar no botão "Salvar Projeto", verifique se o projeto atual já possui um nome/ID atribuído.
+   - Caso o projeto já exista na lista de salvamentos, exiba um modal/alerta de confirmação: "Já existe uma versão salva deste projeto. Deseja sobrescrever os dados existentes?".
+   - Se o usuário confirmar, atualize os dados no localStorage e no arquivo de estado. Se recusar, permita salvar com um novo nome.
+
+2. OPÇÃO DE EXCLUIR PROJETOS SALVOS (ui.js / database.js):
+   - Adicione uma lista/dropdown de "Projetos Salvos" no painel de configurações ou modal de carregamento.
+   - Ao lado de cada projeto da lista, inclua um botão de ação "Excluir" (ícone de lixeira ou botão vermelho).
+   - Ao clicar em "Excluir", exiba uma mensagem de confirmação ("Tem certeza que deseja apagar o projeto X?") e, se confirmado, remova o projeto do localStorage e atualize a lista exibida na interface.
+
+3. SINCRO COM BANCO_DADOS.JSON:
+   - Garanta que as ações de sobrescrever ou deletar atualizem o estado global do sistema mantendo a integridade com as regras de máquinas, peças e turnos vigentes.
+
+SPRINT 6 (CONCLUÍDO)
+
+1. BOTÃO "NOVO PROJETO" NA INTERFACE DE SIMULAÇÃO (ui.js / index.html):
+   - Adicione um botão visível "Novo Projeto" na área/header da tela de simulação.
+   - Ao clicar no botão, exiba uma caixa de confirmação para o usuário (ex: "Deseja iniciar um novo projeto? As alterações não salvas do projeto atual serão perdidas.").
+   - Ao confirmar, limpe a sessão do projeto ativo atual (resetando o id/nome do projeto e limpando os dados da simulação em execução).
+
+2. CARREGAMENTO PADRÃO DE MAQUINAS E FUNCIONÁRIOS (database.js / simulation.js):
+   - Ao resetar o estado para um "Novo Projeto", NÃO apague o cadastro base de máquinas e funcionários já existentes no sistema.
+   - Garanta que a função de inicialização do novo projeto carregue automaticamente a lista de funcionários e máquinas cadastradas (vindas do `banco_dados.json` / `localStorage`) para que a nova simulação já comece pronta para uso, sem precisar recadastrá-los do zero.
+   - Apenas o plano de produção/peças/sequenciamento específico do projeto anterior deve ser resetado.
+
+3. SINCRO E ESTADO:
+   - Atualize os seletores e tabelas da interface (`ui.js`) para refletir o estado zerado das peças, mantendo as opções de máquinas e funcionários preenchidas nos selects/listas.
+
+Por favor, analise a estrutura dos arquivos `@js/ui.js`, `@js/database.js` e `@js/simulation.js` e apresente as alterações necessárias.
+
+
+
+========================================
+ PRÓXIMAS SPRINTS (A FAZER)
+========================================
+[Sua Cabeça] ──> [Bloco de Notas] ──> [Trello: Backlog] ──> [Trello: Sprint A Fazer] ──> [Cursor + Git]
+ (Ideia Solta)     (Rascunho Rápido)   (Ideias Organizadas)    (Prompt Formatado)        (Código Rodando)
+
+
+SPRINT 1
+Atue no projeto SimulaFab v1.4.3 e execute as seguintes melhorias técnicas focadas em dados e regras de cálculo:
+
+1. CORREÇÃO DO AGRUPAMENTO DE CORTE (simulation.js):
+   - O agrupamento de corte de peças não está funcionando corretamente na sequência de setup/processamento.
+   - Ajuste o motor para que, ao identificar peças agrupadas no mesmo setor/máquina (ex: Corte Laser), a simulação execute o setup inicial de cada uma no mesmo horário inicial (ex: 07:30) e em seguida inicie o processamento simultâneo/sequencial agrupado (ex: 07:31). As primeiras linhas do relatório gerado devem refletir corretamente esse paralelismo do agrupamento.
+
+2. ATUALIZAÇÃO DIRETA DO BANCO LOCAL (database.js / app.js):
+   - Adicione um botão "Atualizar banco_dados.json" no painel de configurações ou topo do sistema.
+   - Ao ser clicado, ele deve gerar o download/sobrescrita do arquivo `banco_dados.json` atualizado na raiz com todo o estado presente no localStorage (máquinas, peças, regras e feriados).
+
+SPRINT 4
+ - Um testador de trajetos de qual é a melhor ordem de start de peças para gerar menos tempo ocioso.
+
+SPRINT 7
+1. SAI NO RELATORIO A ANALISE DE EFICIENCIA
+2. GERAR NO RELATÓRIO O GARFICO DE GANTT DO PROJETO
+3. GERAR RELATORIO DE HORA TRABALHADA POR FUNCIONARIO
