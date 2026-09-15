@@ -263,17 +263,19 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
 
 // --- MOTOR DE SIMULAÇÃO ---
     function getBoxesQtyFromInput() {
-      let qty = parseInt(document.getElementById('boxes-qty').value, 10);
+      const el = document.getElementById('boxes-qty');
+      let qty = parseInt(el && el.value, 10);
       if (isNaN(qty) || qty < 1) qty = 1;
       if (qty > 999) qty = 999;
-      document.getElementById('boxes-qty').value = qty;
+      if (el) el.value = qty;
       return qty;
     }
 
     function getStartDateFromInput() {
-      let v = document.getElementById('start-date').value;
+      const el = document.getElementById('start-date');
+      let v = el && el.value;
       if (!v) v = todayISODate();
-      document.getElementById('start-date').value = v;
+      if (el) el.value = v;
       return v;
     }
 
@@ -311,6 +313,371 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       machineOperated[machineId] = 0;
     }
 
+    function groupedSetupTime(setup, memberCount) {
+      const n = Math.max(1, memberCount);
+      return Math.ceil(setup / n);
+    }
+
+    function eventSetupEnd(evt) {
+      if (!evt) return 0;
+      if (evt.setupEnd != null) return evt.setupEnd;
+      return evt.prodStart;
+    }
+
+    function isActiveMachineState(state) {
+      return state === 'setup' || state === 'working' || state === 'maintenance';
+    }
+
+    function buildProcessEvent(part, step, stepIndex, fields) {
+      const prodStart = fields.prodStart;
+      const setupEnd = fields.setupEnd != null ? fields.setupEnd : prodStart;
+      return {
+        partName: part.name,
+        machineId: step.machineId,
+        stepIndex,
+        setupUnit: fields.setupTime,
+        prodUnit: step.prodUnit,
+        qty: fields.qty,
+        arrivalTime: fields.arrivalTime,
+        assemblyGate: fields.assemblyGate,
+        setupStart: fields.setupStart,
+        setupEnd,
+        prodStart,
+        end: fields.end,
+        setupTime: fields.setupTime,
+        prodTime: fields.prodTime,
+        waitingForAssembly: !!fields.waitingForAssembly,
+        isLastStep: stepIndex === part.route.length - 1,
+        grouped: !!fields.grouped
+      };
+    }
+
+    function resolveAssemblyWait(part, step, arrivalTime, readyMap) {
+      const assemblyRule = assemblyRules.find(a =>
+        a.machineId === step.machineId && a.requiredPartNames.includes(part.name)
+      );
+      if (!assemblyRule) {
+        return { waitingForAssembly: false, assemblyGate: arrivalTime, assemblyRule: null };
+      }
+      let waitAssemblyUntil = 0;
+      assemblyRule.requiredPartNames.forEach(reqName => {
+        const t = (reqName === part.name)
+          ? arrivalTime
+          : getPartReadyForMachine(reqName, step.machineId, readyMap);
+        if (t > waitAssemblyUntil) waitAssemblyUntil = t;
+      });
+      return { waitingForAssembly: true, assemblyGate: waitAssemblyUntil, assemblyRule };
+    }
+
+    function collectGroupingMembers(groupRule, readyMap, partReady) {
+      const members = [];
+      groupRule.partNames.forEach(name => {
+        const part = parts.find(p => p.name === name);
+        if (!part) return;
+        const stepIndex = part.route.findIndex(s => s.machineId === groupRule.machineId);
+        if (stepIndex < 0) return;
+        const step = part.route[stepIndex];
+        const arrivalTime = (partReady && Object.prototype.hasOwnProperty.call(partReady, part.name))
+          ? partReady[part.name]
+          : getPartReadyForMachine(part.name, step.machineId, readyMap);
+        const asm = resolveAssemblyWait(part, step, arrivalTime, readyMap);
+        members.push({
+          part,
+          step,
+          stepIndex,
+          arrivalTime,
+          waitingForAssembly: asm.waitingForAssembly,
+          assemblyGate: asm.assemblyGate,
+          assemblyRule: asm.assemblyRule,
+          readyForMachine: Math.max(arrivalTime, asm.assemblyGate),
+          setupTime: groupedSetupTime(step.setup, groupRule.partNames.length),
+          prodTime: step.prodUnit * (part.qty * boxesQty),
+          qty: part.qty * boxesQty
+        });
+      });
+      return members;
+    }
+
+    /**
+     * Agrupamento de corte: setup compartilhado no mesmo horário inicial
+     * e produção simultânea a partir do fim desse setup.
+     * O término de cada peça segue o volume individual (prodUnit * qty * caixas).
+     */
+    function scheduleGroupedMachineBatch(groupRule, readyTimeOfParts, machineFreeUntil, machineOperated, passEvents, passMaint, groupedScheduled, partReady) {
+      const members = collectGroupingMembers(groupRule, readyTimeOfParts, partReady);
+      if (members.length === 0) return;
+      const machineId = groupRule.machineId;
+
+      maybeInsertMaintenance(machineId, machineFreeUntil, machineOperated, passMaint);
+
+      const sharedSetupStart = Math.max(
+        machineFreeUntil[machineId] || 0,
+        ...members.map(m => m.readyForMachine)
+      );
+      const sharedSetupDur = members.reduce((max, m) => Math.max(max, m.setupTime), 0);
+      const sharedProdStart = sharedSetupStart + sharedSetupDur;
+      const maxProdTime = members.reduce((max, m) => Math.max(max, m.prodTime), 0);
+      const batchEnd = sharedProdStart + maxProdTime;
+
+      members.forEach(m => {
+        const evt = buildProcessEvent(m.part, m.step, m.stepIndex, {
+          qty: m.qty,
+          arrivalTime: m.arrivalTime,
+          assemblyGate: m.assemblyGate,
+          setupStart: sharedSetupStart,
+          setupEnd: sharedProdStart,
+          prodStart: sharedProdStart,
+          end: sharedProdStart + m.prodTime,
+          setupTime: m.setupTime,
+          prodTime: m.prodTime,
+          waitingForAssembly: m.waitingForAssembly,
+          grouped: true
+        });
+        passEvents.push(evt);
+        groupedScheduled[`${m.part.name}_${machineId}`] = evt;
+        readyTimeOfParts[`${m.part.name}_${machineId}`] = evt.end;
+        if (m.assemblyRule) {
+          readyTimeOfParts[`${m.assemblyRule.resultName}_${m.assemblyRule.machineId}`] = evt.end;
+        }
+      });
+
+      machineFreeUntil[machineId] = batchEnd;
+      machineOperated[machineId] = (machineOperated[machineId] || 0) + sharedSetupDur + maxProdTime;
+      maybeInsertMaintenance(machineId, machineFreeUntil, machineOperated, passMaint);
+    }
+
+    function readyMapHas(readyMap, key) {
+      return Object.prototype.hasOwnProperty.call(readyMap, key);
+    }
+
+    function assemblyDependenciesMet(part, step, readyMap) {
+      const assemblyRule = assemblyRules.find(a =>
+        a.machineId === step.machineId && a.requiredPartNames.includes(part.name)
+      );
+      if (!assemblyRule) return true;
+      return assemblyRule.requiredPartNames.every(reqName => {
+        if (reqName === part.name) return true;
+        const reqPart = parts.find(p => p.name === reqName);
+        if (reqPart) {
+          const asmIdx = reqPart.route.findIndex(s => s.machineId === step.machineId);
+          if (asmIdx < 0) return true;
+          if (asmIdx === 0) return true;
+          const prevStep = reqPart.route[asmIdx - 1];
+          return readyMapHas(readyMap, `${reqName}_${prevStep.machineId}`);
+        }
+        const prevAsm = assemblyRules.find(a => a.resultName === reqName);
+        if (prevAsm) {
+          return readyMapHas(readyMap, `${reqName}_${prevAsm.machineId}`);
+        }
+        return true;
+      });
+    }
+
+    function groupRepresentativeName(groupRule) {
+      for (let i = 0; i < groupRule.partNames.length; i++) {
+        if (parts.some(p => p.name === groupRule.partNames[i])) return groupRule.partNames[i];
+      }
+      return groupRule.partNames[0];
+    }
+
+    function allGroupMembersAtGroupedStep(groupRule, nextStepIndex) {
+      return groupRule.partNames.every(name => {
+        const part = parts.find(p => p.name === name);
+        if (!part) return true;
+        const si = part.route.findIndex(s => s.machineId === groupRule.machineId);
+        if (si < 0) return true;
+        return (nextStepIndex[name] || 0) === si;
+      });
+    }
+
+    function findGroupRuleForStep(part, step) {
+      return groupingRules.find(g => g.machineId === step.machineId && g.partNames.includes(part.name)) || null;
+    }
+
+    function commitSingleStep(part, step, stepIndex, arrivalTime, asm, machineFreeUntil, machineOperated, readyTimeOfParts, events, maintEvents, partReady, nextStepIndex) {
+      const setupTime = step.setup;
+      const prodTime = step.prodUnit * (part.qty * boxesQty);
+      const assemblyRule = asm.assemblyRule;
+      const waitingForAssembly = asm.waitingForAssembly;
+      const assemblyGate = asm.assemblyGate;
+
+      maybeInsertMaintenance(step.machineId, machineFreeUntil, machineOperated, maintEvents);
+
+      const readyForMachine = Math.max(arrivalTime, assemblyGate);
+      const setupStart = Math.max(readyForMachine, machineFreeUntil[step.machineId] || 0);
+      const prodStart = setupStart + setupTime;
+      const end = prodStart + prodTime;
+
+      machineFreeUntil[step.machineId] = end;
+      machineOperated[step.machineId] = (machineOperated[step.machineId] || 0) + setupTime + prodTime;
+      partReady[part.name] = end;
+      nextStepIndex[part.name] = stepIndex + 1;
+      readyTimeOfParts[`${part.name}_${step.machineId}`] = end;
+
+      if (assemblyRule) {
+        readyTimeOfParts[`${assemblyRule.resultName}_${assemblyRule.machineId}`] = end;
+      }
+
+      maybeInsertMaintenance(step.machineId, machineFreeUntil, machineOperated, maintEvents);
+
+      events.push(buildProcessEvent(part, step, stepIndex, {
+        qty: part.qty * boxesQty,
+        arrivalTime,
+        assemblyGate,
+        setupStart,
+        setupEnd: prodStart,
+        prodStart,
+        end,
+        setupTime,
+        prodTime,
+        waitingForAssembly
+      }));
+    }
+
+    /**
+     * Despacho job-shop: agenda a próxima operação que pode começar mais cedo.
+     * Assim, ao zerar o restante de uma etapa, a peça reivindica a próxima
+     * máquina se ela estiver fisicamente livre — mesmo que outra peça listada
+     * antes ainda esteja ocupada no setor anterior.
+     */
+    function collectScheduleCandidates(nextStepIndex, partReady, readyTimeOfParts, machineFreeUntil, groupedScheduled, ignoreAssembly) {
+      const candidates = [];
+      parts.forEach((part, partIdx) => {
+        const stepIndex = nextStepIndex[part.name] || 0;
+        if (stepIndex >= part.route.length) return;
+        const step = part.route[stepIndex];
+        const groupRule = findGroupRuleForStep(part, step);
+
+        if (groupRule) {
+          if (groupedScheduled[`${part.name}_${step.machineId}`]) return;
+          if (!allGroupMembersAtGroupedStep(groupRule, nextStepIndex)) return;
+          if (part.name !== groupRepresentativeName(groupRule)) return;
+
+          const members = collectGroupingMembers(groupRule, readyTimeOfParts, partReady);
+          if (members.length === 0) return;
+          if (!ignoreAssembly && members.some(m => !assemblyDependenciesMet(m.part, m.step, readyTimeOfParts))) return;
+
+          const readyForMachine = members.reduce((max, m) => Math.max(max, m.readyForMachine), 0);
+          const setupStart = Math.max(machineFreeUntil[step.machineId] || 0, readyForMachine);
+          candidates.push({
+            type: 'group',
+            groupRule,
+            part,
+            step,
+            stepIndex,
+            partIdx,
+            setupStart,
+            readyForMachine
+          });
+          return;
+        }
+
+        if (!ignoreAssembly && !assemblyDependenciesMet(part, step, readyTimeOfParts)) return;
+
+        const arrivalTime = partReady[part.name] || 0;
+        const asm = resolveAssemblyWait(part, step, arrivalTime, readyTimeOfParts);
+        const readyForMachine = Math.max(arrivalTime, asm.assemblyGate);
+        const setupStart = Math.max(readyForMachine, machineFreeUntil[step.machineId] || 0);
+        candidates.push({
+          type: 'single',
+          part,
+          step,
+          stepIndex,
+          partIdx,
+          arrivalTime,
+          asm,
+          setupStart,
+          readyForMachine
+        });
+      });
+      return candidates;
+    }
+
+    function scheduleProductionEvents() {
+      const machineFreeUntil = {};
+      const machineOperated = {};
+      machines.forEach(m => {
+        machineFreeUntil[m.id] = 0;
+        machineOperated[m.id] = 0;
+      });
+
+      const readyTimeOfParts = {};
+      const events = [];
+      const maintEvents = [];
+      const groupedScheduled = {};
+      const partReady = {};
+      const nextStepIndex = {};
+      parts.forEach(p => {
+        partReady[p.name] = 0;
+        nextStepIndex[p.name] = 0;
+      });
+
+      const totalSteps = parts.reduce((n, p) => n + p.route.length, 0);
+      let scheduledCount = 0;
+      let ignoreAssembly = false;
+
+      while (scheduledCount < totalSteps) {
+        const candidates = collectScheduleCandidates(
+          nextStepIndex, partReady, readyTimeOfParts, machineFreeUntil, groupedScheduled, ignoreAssembly
+        );
+        if (candidates.length === 0) {
+          if (!ignoreAssembly) {
+            ignoreAssembly = true;
+            continue;
+          }
+          break;
+        }
+        ignoreAssembly = false;
+        candidates.sort((a, b) =>
+          (a.setupStart - b.setupStart) ||
+          (a.readyForMachine - b.readyForMachine) ||
+          (a.partIdx - b.partIdx)
+        );
+        const chosen = candidates[0];
+
+        if (chosen.type === 'group') {
+          const before = events.length;
+          scheduleGroupedMachineBatch(
+            chosen.groupRule,
+            readyTimeOfParts,
+            machineFreeUntil,
+            machineOperated,
+            events,
+            maintEvents,
+            groupedScheduled,
+            partReady
+          );
+          chosen.groupRule.partNames.forEach(name => {
+            const evt = groupedScheduled[`${name}_${chosen.groupRule.machineId}`];
+            if (!evt) return;
+            nextStepIndex[name] = evt.stepIndex + 1;
+            partReady[name] = evt.end;
+          });
+          const added = events.length - before;
+          if (added <= 0) break;
+          scheduledCount += added;
+        } else {
+          commitSingleStep(
+            chosen.part,
+            chosen.step,
+            chosen.stepIndex,
+            chosen.arrivalTime,
+            chosen.asm,
+            machineFreeUntil,
+            machineOperated,
+            readyTimeOfParts,
+            events,
+            maintEvents,
+            partReady,
+            nextStepIndex
+          );
+          scheduledCount += 1;
+        }
+      }
+
+      return { events, maintEvents };
+    }
+
     function calculateSimulationHistory() {
       simulationHistory = [];
       rawEvents = [];
@@ -319,92 +686,9 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       startDateStr = getStartDateFromInput();
       normalizeAllMachines();
 
-      let knownReady = {};
-      let lastPassMaint = [];
-
-      for (let pass = 0; pass < 10; pass++) {
-        const machineFreeUntil = {};
-        const machineOperated = {};
-        machines.forEach(m => {
-          machineFreeUntil[m.id] = 0;
-          machineOperated[m.id] = 0;
-        });
-        const readyTimeOfParts = {};
-        const passEvents = [];
-        const passMaint = [];
-
-        parts.forEach(part => {
-          let partAvailableTime = 0;
-          const effectiveQty = part.qty * boxesQty;
-
-          part.route.forEach((step, stepIndex) => {
-            let setupTime = step.setup;
-            let prodTime = step.prodUnit * effectiveQty;
-
-            const groupRule = groupingRules.find(g => g.machineId === step.machineId && g.partNames.includes(part.name));
-            if (groupRule) setupTime = Math.ceil(step.setup / groupRule.partNames.length);
-
-            const assemblyRule = assemblyRules.find(a => a.machineId === step.machineId && a.requiredPartNames.includes(part.name));
-            let waitAssemblyUntil = 0;
-            let waitingForAssembly = false;
-
-            if (assemblyRule) {
-              waitingForAssembly = true;
-              assemblyRule.requiredPartNames.forEach(reqName => {
-                const t = (reqName === part.name)
-                  ? partAvailableTime
-                  : getPartReadyForMachine(reqName, step.machineId, knownReady);
-                if (t > waitAssemblyUntil) waitAssemblyUntil = t;
-              });
-            }
-
-            maybeInsertMaintenance(step.machineId, machineFreeUntil, machineOperated, passMaint);
-
-            const arrivalTime = partAvailableTime;
-            const assemblyGate = waitingForAssembly ? waitAssemblyUntil : arrivalTime;
-            const readyForMachine = Math.max(arrivalTime, assemblyGate);
-            const setupStart = Math.max(readyForMachine, machineFreeUntil[step.machineId]);
-            const prodStart = setupStart + setupTime;
-            const end = prodStart + prodTime;
-
-            machineFreeUntil[step.machineId] = end;
-            machineOperated[step.machineId] = (machineOperated[step.machineId] || 0) + setupTime + prodTime;
-            partAvailableTime = end;
-            readyTimeOfParts[`${part.name}_${step.machineId}`] = end;
-
-            if (assemblyRule) {
-              readyTimeOfParts[`${assemblyRule.resultName}_${assemblyRule.machineId}`] = end;
-            }
-
-            // Após acumular uso, agenda manutenção se atingiu o intervalo
-            maybeInsertMaintenance(step.machineId, machineFreeUntil, machineOperated, passMaint);
-
-            passEvents.push({
-              partName: part.name,
-              machineId: step.machineId,
-              stepIndex,
-              setupUnit: setupTime,
-              prodUnit: step.prodUnit,
-              qty: effectiveQty,
-              arrivalTime,
-              assemblyGate,
-              setupStart,
-              prodStart,
-              end,
-              setupTime,
-              prodTime,
-              waitingForAssembly,
-              isLastStep: stepIndex === part.route.length - 1
-            });
-          });
-        });
-
-        knownReady = readyTimeOfParts;
-        rawEvents = passEvents;
-        lastPassMaint = passMaint;
-      }
-
-      maintenanceEvents = lastPassMaint;
+      const scheduled = scheduleProductionEvents();
+      rawEvents = scheduled.events;
+      maintenanceEvents = scheduled.maintEvents;
 
       let maxEnd = 0;
       rawEvents.forEach(e => { if (e.end > maxEnd) maxEnd = e.end; });
@@ -441,12 +725,14 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
         });
 
         rawEvents.forEach(evt => {
+          const setupEnd = eventSetupEnd(evt);
           const mMaint = maintenanceEvents.find(me =>
             me.machineId === evt.machineId && absMin >= me.start && absMin < me.end
           );
+          const machineState = snapshot.machinesStatus[evt.machineId];
           if (absMin >= evt.arrivalTime && absMin < evt.setupStart) {
             const waitReason = (evt.waitingForAssembly && absMin < evt.assemblyGate) ? 'waiting' : 'fila';
-            if (!mMaint) {
+            if (!mMaint && !isActiveMachineState(machineState && machineState.state)) {
               snapshot.machinesStatus[evt.machineId] = {
                 state: isLunchTime ? 'lunch' : 'waiting',
                 partName: evt.partName
@@ -458,7 +744,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
               status: isLunchTime ? 'lunch' : (mMaint ? 'fila' : waitReason),
               remaining: '-'
             });
-          } else if (absMin >= evt.setupStart && absMin < evt.prodStart) {
+          } else if (absMin >= evt.setupStart && absMin < setupEnd) {
             if (!mMaint) {
               snapshot.machinesStatus[evt.machineId] = { state: isLunchTime ? 'lunch' : 'setup', partName: evt.partName };
             }
@@ -466,7 +752,20 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
               name: evt.partName,
               machineId: evt.machineId,
               status: isLunchTime ? 'lunch' : 'setup',
-              remaining: Math.max(0, evt.prodStart - absMin) + ' min'
+              remaining: Math.max(0, setupEnd - absMin) + ' min'
+            });
+          } else if (absMin >= setupEnd && absMin < evt.prodStart) {
+            if (!mMaint && !isActiveMachineState(machineState && machineState.state)) {
+              snapshot.machinesStatus[evt.machineId] = {
+                state: isLunchTime ? 'lunch' : 'waiting',
+                partName: evt.partName
+              };
+            }
+            snapshot.partsActive.push({
+              name: evt.partName,
+              machineId: evt.machineId,
+              status: isLunchTime ? 'lunch' : 'fila',
+              remaining: '-'
             });
           } else if (absMin >= evt.prodStart && absMin < evt.end) {
             if (!mMaint) {
@@ -487,6 +786,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
 
           for (const evt of partEvents) {
             if (absMin >= evt.arrivalTime && absMin < evt.end) {
+              const setupEnd = eventSetupEnd(evt);
               const mMaint = maintenanceEvents.find(me =>
                 me.machineId === evt.machineId && absMin >= me.start && absMin < me.end
               );
@@ -497,9 +797,9 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
               } else if (absMin >= evt.prodStart) {
                 status = isLunchTime ? 'lunch' : 'working';
                 remaining = Math.max(0, evt.end - absMin) + ' min';
-              } else if (absMin >= evt.setupStart) {
+              } else if (absMin >= evt.setupStart && absMin < setupEnd) {
                 status = isLunchTime ? 'lunch' : 'setup';
-                remaining = Math.max(0, evt.prodStart - absMin) + ' min';
+                remaining = Math.max(0, setupEnd - absMin) + ' min';
               } else if (evt.waitingForAssembly && absMin < evt.assemblyGate) {
                 status = isLunchTime ? 'lunch' : 'waiting';
               } else {
@@ -602,10 +902,12 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       const pStart = (LUNCH_START_OFFSET / MINUTES_PER_DAY) * 100;
       const pWidth = ((LUNCH_END_OFFSET - LUNCH_START_OFFSET) / MINUTES_PER_DAY) * 100;
       const overlay = document.getElementById('lunch-overlay');
-      overlay.style.left = pStart + '%';
-      overlay.style.width = pWidth + '%';
+      if (overlay) {
+        overlay.style.left = pStart + '%';
+        overlay.style.width = pWidth + '%';
+      }
 
-      populateDaySelect();
+      if (typeof populateDaySelect === 'function') populateDaySelect();
     }
 
 function getCurrentAbsMinute() {
