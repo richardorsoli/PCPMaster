@@ -1,11 +1,247 @@
 {
   "app": "SimulaFab",
   "version": "1.4.3",
-  "exportedAt": "2026-09-14T19:30:54.020Z",
+  "exportedAt": "2026-09-15T17:46:40.842Z",
   "holidays": [
     "2026-10-12",
     "2026-11-02",
     "2026-11-20"
+  ],
+  "employees": [
+    {
+      "id": "e1789484369450",
+      "name": "Silvio Rodrigues",
+      "matricula": "001"
+    },
+    {
+      "id": "e1789484379998",
+      "name": "Victor Medina",
+      "matricula": "002"
+    },
+    {
+      "id": "e1789484388430",
+      "name": "Wesley Rufino",
+      "matricula": "003"
+    },
+    {
+      "id": "e1789484402381",
+      "name": "Fernando Oliveira",
+      "matricula": "004"
+    },
+    {
+      "id": "e1789484414738",
+      "name": "Sansão dos Santos",
+      "matricula": "005"
+    },
+    {
+      "id": "e1789484506415",
+      "name": "Ivan Pereira",
+      "matricula": "006"
+    },
+    {
+      "id": "e1789484537303",
+      "name": "José Medina",
+      "matricula": "007"
+    },
+    {
+      "id": "e1789484578079",
+      "name": "José Guilherme",
+      "matricula": "008"
+    },
+    {
+      "id": "e1789484589641",
+      "name": "Sabrina Blanc",
+      "matricula": "009"
+    },
+    {
+      "id": "e1789484617258",
+      "name": "Oegena",
+      "matricula": "010"
+    }
+  ],
+  "machines": [
+    {
+      "id": "m1789391560191",
+      "name": "CORTE LASER",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 3600,
+      "maintDurationHours": 4,
+      "defaultOperatorId": "e1789484379998",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789391570242",
+      "name": "MURATA",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 7200,
+      "maintDurationHours": 20,
+      "defaultOperatorId": "e1789484388430",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789391576850",
+      "name": "IMAG",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484414738",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789391581287",
+      "name": "CORDOB",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484388430",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789391593505",
+      "name": "DOBRA NUCLEO",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484402381",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789391598762",
+      "name": "DOBRA DOBRADIÇA",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484537303",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789391604678",
+      "name": "SOLDA MIG",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 3600,
+      "maintDurationHours": 4,
+      "defaultOperatorId": "e1789484402381",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789391638329",
+      "name": "SOLDA PONTO C30",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 7200,
+      "maintDurationHours": 4,
+      "defaultOperatorId": "e1789484578079",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789391647617",
+      "name": "LIXAMENTO",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484402381",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789391652436",
+      "name": "PINO STUD",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484402381",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789391662071",
+      "name": "BANHO",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484617258",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789391670237",
+      "name": "CABINE",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484506415",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789391695129",
+      "name": "ESTUFA",
+      "pop": "Procedimento Padrão.",
+      "x": 962.8888888888888,
+      "y": 120,
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789391701665",
+      "name": "MONTAGEM",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484537303",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789391707261",
+      "name": "EMBALAGEM",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484578079",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789391725515",
+      "name": "EXPEDIÇÃO",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484578079",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789485676075",
+      "name": "MARTELAMENTO",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    },
+    {
+      "id": "m1789485881615",
+      "name": "PRENSA HIDRAULICA",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484388430",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": ""
+    }
   ],
   "projects": {
     "COMANDO MODELO 1": {
@@ -16,100 +252,120 @@
           "name": "CORTE LASER",
           "pop": "Procedimento Padrão.",
           "maintIntervalHours": 3600,
-          "maintDurationHours": 4
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484379998",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
         },
         {
           "id": "m1789391570242",
           "name": "MURATA",
           "pop": "Procedimento Padrão.",
           "maintIntervalHours": 7200,
-          "maintDurationHours": 20
+          "maintDurationHours": 20,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
         },
         {
           "id": "m1789391576850",
           "name": "IMAG",
           "pop": "Procedimento Padrão.",
-          "x": 275.1111111111111,
-          "y": 120,
           "maintIntervalHours": 0,
-          "maintDurationHours": 0
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484414738",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
         },
         {
           "id": "m1789391581287",
           "name": "CORDOB",
           "pop": "Procedimento Padrão.",
-          "x": 275.1111111111111,
-          "y": 300,
           "maintIntervalHours": 0,
-          "maintDurationHours": 0
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
         },
         {
           "id": "m1789391593505",
           "name": "DOBRA NUCLEO",
           "pop": "Procedimento Padrão.",
-          "x": 412.66666666666663,
-          "y": 120,
           "maintIntervalHours": 0,
-          "maintDurationHours": 0
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484402381",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
         },
         {
           "id": "m1789391598762",
           "name": "DOBRA DOBRADIÇA",
           "pop": "Procedimento Padrão.",
-          "x": 412.66666666666663,
-          "y": 300,
           "maintIntervalHours": 0,
-          "maintDurationHours": 0
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484537303",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
         },
         {
           "id": "m1789391604678",
           "name": "SOLDA MIG",
           "pop": "Procedimento Padrão.",
           "maintIntervalHours": 3600,
-          "maintDurationHours": 4
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484402381",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
         },
         {
           "id": "m1789391638329",
-          "name": "SOLDA PONTO",
+          "name": "SOLDA PONTO C30",
           "pop": "Procedimento Padrão.",
           "maintIntervalHours": 7200,
-          "maintDurationHours": 4
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
         },
         {
           "id": "m1789391647617",
           "name": "LIXAMENTO",
           "pop": "Procedimento Padrão.",
-          "x": 687.7777777777777,
-          "y": 120,
           "maintIntervalHours": 0,
-          "maintDurationHours": 0
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484402381",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
         },
         {
           "id": "m1789391652436",
           "name": "PINO STUD",
           "pop": "Procedimento Padrão.",
-          "x": 687.7777777777777,
-          "y": 300,
           "maintIntervalHours": 0,
-          "maintDurationHours": 0
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484402381",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
         },
         {
           "id": "m1789391662071",
           "name": "BANHO",
           "pop": "Procedimento Padrão.",
-          "x": 825.3333333333333,
-          "y": 120,
           "maintIntervalHours": 0,
-          "maintDurationHours": 0
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484617258",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
         },
         {
           "id": "m1789391670237",
           "name": "CABINE",
           "pop": "Procedimento Padrão.",
-          "x": 825.3333333333333,
-          "y": 300,
           "maintIntervalHours": 0,
-          "maintDurationHours": 0
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484506415",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
         },
         {
           "id": "m1789391695129",
@@ -118,34 +374,40 @@
           "x": 962.8888888888888,
           "y": 120,
           "maintIntervalHours": 0,
-          "maintDurationHours": 0
+          "maintDurationHours": 0,
+          "defaultOperatorId": "",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
         },
         {
           "id": "m1789391701665",
           "name": "MONTAGEM",
           "pop": "Procedimento Padrão.",
-          "x": 962.8888888888888,
-          "y": 300,
           "maintIntervalHours": 0,
-          "maintDurationHours": 0
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484537303",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
         },
         {
           "id": "m1789391707261",
           "name": "EMBALAGEM",
           "pop": "Procedimento Padrão.",
-          "x": 1100.4444444444443,
-          "y": 120,
           "maintIntervalHours": 0,
-          "maintDurationHours": 0
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
         },
         {
           "id": "m1789391725515",
           "name": "EXPEDIÇÃO",
           "pop": "Procedimento Padrão.",
-          "x": 1100.4444444444443,
-          "y": 300,
           "maintIntervalHours": 0,
-          "maintDurationHours": 0
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
         }
       ],
       "parts": [
@@ -384,6 +646,58 @@
           ]
         }
       ],
+      "employees": [
+        {
+          "id": "e1789484369450",
+          "name": "Silvio Rodrigues",
+          "matricula": "001"
+        },
+        {
+          "id": "e1789484379998",
+          "name": "Victor Medina",
+          "matricula": "002"
+        },
+        {
+          "id": "e1789484388430",
+          "name": "Wesley Rufino",
+          "matricula": "003"
+        },
+        {
+          "id": "e1789484402381",
+          "name": "Fernando Oliveira",
+          "matricula": "004"
+        },
+        {
+          "id": "e1789484414738",
+          "name": "Sansão dos Santos",
+          "matricula": "005"
+        },
+        {
+          "id": "e1789484506415",
+          "name": "Ivan Pereira",
+          "matricula": "006"
+        },
+        {
+          "id": "e1789484537303",
+          "name": "José Medina",
+          "matricula": "007"
+        },
+        {
+          "id": "e1789484578079",
+          "name": "José Guilherme",
+          "matricula": "008"
+        },
+        {
+          "id": "e1789484589641",
+          "name": "Sabrina Blanc",
+          "matricula": "009"
+        },
+        {
+          "id": "e1789484617258",
+          "name": "Oegena",
+          "matricula": "010"
+        }
+      ],
       "groupingRules": [
         {
           "machineId": "m1789391560191",
@@ -432,6 +746,464 @@
             "PLACA",
             "SOLDA TAMPA",
             "SOLDA CORPO"
+          ]
+        }
+      ],
+      "startDate": "2026-09-15",
+      "boxesQty": 100
+    },
+    "DAE JUNDIAI": {
+      "name": "DAE JUNDIAI",
+      "machines": [
+        {
+          "id": "m1789391560191",
+          "name": "CORTE LASER",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 3600,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484379998",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789391570242",
+          "name": "MURATA",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 7200,
+          "maintDurationHours": 20,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789391576850",
+          "name": "IMAG",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484414738",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789391581287",
+          "name": "CORDOB",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789391593505",
+          "name": "DOBRA NUCLEO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484402381",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789391598762",
+          "name": "DOBRA DOBRADIÇA",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484537303",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789391604678",
+          "name": "SOLDA MIG",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 3600,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484402381",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789391638329",
+          "name": "SOLDA PONTO C30",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 7200,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789391647617",
+          "name": "LIXAMENTO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484402381",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789391652436",
+          "name": "PINO STUD",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484402381",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789391662071",
+          "name": "BANHO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484617258",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789391670237",
+          "name": "CABINE",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484506415",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789391695129",
+          "name": "ESTUFA",
+          "pop": "Procedimento Padrão.",
+          "x": 962.8888888888888,
+          "y": 120,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789391701665",
+          "name": "MONTAGEM",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484537303",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789391707261",
+          "name": "EMBALAGEM",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789391725515",
+          "name": "EXPEDIÇÃO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789485676075",
+          "name": "MARTELAMENTO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        },
+        {
+          "id": "m1789485881615",
+          "name": "PRENSA HIDRAULICA",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": ""
+        }
+      ],
+      "parts": [
+        {
+          "name": "BATEDOR",
+          "thickness": 1.2,
+          "qty": 4,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391581287",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391638329",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        },
+        {
+          "name": "CORPO",
+          "thickness": 1.2,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789485676075",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391638329",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391604678",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391662071",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391701665",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391707261",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391725515",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        },
+        {
+          "name": "SUPORTE",
+          "thickness": 1.2,
+          "qty": 2,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391581287",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789485676075",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        },
+        {
+          "name": "LATERAIS",
+          "thickness": 1.2,
+          "qty": 2,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391581287",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789485676075",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        },
+        {
+          "name": "TAMPA",
+          "thickness": 1.2,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789485881615",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391662071",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391701665",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        }
+      ],
+      "employees": [
+        {
+          "id": "e1789484369450",
+          "name": "Silvio Rodrigues",
+          "matricula": "001"
+        },
+        {
+          "id": "e1789484379998",
+          "name": "Victor Medina",
+          "matricula": "002"
+        },
+        {
+          "id": "e1789484388430",
+          "name": "Wesley Rufino",
+          "matricula": "003"
+        },
+        {
+          "id": "e1789484402381",
+          "name": "Fernando Oliveira",
+          "matricula": "004"
+        },
+        {
+          "id": "e1789484414738",
+          "name": "Sansão dos Santos",
+          "matricula": "005"
+        },
+        {
+          "id": "e1789484506415",
+          "name": "Ivan Pereira",
+          "matricula": "006"
+        },
+        {
+          "id": "e1789484537303",
+          "name": "José Medina",
+          "matricula": "007"
+        },
+        {
+          "id": "e1789484578079",
+          "name": "José Guilherme",
+          "matricula": "008"
+        },
+        {
+          "id": "e1789484589641",
+          "name": "Sabrina Blanc",
+          "matricula": "009"
+        },
+        {
+          "id": "e1789484617258",
+          "name": "Oegena",
+          "matricula": "010"
+        }
+      ],
+      "groupingRules": [
+        {
+          "machineId": "m1789391560191",
+          "partNames": [
+            "BATEDOR",
+            "CORPO",
+            "SUPORTE",
+            "LATERAIS"
+          ]
+        }
+      ],
+      "assemblyRules": [
+        {
+          "machineId": "m1789485676075",
+          "resultName": "CORPO MARTELAMENTO",
+          "requiredPartNames": [
+            "CORPO",
+            "LATERAIS"
+          ]
+        },
+        {
+          "machineId": "m1789391604678",
+          "resultName": "SOLDA CORPO",
+          "requiredPartNames": [
+            "SUPORTE",
+            "CORPO MARTELAMENTO"
+          ]
+        },
+        {
+          "machineId": "m1789391638329",
+          "resultName": "CORPO COMPLETO",
+          "requiredPartNames": [
+            "BATEDOR",
+            "SOLDA CORPO"
+          ]
+        },
+        {
+          "machineId": "m1789391701665",
+          "resultName": "DAE JUNDIAI",
+          "requiredPartNames": [
+            "TAMPA",
+            "CORPO COMPLETO"
           ]
         }
       ],
