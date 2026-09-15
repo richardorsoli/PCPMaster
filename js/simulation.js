@@ -133,12 +133,67 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
         ...m,
         maintIntervalHours: Number(m.maintIntervalHours) || 0,
         maintDurationHours: Number(m.maintDurationHours) || 0,
-        defaultOperatorId: m.defaultOperatorId || ''
+        defaultOperatorId: m.defaultOperatorId || '',
+        lastMaintenanceDate: m.lastMaintenanceDate || '',
+        nextMaintenanceDate: m.nextMaintenanceDate || ''
       };
     }
 
     function normalizeAllMachines() {
       machines = machines.map(normalizeMachine);
+    }
+
+    /** Diferença entre duas datas ISO (YYYY-MM-DD). Retorna { totalHours, days, hours, overdue, label }. */
+    function getTimeBetweenDates(fromIso, toIso) {
+      if (!fromIso || !toIso) {
+        return { totalHours: 0, days: 0, hours: 0, overdue: false, label: '—' };
+      }
+      const from = parseISODate(fromIso);
+      const to = parseISODate(toIso);
+      if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+        return { totalHours: 0, days: 0, hours: 0, overdue: false, label: '—' };
+      }
+      const diffMs = to.getTime() - from.getTime();
+      const overdue = diffMs < 0;
+      const absMs = Math.abs(diffMs);
+      const totalHours = Math.floor(absMs / (1000 * 60 * 60));
+      const days = Math.floor(totalHours / 24);
+      const hours = totalHours % 24;
+      let label;
+      if (days === 0 && hours === 0) {
+        label = overdue ? 'vencido hoje' : 'hoje';
+      } else if (days > 0) {
+        label = `${days}d ${hours}h`;
+      } else {
+        label = `${hours}h`;
+      }
+      if (overdue) label = `atrasado ${label}`;
+      return { totalHours, days, hours, overdue, label };
+    }
+
+    /** Tempo restante da data atual até a próxima manutenção (ou intervalo última→próxima). */
+    function getMaintenanceRemainingLabel(machine) {
+      if (!machine) return 'Sem datas de manutenção';
+      const last = machine.lastMaintenanceDate || '';
+      const next = machine.nextMaintenanceDate || '';
+      if (!last && !next) return 'Sem datas de manutenção';
+
+      const parts = [];
+      if (last && next) {
+        const span = getTimeBetweenDates(last, next);
+        parts.push(`Ciclo planejado: ${span.label}`);
+      }
+      if (next) {
+        const remaining = getTimeBetweenDates(todayISODate(), next);
+        if (remaining.overdue) {
+          parts.push(`Próxima: ${remaining.label}`);
+        } else {
+          parts.push(`Faltam ${remaining.label} para a próxima`);
+        }
+      } else if (last) {
+        parts.push(`Última: ${formatDisplayDate(last)}`);
+      }
+      return parts.join(' · ');
     }
 
     function getEmployeeById(id) {

@@ -9,12 +9,12 @@
       ];
 
       machines = [
-        { id: "m1", name: "01. Corte Laser", pop: "Programa #102. Chapa 1.2mm e 1.5mm.", maintIntervalHours: 8, maintDurationHours: 1, defaultOperatorId: 'e1' },
-        { id: "m2", name: "02. Dobra IMAG", pop: "Dobra do Núcleo e Dobradiça.", maintIntervalHours: 8, maintDurationHours: 1, defaultOperatorId: 'e1' },
-        { id: "m3", name: "03. Solda MIG", pop: "Unir NUCLEO + TAMPA + ORGANIZADOR.", maintIntervalHours: 0, maintDurationHours: 0, defaultOperatorId: 'e2' },
-        { id: "m4", name: "04. Banho / Pintura", pop: "Pintura Eletrostática do Subconjunto.", maintIntervalHours: 0, maintDurationHours: 0, defaultOperatorId: '' },
-        { id: "m5", name: "05. Montagem Final", pop: "Montar Conjunto Tampa no CORPO.", maintIntervalHours: 8, maintDurationHours: 1, defaultOperatorId: 'e3' },
-        { id: "m6", name: "06. Embalagem / Expedição", pop: "Caixa finalizada e embalada.", maintIntervalHours: 0, maintDurationHours: 0, defaultOperatorId: 'e3' }
+        { id: "m1", name: "01. Corte Laser", pop: "Programa #102. Chapa 1.2mm e 1.5mm.", maintIntervalHours: 8, maintDurationHours: 1, defaultOperatorId: 'e1', lastMaintenanceDate: '2026-08-15', nextMaintenanceDate: '2026-09-30' },
+        { id: "m2", name: "02. Dobra IMAG", pop: "Dobra do Núcleo e Dobradiça.", maintIntervalHours: 8, maintDurationHours: 1, defaultOperatorId: 'e1', lastMaintenanceDate: '2026-08-20', nextMaintenanceDate: '2026-10-05' },
+        { id: "m3", name: "03. Solda MIG", pop: "Unir NUCLEO + TAMPA + ORGANIZADOR.", maintIntervalHours: 0, maintDurationHours: 0, defaultOperatorId: 'e2', lastMaintenanceDate: '', nextMaintenanceDate: '' },
+        { id: "m4", name: "04. Banho / Pintura", pop: "Pintura Eletrostática do Subconjunto.", maintIntervalHours: 0, maintDurationHours: 0, defaultOperatorId: '', lastMaintenanceDate: '', nextMaintenanceDate: '' },
+        { id: "m5", name: "05. Montagem Final", pop: "Montar Conjunto Tampa no CORPO.", maintIntervalHours: 8, maintDurationHours: 1, defaultOperatorId: 'e3', lastMaintenanceDate: '2026-09-01', nextMaintenanceDate: '2026-09-20' },
+        { id: "m6", name: "06. Embalagem / Expedição", pop: "Caixa finalizada e embalada.", maintIntervalHours: 0, maintDurationHours: 0, defaultOperatorId: 'e3', lastMaintenanceDate: '', nextMaintenanceDate: '' }
       ];
 
       parts = [
@@ -148,7 +148,13 @@
       const maintIntervalHours = parseFloat(document.getElementById('new-machine-maint-interval').value) || 0;
       const maintDurationHours = parseFloat(document.getElementById('new-machine-maint-duration').value) || 0;
       const defaultOperatorId = document.getElementById('new-machine-operator').value || '';
+      const lastMaintenanceDate = document.getElementById('new-machine-last-maint').value || '';
+      const nextMaintenanceDate = document.getElementById('new-machine-next-maint').value || '';
       if (!name) { alert('Informe o nome da máquina.'); return; }
+      if (lastMaintenanceDate && nextMaintenanceDate && nextMaintenanceDate < lastMaintenanceDate) {
+        alert('A data da próxima manutenção deve ser igual ou posterior à última.');
+        return;
+      }
 
       const data = {
         id: editingMachineIndex >= 0 ? machines[editingMachineIndex].id : ("m" + Date.now()),
@@ -156,7 +162,9 @@
         pop: pop || "Procedimento Padrão.",
         maintIntervalHours,
         maintDurationHours,
-        defaultOperatorId
+        defaultOperatorId,
+        lastMaintenanceDate,
+        nextMaintenanceDate
       };
 
       if (editingMachineIndex >= 0) {
@@ -171,6 +179,8 @@
       document.getElementById('new-machine-pop').value = '';
       document.getElementById('new-machine-maint-interval').value = '0';
       document.getElementById('new-machine-maint-duration').value = '0';
+      document.getElementById('new-machine-last-maint').value = '';
+      document.getElementById('new-machine-next-maint').value = '';
       fillMachineOperatorSelect('');
       renderConfigUI();
     }
@@ -182,6 +192,8 @@
       document.getElementById('new-machine-pop').value = m.pop || '';
       document.getElementById('new-machine-maint-interval').value = m.maintIntervalHours || 0;
       document.getElementById('new-machine-maint-duration').value = m.maintDurationHours || 0;
+      document.getElementById('new-machine-last-maint').value = m.lastMaintenanceDate || '';
+      document.getElementById('new-machine-next-maint').value = m.nextMaintenanceDate || '';
       fillMachineOperatorSelect(m.defaultOperatorId || '');
       document.getElementById('btn-save-machine').innerText = 'Salvar Alterações';
     }
@@ -422,8 +434,15 @@
       machines.forEach((m, idx) => {
         const maintTxt = (m.maintIntervalHours > 0)
           ? `Manutenção a cada ${m.maintIntervalHours}h de uso (${m.maintDurationHours}h)`
-          : 'Manutenção preventiva desativada';
+          : 'Manutenção preventiva por horas de uso: desativada';
         const opTxt = getMachineOperatorLabel(m);
+        const lastTxt = m.lastMaintenanceDate ? formatDisplayDate(m.lastMaintenanceDate) : '—';
+        const nextTxt = m.nextMaintenanceDate ? formatDisplayDate(m.nextMaintenanceDate) : '—';
+        const remainingInfo = getTimeBetweenDates(todayISODate(), m.nextMaintenanceDate || '');
+        const remainingColor = !m.nextMaintenanceDate
+          ? '#64748b'
+          : (remainingInfo.overdue ? '#f87171' : '#4ade80');
+        const remainingLabel = getMaintenanceRemainingLabel(m);
         mList.innerHTML += `
           <li>
             <div>
@@ -431,6 +450,8 @@
               <div style="font-size:0.8rem; color:#94a3b8;">POP: ${m.pop}</div>
               <div style="font-size:0.78rem; color:#38bdf8;">Operador padrão: ${opTxt}</div>
               <div style="font-size:0.78rem; color:#a855f7;">${maintTxt}</div>
+              <div style="font-size:0.78rem; color:#94a3b8;">Última manutenção: ${lastTxt} · Próxima: ${nextTxt}</div>
+              <div style="font-size:0.78rem; color:${remainingColor}; font-weight:600;">⏱ ${remainingLabel}</div>
             </div>
             <div>
               <button class="btn btn-warning" onclick="editMachine(${idx})">Editar</button>
@@ -693,6 +714,7 @@
               operador,
               'Em Ajuste / Setup',
               '',
+              '',
               ''
             ]
           });
@@ -709,6 +731,7 @@
             sector,
             operador,
             'Em Processamento / Produção',
+            '',
             '',
             ''
           ]
@@ -728,6 +751,7 @@
             mObj ? mObj.name : '-',
             getMachineOperatorLabel(mObj),
             'Manutenção Preventiva',
+            '',
             '',
             ''
           ]
@@ -749,18 +773,24 @@
           'Operador Responsável',
           'Status / Situação',
           'Tempo Registrado (min)',
+          'Descrição / Como foi feito',
           'Desempenho (Reg. vs Sim.)'
         ]],
         body: tableData,
         theme: 'striped',
-        headStyles: { fillColor: [2, 132, 199] },
-        styles: { fontSize: 6.5, cellPadding: 1.5 }
+        headStyles: { fillColor: [2, 132, 199], fontSize: 6 },
+        styles: { fontSize: 6, cellPadding: 1.5, minCellHeight: 10 },
+        columnStyles: {
+          8: { cellWidth: 22 },
+          9: { cellWidth: 38 },
+          10: { cellWidth: 24 }
+        }
       });
 
       const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 8 : 180;
       doc.setFontSize(8);
       doc.setTextColor(90);
-      doc.text('Premiação: preencha "Tempo Registrado" e use "Desempenho (Reg. vs Sim.)" para validar se o operador bateu/melhorou o tempo simulado.', 14, finalY);
+      doc.text('Cronoanálise: preencha Tempo Registrado e Descrição/Como foi feito à mão. Use Desempenho (Reg. vs Sim.) para premiação.', 14, finalY);
 
       doc.save('Relatorio_Producao_SimulaFab.pdf');
     }

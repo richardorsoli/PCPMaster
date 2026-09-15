@@ -104,6 +104,14 @@
           <label>Duração Manutenção (horas)</label>
           <input type="number" id="new-machine-maint-duration" value="0" min="0" step="0.5" title="0 = desativado">
         </div>
+        <div class="form-group" style="flex:1;">
+          <label>Data da Última Manutenção</label>
+          <input type="date" id="new-machine-last-maint">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Data da Próxima Manutenção</label>
+          <input type="date" id="new-machine-next-maint">
+        </div>
         <div class="form-group" style="flex:1; display:flex; align-items:flex-end;">
           <button class="btn" style="width:100%;" id="btn-save-machine" onclick="addMachine()">Adicionar Máquina</button>
         </div>
