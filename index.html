@@ -264,6 +264,12 @@
             <button class="btn btn-stop" id="btn-stop" onclick="stopSimulation()">■ Stop</button>
             <button class="btn btn-step" onclick="stepMinute(-1)">◀ -1 min</button>
             <button class="btn btn-step" onclick="stepMinute(1)">+1 min ▶</button>
+            <div class="speed-btns" role="group" aria-label="Velocidade da simulação">
+              <span class="speed-label">Velocidade:</span>
+              <button type="button" class="btn btn-speed is-active" id="speed-1x" onclick="setSimulationSpeed(1)">1x</button>
+              <button type="button" class="btn btn-speed" id="speed-5x" onclick="setSimulationSpeed(5)">5x</button>
+              <button type="button" class="btn btn-speed" id="speed-10x" onclick="setSimulationSpeed(10)">10x</button>
+            </div>
           </div>
         </div>
         <div class="day-select-wrap" id="day-select-wrap" style="display:none;">
@@ -288,16 +294,21 @@
         </thead>
         <tbody id="floor-status-body"></tbody>
       </table>
-    </div>
 
-    <div class="timeline-container">
-      <div class="timeline-wrapper">
-        <div id="lunch-overlay" class="timeline-lunch-bg">
-          <span class="timeline-lunch-label">ALMOÇO</span>
+      <div class="timeline-full">
+        <div class="timeline-full-header">
+          <span class="timeline-full-title">Linha do tempo do turno</span>
+          <span id="timeline-label" class="timeline-full-clock">07:30</span>
         </div>
-        <input type="range" id="timeline" class="timeline-slider" min="0" max="587" value="0" oninput="onTimelineChange(this.value)">
+        <div class="timeline-wrapper timeline-wrapper-full">
+          <div id="lunch-overlay" class="timeline-lunch-bg">
+            <span class="timeline-lunch-label">ALMOÇO</span>
+          </div>
+          <input type="range" id="timeline" class="timeline-slider" min="0" max="587" value="0"
+            oninput="onTimelineChange(this.value)"
+            onchange="onTimelineChange(this.value)">
+        </div>
       </div>
-      <span id="timeline-label" style="font-size: 0.9rem; color: #94a3b8; min-width: 70px;">07:30</span>
     </div>
 
     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:10px; flex-wrap:wrap;">

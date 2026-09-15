@@ -15,16 +15,19 @@
       lastRenderedMinute = -1;
       isPlaying = true;
       updatePlayButtonUI();
+      updateSpeedButtonsUI();
       renderAbsMinute(0, true);
       runLoop();
     }
 
     function runLoop() {
       clearInterval(timerInterval);
+      const tickMs = getTickIntervalMs();
+      const stepSeconds = getSecondsPerTick();
       timerInterval = setInterval(() => {
         if (!isPlaying) return;
         const maxSecond = getMaxAbsSecond();
-        currentAbsSecond++;
+        currentAbsSecond += stepSeconds;
         if (currentAbsSecond > maxSecond) {
           currentAbsSecond = maxSecond;
           isPlaying = false;
@@ -32,7 +35,14 @@
         }
         renderAbsMinute(getCurrentAbsMinute(), false);
         renderClockOnly();
-      }, 80);
+      }, tickMs);
+    }
+
+    function setSimulationSpeed(speed) {
+      const allowed = [1, 5, 10];
+      simulationSpeed = allowed.includes(Number(speed)) ? Number(speed) : 1;
+      updateSpeedButtonsUI();
+      if (isPlaying) runLoop();
     }
 
     function togglePlayPause() {
@@ -78,7 +88,9 @@
       const minuteInDay = Math.max(0, Math.min(MINUTES_PER_DAY - 1, parseInt(val, 10) || 0));
       const absMin = Math.min(getMaxAbsMinute(), selectedDayIndex * MINUTES_PER_DAY + minuteInDay);
       currentAbsSecond = absMin * 60;
-      renderAbsMinute(getCurrentAbsMinute(), true);
+      lastRenderedMinute = -1;
+      renderAbsMinute(absMin, true);
+      renderClockOnly();
     }
 
     function onDaySelectChange() {
@@ -101,4 +113,5 @@ window.onload = () => {
   updateSavedProjectsSelect();
   renderConfigUI();
   updatePlayButtonUI();
+  updateSpeedButtonsUI();
 };

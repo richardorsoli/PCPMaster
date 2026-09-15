@@ -50,6 +50,11 @@
     .btn-stop:hover { background: #dc2626; }
     .btn-step { background: #0284c7; }
     .btn-step:hover { background: #0369a1; }
+    .speed-btns { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; flex-wrap: wrap; }
+    .speed-label { font-size: 0.8rem; color: #94a3b8; font-weight: 600; }
+    .btn-speed { background: #334155; padding: 8px 12px; min-width: 48px; font-size: 0.85rem; }
+    .btn-speed:hover { background: #475569; }
+    .btn-speed.is-active { background: #0284c7; box-shadow: 0 0 0 1px #38bdf8; }
 
     .floor-card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 15px; overflow-x: auto; }
     .floor-card h2 { color: #f8fafc; font-size: 1.15rem; margin-bottom: 14px; font-weight: 600; }
@@ -66,13 +71,19 @@
     .badge-done { background: #334155; color: #cbd5e1; }
     .badge-maintenance { background: #a855f7; color: #faf5ff; }
 
+    .timeline-full { margin-top: 18px; padding-top: 16px; border-top: 1px solid #334155; width: 100%; }
+    .timeline-full-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .timeline-full-title { font-size: 0.85rem; color: #94a3b8; font-weight: 600; }
+    .timeline-full-clock { font-size: 0.95rem; color: #38bdf8; font-weight: 700; font-variant-numeric: tabular-nums; }
     .timeline-wrapper { position: relative; width: 100%; margin-top: 8px; }
+    .timeline-wrapper-full { margin-top: 0; width: 100%; }
     .timeline-lunch-bg { position: absolute; top: 0; bottom: 0; background: rgba(148, 163, 184, 0.3); border-left: 2px dashed #cbd5e1; border-right: 2px dashed #cbd5e1; pointer-events: none; border-radius: 2px; }
-    .timeline-lunch-label { position: absolute; top: -20px; font-size: 0.75rem; color: #cbd5e1; font-weight: bold; transform: translateX(-50%); }
+    .timeline-lunch-label { position: absolute; top: -18px; font-size: 0.75rem; color: #cbd5e1; font-weight: bold; transform: translateX(-50%); }
 
     .timeline-container { background: #1e293b; padding: 25px 20px 15px 20px; border-radius: 8px; margin-top: 15px; border: 1px solid #334155; display: flex; align-items: center; gap: 15px; }
-    .timeline-slider { flex: 1; -webkit-appearance: none; appearance: none; height: 10px; border-radius: 50px; background: #475569; outline: none; z-index: 2; position: relative; }
+    .timeline-slider { display: block; width: 100%; flex: 1; -webkit-appearance: none; appearance: none; height: 10px; border-radius: 50px; background: #475569; outline: none; z-index: 2; position: relative; }
     .timeline-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #38bdf8; cursor: pointer; box-shadow: 0 0 8px rgba(56, 189, 248, 0.8); }
+    .timeline-slider::-moz-range-thumb { width: 22px; height: 22px; border: none; border-radius: 50%; background: #38bdf8; cursor: pointer; }
 
     .chart-card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; margin-top: 20px; }
     .legend { display: flex; gap: 20px; margin-bottom: 15px; font-size: 0.85rem; flex-wrap: wrap; }

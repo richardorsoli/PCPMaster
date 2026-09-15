@@ -632,6 +632,14 @@
       }
     }
 
+    function updateSpeedButtonsUI() {
+      [1, 5, 10].forEach(s => {
+        const btn = document.getElementById('speed-' + s + 'x');
+        if (!btn) return;
+        btn.classList.toggle('is-active', simulationSpeed === s);
+      });
+    }
+
     function renderCharts() {
       const container = document.getElementById('machine-charts-container');
       container.innerHTML = '';

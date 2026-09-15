@@ -35,6 +35,23 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
     let isPlaying = false;
     let timerInterval = null;
     let lastRenderedMinute = -1;
+    let simulationSpeed = 1; // 1x | 5x | 10x
+    const BASE_TICK_MS = 80;
+
+    /** Intervalo do setInterval; reduzido proporcionalmente à velocidade (mín. 16ms). */
+    function getTickIntervalMs() {
+      return Math.max(16, Math.round(BASE_TICK_MS / Math.max(1, simulationSpeed)));
+    }
+
+    /**
+     * Segundos de simulação avançados por tick.
+     * Compensa o piso de 16ms do browser para manter fator real ~1x/5x/10x
+     * em relação ao tick base de BASE_TICK_MS.
+     */
+    function getSecondsPerTick() {
+      const actualInterval = getTickIntervalMs();
+      return Math.max(1, Math.round(simulationSpeed * (actualInterval / BASE_TICK_MS)));
+    }
 
     // --- HELPERS DE DATA / TEMPO ---
     function pad2(n) { return String(n).padStart(2, '0'); }
