@@ -1,4 +1,24 @@
-/* SimulaFab v1.5.0 — Inicialização, playback e integração dos módulos */
+/* SimulaFab v1.6.1 — Inicialização, playback e integração dos módulos */
+
+    function syncSimHeaderFields() {
+      const simBoxes = document.getElementById('sim-boxes-qty');
+      const simDate = document.getElementById('sim-start-date');
+      if (simBoxes) simBoxes.value = boxesQty;
+      if (simDate) simDate.value = startDateStr;
+      syncStartTimeInputs(startTimeStr || DEFAULT_START_TIME);
+    }
+
+    function seekPlaybackToDayStart(dayIndex) {
+      const absMin = getDayPlaybackStartAbsMin(dayIndex);
+      selectedDayIndex = Math.floor(absMin / MINUTES_PER_DAY);
+      currentAbsSecond = absMin * 60;
+      lastRenderedMinute = -1;
+      const daySel = document.getElementById('day-select');
+      if (daySel) daySel.value = String(selectedDayIndex);
+      const timeline = document.getElementById('timeline');
+      if (timeline) timeline.value = String(absMin % MINUTES_PER_DAY);
+      return absMin;
+    }
 
     function startSimulation() {
       if (machines.length === 0 || parts.length === 0) {
@@ -6,18 +26,63 @@
         return;
       }
       selectedDayIndex = 0;
+      getStartTimeFromInput();
       calculateSimulationHistory();
-      document.getElementById('sim-boxes-qty').value = boxesQty;
-      document.getElementById('sim-start-date').value = startDateStr;
+      syncSimHeaderFields();
       renderCharts();
       navigateTo('screen-sim');
-      currentAbsSecond = 0;
-      lastRenderedMinute = -1;
+      const absMin = seekPlaybackToDayStart(0);
       isPlaying = true;
       updatePlayButtonUI();
       updateSpeedButtonsUI();
-      renderAbsMinute(0, true);
+      renderAbsMinute(absMin, true);
       runLoop();
+    }
+
+    let liveRecalcTimer = null;
+
+    function isSimScreenActive() {
+      const sim = document.getElementById('screen-sim');
+      return !!(sim && sim.classList.contains('active'));
+    }
+
+    function recalculateSimulationLive(options) {
+      if (!isSimScreenActive()) return;
+      if (machines.length === 0 || parts.length === 0) return;
+      isPlaying = false;
+      updatePlayButtonUI();
+      const prevAbs = getCurrentAbsMinute();
+      calculateSimulationHistory();
+      syncSimHeaderFields();
+      let absMin;
+      if (options && options.seekToStart) {
+        absMin = seekPlaybackToDayStart(selectedDayIndex === 0 ? 0 : selectedDayIndex);
+      } else {
+        absMin = Math.max(0, Math.min(getMaxAbsMinute(), prevAbs));
+        currentAbsSecond = absMin * 60;
+        lastRenderedMinute = -1;
+      }
+      renderCharts();
+      renderAbsMinute(absMin, true);
+    }
+
+    function onSimBoxesQtyInput() {
+      const el = document.getElementById('sim-boxes-qty');
+      const raw = el && String(el.value).trim();
+      if (raw === '' || raw === '-') return;
+      clearTimeout(liveRecalcTimer);
+      liveRecalcTimer = setTimeout(recalculateSimulationLive, 280);
+    }
+
+    function onSimBoxesQtyChange() {
+      clearTimeout(liveRecalcTimer);
+      recalculateSimulationLive();
+    }
+
+    function onSimStartTimeChange() {
+      clearTimeout(liveRecalcTimer);
+      getStartTimeFromInput();
+      recalculateSimulationLive({ seekToStart: true });
     }
 
     function runLoop() {
@@ -52,7 +117,7 @@
         return;
       }
       const maxSecond = getMaxAbsSecond();
-      if (currentAbsSecond >= maxSecond) currentAbsSecond = 0;
+      if (currentAbsSecond >= maxSecond) seekPlaybackToDayStart(0);
       isPlaying = true;
       updatePlayButtonUI();
       renderAbsMinute(getCurrentAbsMinute(), true);
@@ -62,13 +127,8 @@
     function stopSimulation() {
       isPlaying = false;
       updatePlayButtonUI();
-      currentAbsSecond = 0;
-      selectedDayIndex = 0;
-      lastRenderedMinute = -1;
-      const daySel = document.getElementById('day-select');
-      if (daySel) daySel.value = '0';
-      document.getElementById('timeline').value = 0;
-      renderAbsMinute(0, true);
+      const absMin = seekPlaybackToDayStart(0);
+      renderAbsMinute(absMin, true);
       renderClockOnly();
     }
 
@@ -97,11 +157,8 @@
       isPlaying = false;
       updatePlayButtonUI();
       selectedDayIndex = parseInt(document.getElementById('day-select').value, 10) || 0;
-      const minuteInDay = Math.max(0, Math.min(MINUTES_PER_DAY - 1, parseInt(document.getElementById('timeline').value, 10) || 0));
-      const absMin = Math.min(getMaxAbsMinute(), selectedDayIndex * MINUTES_PER_DAY + minuteInDay);
-      currentAbsSecond = absMin * 60;
-      lastRenderedMinute = -1;
-      renderAbsMinute(getCurrentAbsMinute(), true);
+      const absMin = seekPlaybackToDayStart(selectedDayIndex);
+      renderAbsMinute(absMin, true);
     }
 
 window.onload = () => {
@@ -110,6 +167,8 @@ window.onload = () => {
     document.getElementById('start-date').value = todayISODate();
   }
   startDateStr = document.getElementById('start-date').value;
+  applyStartTimeToState(document.getElementById('start-time') && document.getElementById('start-time').value);
+  document.title = 'SimulaFab v' + APP_VERSION;
   renderConfigUI();
   updatePlayButtonUI();
   updateSpeedButtonsUI();

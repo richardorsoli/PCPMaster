@@ -106,9 +106,11 @@
     .badge-maintenance { background: #a855f7; color: #faf5ff; }
 
     .timeline-full { margin-top: 18px; padding-top: 16px; border-top: 1px solid #334155; width: 100%; }
-    .timeline-full-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .timeline-full-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
     .timeline-full-title { font-size: 0.85rem; color: #94a3b8; font-weight: 600; }
     .timeline-full-clock { font-size: 0.95rem; color: #38bdf8; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .timeline-full-header .day-select-wrap { margin-top: 0; margin-left: auto; }
+    .sim-controls input[type="time"] { width: 130px; min-width: 130px; }
     .timeline-wrapper { position: relative; width: 100%; margin-top: 8px; }
     .timeline-wrapper-full { margin-top: 0; width: 100%; }
     .timeline-lunch-bg { position: absolute; top: 0; bottom: 0; background: rgba(148, 163, 184, 0.3); border-left: 2px dashed #cbd5e1; border-right: 2px dashed #cbd5e1; pointer-events: none; border-radius: 2px; }

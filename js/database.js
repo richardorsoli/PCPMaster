@@ -1,4 +1,4 @@
-/* SimulaFab v1.5.0 — Persistência localStorage e import/export banco_dados.json */
+/* SimulaFab v1.6.1 — Persistência localStorage e import/export banco_dados.json */
 
 const DB_STORAGE_KEY = 'simulafab_projects_v4';
 
@@ -142,7 +142,7 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
       const resolved = resolveCatalogArrays(wrap, catalog, options, projectMap);
       return {
         app: 'SimulaFab',
-        version: '1.5.0',
+        version: APP_VERSION,
         exportedAt: new Date().toISOString(),
         holidays: holidays.slice(),
         employees: resolved.employees,
@@ -279,6 +279,7 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
         groupingRules: cloneJson(groupingRules, []),
         assemblyRules: (assemblyRules || []).map(normalizeAssemblyRule),
         startDate: document.getElementById('start-date').value || startDateStr || todayISODate(),
+        startTime: startTimeStr || DEFAULT_START_TIME,
         boxesQty: getBoxesQtyFromInput()
       };
     }
@@ -370,6 +371,7 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
         const startEl = document.getElementById('start-date');
         if (startEl) startEl.value = proj.startDate;
       }
+      applyStartTimeToState(proj.startTime || DEFAULT_START_TIME);
       if (proj.boxesQty) {
         const boxesEl = document.getElementById('boxes-qty');
         if (boxesEl) boxesEl.value = proj.boxesQty;

@@ -1,4 +1,4 @@
-/* SimulaFab v1.5.0 — Manipulação de DOM, timeline, relógio, tabelas e PDF */
+/* SimulaFab v1.6.1 — Manipulação de DOM, timeline, relógio, tabelas e PDF */
 
     // --- EXEMPLO ---
     function loadExampleAndNavigate() {
@@ -79,6 +79,7 @@
 
       startDateStr = '2026-09-14';
       document.getElementById('start-date').value = startDateStr;
+      applyStartTimeToState(DEFAULT_START_TIME);
       document.getElementById('boxes-qty').value = 1;
       currentProjectName = '';
       if (!holidays.includes('2026-11-02')) holidays.push('2026-11-02');
@@ -114,24 +115,27 @@
       if (charts) charts.innerHTML = '';
       const dayWrap = document.getElementById('day-select-wrap');
       if (dayWrap) dayWrap.style.display = 'none';
+      const startAbs = getSimulationStartAbsMin();
       const timeline = document.getElementById('timeline');
       if (timeline) {
-        timeline.value = 0;
+        timeline.value = startAbs;
         timeline.max = MINUTES_PER_DAY - 1;
       }
       const timelineLabel = document.getElementById('timeline-label');
-      if (timelineLabel) timelineLabel.textContent = minuteInDayToTimeStr(0);
+      if (timelineLabel) timelineLabel.textContent = minuteInDayToTimeStr(startAbs);
       const simBoxes = document.getElementById('sim-boxes-qty');
       if (simBoxes) simBoxes.value = boxesQty || 1;
       const simDate = document.getElementById('sim-start-date');
       if (simDate) simDate.value = startDateStr || todayISODate();
+      syncStartTimeInputs(startTimeStr || DEFAULT_START_TIME);
       const kpi = document.getElementById('kpi-status');
       if (kpi) {
         kpi.textContent = 'AGUARDANDO';
         kpi.style.color = '#94a3b8';
       }
       ensureWorkDaysCapacity(1);
-      currentAbsSecond = 0;
+      currentAbsSecond = startAbs * 60;
+      selectedDayIndex = 0;
       renderClockOnly();
       updatePlayButtonUI();
       updateSpeedButtonsUI();
@@ -147,6 +151,7 @@
       const dateEl = document.getElementById('start-date');
       if (boxesEl) boxesEl.value = 1;
       if (dateEl) dateEl.value = startDateStr;
+      applyStartTimeToState(DEFAULT_START_TIME);
       resetPartForm();
       const asmName = document.getElementById('assembly-result-name');
       if (asmName) asmName.value = '';
@@ -851,20 +856,19 @@
       if (!document.getElementById('start-date').value) {
         document.getElementById('start-date').value = startDateStr || todayISODate();
       }
+      const startTimeEl = document.getElementById('start-time');
+      if (startTimeEl && !startTimeEl.value) startTimeEl.value = startTimeStr || DEFAULT_START_TIME;
     }
 
     function populateDaySelect() {
       const wrap = document.getElementById('day-select-wrap');
       const sel = document.getElementById('day-select');
+      if (!wrap || !sel) return;
       sel.innerHTML = '';
       workDays.forEach((iso, idx) => {
-        sel.innerHTML += `<option value="${idx}">Dia ${idx + 1} (${formatDisplayDate(iso)})</option>`;
+        sel.innerHTML += `<option value="${idx}">${formatDisplayDate(iso)} (Dia ${idx + 1})</option>`;
       });
-      if (workDays.length > 1) {
-        wrap.style.display = 'flex';
-      } else {
-        wrap.style.display = 'none';
-      }
+      wrap.style.display = workDays.length > 1 ? 'flex' : 'none';
       sel.value = String(selectedDayIndex);
     }
 
@@ -1004,7 +1008,7 @@
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(16);
       doc.setTextColor(2, 132, 199);
-      doc.text('Relatório de Cronograma da Produção - SimulaFab v1.5.0', 14, 16);
+      doc.text('Relatório de Cronograma da Produção - SimulaFab v' + APP_VERSION, 14, 16);
 
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
@@ -1016,7 +1020,7 @@
         : `Produção em 1 dia útil (${formatDisplayDate(firstDay)})`;
 
       doc.text(`Data Inicial: ${formatDisplayDate(firstDay)} | ${multiNote}`, 14, 23);
-      doc.text(`Turno: 07:30–17:18 | Almoço: 12:00–13:00 | Qtd. Caixas: ${boxesQty} | Emitido: ${new Date().toLocaleDateString('pt-BR')}`, 14, 29);
+      doc.text(`Turno: 07:30–17:18 | Início: ${startTimeStr || DEFAULT_START_TIME} | Almoço: 12:00–13:00 | Qtd. Caixas: ${boxesQty} | Emitido: ${new Date().toLocaleDateString('pt-BR')}`, 14, 29);
 
       const tableRows = [];
 

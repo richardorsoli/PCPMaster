@@ -1,4 +1,6 @@
-/* SimulaFab v1.5.0 — Motor de simulação, calendário e manutenção preventiva */
+/* SimulaFab v1.6.1 — Motor de simulação, calendário e manutenção preventiva */
+
+const APP_VERSION = '1.6.1';
 
 // --- PARÂMETROS DO TURNO ---
 const SHIFT_START_MINUTES = 7 * 60 + 30;
@@ -7,6 +9,7 @@ const TOTAL_SHIFT_DURATION = SHIFT_END_MINUTES - SHIFT_START_MINUTES; // 588
 const LUNCH_START_OFFSET = (12 * 60) - SHIFT_START_MINUTES; // 270
 const LUNCH_END_OFFSET = (13 * 60) - SHIFT_START_MINUTES;   // 330
 const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
+const DEFAULT_START_TIME = '07:30';
 
 // --- ESTADO GLOBAL ---
     let machines = [];
@@ -31,6 +34,8 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
     let workDays = [];
     let boxesQty = 1;
     let startDateStr = '';
+    let startTimeStr = DEFAULT_START_TIME;
+    let startTimeOffsetMin = 0;
     let totalAbsMinutes = MINUTES_PER_DAY;
     let selectedDayIndex = 0;
 
@@ -70,6 +75,8 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       editingAssemblyIndex = -1;
       boxesQty = 1;
       startDateStr = todayISODate();
+      startTimeStr = DEFAULT_START_TIME;
+      startTimeOffsetMin = 0;
     }
 
     /** Intervalo do setInterval; reduzido proporcionalmente à velocidade (mín. 16ms). */
@@ -177,6 +184,86 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
     function minuteInDayToTimeStr(minuteInDay) {
       const realMins = SHIFT_START_MINUTES + minuteInDay;
       return `${pad2(Math.floor(realMins / 60))}:${pad2(realMins % 60)}`;
+    }
+
+    function parseClockToMinutes(hhmm) {
+      if (!hhmm || typeof hhmm !== 'string') return SHIFT_START_MINUTES;
+      const m = String(hhmm).trim().match(/^(\d{1,2}):(\d{2})/);
+      if (!m) return SHIFT_START_MINUTES;
+      const h = Number(m[1]);
+      const min = Number(m[2]);
+      if (isNaN(h) || isNaN(min) || h > 23 || min > 59) return SHIFT_START_MINUTES;
+      return h * 60 + min;
+    }
+
+    function minutesToClockStr(totalMin) {
+      const wrapped = ((totalMin % (24 * 60)) + (24 * 60)) % (24 * 60);
+      return `${pad2(Math.floor(wrapped / 60))}:${pad2(wrapped % 60)}`;
+    }
+
+    function getSimulationStartAbsMin() {
+      return Math.max(0, Number(startTimeOffsetMin) || 0);
+    }
+
+    /**
+     * Ponto visual/playback do dia: Dia 1 no horário configurado;
+     * Dia 2+ às 07:30 (início do turno).
+     */
+    function getDayPlaybackStartAbsMin(dayIndex) {
+      const day = Math.max(0, Number(dayIndex) || 0);
+      const offset = day === 0 ? getSimulationStartAbsMin() : 0;
+      const abs = day * MINUTES_PER_DAY + offset;
+      return Math.max(0, Math.min(getMaxAbsMinute(), abs));
+    }
+
+    function machineFreeAt(map, machineId) {
+      if (map && map[machineId] != null) return map[machineId];
+      return getSimulationStartAbsMin();
+    }
+
+    /**
+     * Converte HH:MM do turno em offset de minutos produtivos a partir de 07:30.
+     * 12:00–12:59 vai para 13:00. Fora da jornada, prende em 07:30 ou 17:18.
+     */
+    function normalizeStartTimeClock(hhmm) {
+      let clock = parseClockToMinutes(hhmm || DEFAULT_START_TIME);
+      if (clock < SHIFT_START_MINUTES) clock = SHIFT_START_MINUTES;
+      if (clock > SHIFT_END_MINUTES) clock = SHIFT_END_MINUTES;
+      let offset = clock - SHIFT_START_MINUTES;
+      if (offset < 0) offset = 0;
+      if (offset >= MINUTES_PER_DAY) offset = MINUTES_PER_DAY - 1;
+      offset = snapToProductive(offset);
+      if (offset >= MINUTES_PER_DAY) offset = MINUTES_PER_DAY - 1;
+      return { offset, clockStr: minutesToClockStr(SHIFT_START_MINUTES + offset) };
+    }
+
+    function syncStartTimeInputs(clockStr) {
+      const cfg = document.getElementById('start-time');
+      const sim = document.getElementById('sim-start-time');
+      if (cfg) cfg.value = clockStr;
+      if (sim) sim.value = clockStr;
+    }
+
+    function getStartTimeFromInput() {
+      const simEl = document.getElementById('sim-start-time');
+      const cfgEl = document.getElementById('start-time');
+      const simScreen = document.getElementById('screen-sim');
+      const preferSim = simScreen && simScreen.classList.contains('active') && simEl;
+      const src = preferSim ? simEl : (cfgEl || simEl);
+      const raw = (src && src.value) || startTimeStr || DEFAULT_START_TIME;
+      const norm = normalizeStartTimeClock(raw);
+      startTimeOffsetMin = norm.offset;
+      startTimeStr = norm.clockStr;
+      syncStartTimeInputs(startTimeStr);
+      return startTimeOffsetMin;
+    }
+
+    function applyStartTimeToState(hhmm) {
+      const norm = normalizeStartTimeClock(hhmm || DEFAULT_START_TIME);
+      startTimeOffsetMin = norm.offset;
+      startTimeStr = norm.clockStr;
+      syncStartTimeInputs(startTimeStr);
+      return startTimeStr;
     }
 
     function minuteOfDay(absMin) {
@@ -547,9 +634,9 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
     }
 
     function joinAvailableAt(requer, partReady) {
-      let t = 0;
+      let t = getSimulationStartAbsMin();
       (requer || []).forEach(name => {
-        const end = partReady[name] || 0;
+        const end = partReady[name] != null ? partReady[name] : getSimulationStartAbsMin();
         if (end > t) t = end;
       });
       return t;
@@ -668,11 +755,16 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
 
 // --- MOTOR DE SIMULAÇÃO ---
     function getBoxesQtyFromInput() {
-      const el = document.getElementById('boxes-qty');
-      let qty = parseInt(el && el.value, 10);
+      const simEl = document.getElementById('sim-boxes-qty');
+      const cfgEl = document.getElementById('boxes-qty');
+      const simScreen = document.getElementById('screen-sim');
+      const preferSim = simScreen && simScreen.classList.contains('active') && simEl;
+      const src = preferSim ? simEl : (cfgEl || simEl);
+      let qty = parseInt(src && src.value, 10);
       if (isNaN(qty) || qty < 1) qty = 1;
       if (qty > 999) qty = 999;
-      if (el) el.value = qty;
+      if (cfgEl) cfgEl.value = qty;
+      if (simEl) simEl.value = qty;
       return qty;
     }
 
@@ -685,28 +777,37 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
     }
 
     function getPartReadyForMachine(partName, machineId, readyMap) {
+      const t0 = getSimulationStartAbsMin();
       const simP = findSimPart(partName);
       if (simP) {
         const asmIdx = simP.route.findIndex(s => s.machineId === machineId);
         if (asmIdx > 0) {
           const prevStep = simP.route[asmIdx - 1];
-          return readyMap[`${partName}_${prevStep.machineId}`] || 0;
+          return readyMap[`${partName}_${prevStep.machineId}`] != null
+            ? readyMap[`${partName}_${prevStep.machineId}`]
+            : t0;
         }
         if (asmIdx === 0 && isJoinStep(simP.route[0])) {
-          return 0;
+          return t0;
         }
       }
       const part = parts.find(p => p.name === partName);
       if (!part) {
         const prevAsm = assemblyRules.find(a => a.resultName === partName);
-        if (prevAsm) return readyMap[`${partName}_${prevAsm.machineId}`] || 0;
-        return 0;
+        if (prevAsm) {
+          return readyMap[`${partName}_${prevAsm.machineId}`] != null
+            ? readyMap[`${partName}_${prevAsm.machineId}`]
+            : t0;
+        }
+        return t0;
       }
       const asmIdx = part.route.findIndex(s => s.machineId === machineId);
-      if (asmIdx < 0) return 0;
-      if (asmIdx === 0) return 0;
+      if (asmIdx < 0) return t0;
+      if (asmIdx === 0) return t0;
       const prevStep = part.route[asmIdx - 1];
-      return readyMap[`${partName}_${prevStep.machineId}`] || 0;
+      return readyMap[`${partName}_${prevStep.machineId}`] != null
+        ? readyMap[`${partName}_${prevStep.machineId}`]
+        : t0;
     }
 
     function maybeInsertMaintenance(machineId, machineFreeUntil, machineOperated, localMaintEvents) {
@@ -717,7 +818,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       if (intervalMin <= 0 || durationMin <= 0) return;
       if ((machineOperated[machineId] || 0) < intervalMin) return;
 
-      const start = snapToProductive(machineFreeUntil[machineId] || 0);
+      const start = snapToProductive(machineFreeUntil[machineId] != null ? machineFreeUntil[machineId] : getSimulationStartAbsMin());
       const end = addProductiveMinutes(start, durationMin);
       localMaintEvents.push({
         machineId,
@@ -834,7 +935,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       maybeInsertMaintenance(machineId, machineFreeUntil, machineOperated, passMaint);
 
       const sharedSetupStart = snapToProductive(Math.max(
-        machineFreeUntil[machineId] || 0,
+        machineFreeAt(machineFreeUntil, machineId),
         ...members.map(m => m.readyForMachine)
       ));
       const sharedSetupDur = members.reduce((max, m) => Math.max(max, m.setupTime), 0);
@@ -911,7 +1012,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       maybeInsertMaintenance(step.machineId, machineFreeUntil, machineOperated, maintEvents);
 
       const readyForMachine = Math.max(arrivalTime, assemblyGate);
-      const setupStart = snapToProductive(Math.max(readyForMachine, machineFreeUntil[step.machineId] || 0));
+      const setupStart = snapToProductive(Math.max(readyForMachine, machineFreeAt(machineFreeUntil, step.machineId)));
       const prodStart = addProductiveMinutes(setupStart, setupTime);
       const end = addProductiveMinutes(prodStart, prodTime);
 
@@ -972,8 +1073,8 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
           if (members.length === 0) return;
           if (!ignoreAssembly && members.some(m => !assemblyDependenciesMet(m.part, m.step, readyTimeOfParts, partReady, nextStepIndex))) return;
 
-          const readyForMachine = members.reduce((max, m) => Math.max(max, m.readyForMachine), 0);
-          const setupStart = snapToProductive(Math.max(machineFreeUntil[step.machineId] || 0, readyForMachine));
+          const readyForMachine = members.reduce((max, m) => Math.max(max, m.readyForMachine), getSimulationStartAbsMin());
+          const setupStart = snapToProductive(Math.max(machineFreeAt(machineFreeUntil, step.machineId), readyForMachine));
           candidates.push({
             type: 'group',
             groupRule,
@@ -993,7 +1094,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
           const asm = resolveAssemblyWait(part, step, arrivalTime, readyTimeOfParts, partReady, nextStepIndex);
           const readyForMachine = Math.max(arrivalTime, asm.assemblyGate);
           const firstArrival = (requer || []).reduce((min, n) => Math.min(min, partReady[n] != null ? partReady[n] : min), readyForMachine);
-          const setupStart = snapToProductive(Math.max(readyForMachine, machineFreeUntil[step.machineId] || 0));
+          const setupStart = snapToProductive(Math.max(readyForMachine, machineFreeAt(machineFreeUntil, step.machineId)));
           candidates.push({
             type: 'single',
             part,
@@ -1010,10 +1111,10 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
 
         if (!ignoreAssembly && !assemblyDependenciesMet(part, step, readyTimeOfParts, partReady, nextStepIndex)) return;
 
-        const arrivalTime = partReady[part.name] || 0;
+        const arrivalTime = partReady[part.name] != null ? partReady[part.name] : getSimulationStartAbsMin();
         const asm = resolveAssemblyWait(part, step, arrivalTime, readyTimeOfParts, partReady, nextStepIndex);
         const readyForMachine = Math.max(arrivalTime, asm.assemblyGate);
-        const setupStart = snapToProductive(Math.max(readyForMachine, machineFreeUntil[step.machineId] || 0));
+        const setupStart = snapToProductive(Math.max(readyForMachine, machineFreeAt(machineFreeUntil, step.machineId)));
         candidates.push({
           type: 'single',
           part,
@@ -1034,8 +1135,9 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       const machineOperated = {};
       const simParts = buildBomRuntimeParts();
       const simMachines = getSimulationMachines();
+      const t0 = getSimulationStartAbsMin();
       simMachines.forEach(m => {
-        machineFreeUntil[m.id] = 0;
+        machineFreeUntil[m.id] = t0;
         machineOperated[m.id] = 0;
       });
 
@@ -1046,7 +1148,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       const partReady = {};
       const nextStepIndex = {};
       simParts.forEach(p => {
-        partReady[p.name] = 0;
+        partReady[p.name] = t0;
         nextStepIndex[p.name] = 0;
       });
 
@@ -1123,6 +1225,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       maintenanceEvents = [];
       boxesQty = getBoxesQtyFromInput();
       startDateStr = getStartDateFromInput();
+      getStartTimeFromInput();
       normalizeAllMachines();
 
       const scheduled = scheduleProductionEvents();

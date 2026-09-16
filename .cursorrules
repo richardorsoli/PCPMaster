@@ -1,4 +1,4 @@
-# SimulaFab v1.4.3 — Regras do Projeto
+# SimulaFab v1.6.1 — Regras do Projeto
 
 App web de simulação PPCP / chão de fábrica (HTML + JS vanilla + CSS). UI em português (pt-BR). Tema escuro industrial. Entry point: `index.html`.
 
@@ -38,7 +38,7 @@ Antes de mudar regra de negócio, localizar o módulo certo. Preferir editar os 
 
 1. **welcome** — exemplo, projeto novo, carregar projeto, import/export JSON  
 2. **config** — engenharia: funcionários → máquinas → peças/roteiros → agrupamento → união → feriados → qtd. caixas + data inicial  
-3. **sim** — play/pause/stop, ±1 min, velocidade 1x/5x/10x, relógio `DD/MM/AA - HH:MM:SS`, tabela do chão, timeline full-width no card, dropdown de dias, gráficos, PDF  
+3. **sim** — play/pause/stop, ±1 min, velocidade 1x/5x/10x, recálculo ao vivo da qtd. de caixas, hora de início flexível, relógio `DD/MM/AA - HH:MM:SS`, tabela do chão, timeline full-width no card, dropdown de datas ao lado da timeline, gráficos, PDF  
 
 ## Regras de negócio ativas
 
@@ -46,12 +46,14 @@ Antes de mudar regra de negócio, localizar o módulo certo. Preferir editar os 
 - Turno: **07:30–17:18** (`MINUTES_PER_DAY` = 588).
 - Almoço: **12:00–13:00** (overlay/status; minutos do dia 270–329).
 - Tempo absoluto em minutos/segundos de trabalho; ao terminar um dia, continua às **07:30 do próximo dia útil**.
+- Hora de início flexível (`startTime` / `startTimeOffsetMin`) dentro do turno (ex. 07:30, 10:00, 11:30). Alocação começa nesse horário; 12:00–12:59 avança para 13:00.
 - Pula **sábado, domingo e feriados** (`holidays[]` em `YYYY-MM-DD`).
 - Data inicial (`startDateStr` / input `type="date"`); se cair em não-útil, avança para o próximo útil.
-- Timeline representa **um dia selecionado**; dropdown `Dia N (dd/mm/aa)` quando há multi-dia.
+- Timeline representa **um dia selecionado**; dropdown de datas `dd/mm/aa (Dia N)` ao lado da linha do tempo quando há multi-dia; ao trocar a data, o ponteiro volta ao **início daquele dia**.
 
 ### Produção e caixas
 - `boxesQty` (1–999) multiplica **quantidade efetiva** e **tempo de produção** (`prodUnit * qty * boxesQty`).
+- Na tela de simulação, alterar a qtd. de caixas **recalcula o motor na hora** (sem recarregar a página).
 - **Setup permanece inalterado** (exceto divisão por agrupamento: `ceil(setup / nPeças)`).
 
 ### Agrupamento e união
@@ -103,6 +105,7 @@ Campos finais em branco para preenchimento manual / premiação.
       "groupingRules": [{ "machineId", "partNames": [] }],
       "assemblyRules": [{ "machineId", "resultName", "requiredPartNames": [] }],
       "startDate": "YYYY-MM-DD",
+      "startTime": "HH:MM",
       "boxesQty": 1
     }
   }
@@ -145,4 +148,4 @@ Campos finais em branco para preenchimento manual / premiação.
 
 ## Versão
 
-Documento alinhado à **v1.4.3 modular** (pós: funcionários, datas de manutenção, PDF cronoanálise/descrição, velocidade 1x/5x/10x, timeline full-width).
+Documento alinhado à **v1.6.1** (Sprint 7 Batch 1: recálculo por caixas, hora de início flexível, dropdown de datas na timeline; BOM JOIN Sprint 9 e catálogo Sprint 8 intactos).

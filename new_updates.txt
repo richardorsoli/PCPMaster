@@ -1,6 +1,6 @@
 ==================================================
  PROJETO: SimulaFab
- VERSÃO ATUAL: v1.5.0 (Em desenvolvimento)
+ VERSÃO ATUAL: v1.6.1 (Sprint 7 Batch 1)
  REGRA DE VERSIONAMENTO: 
    - v1.5.x: Correções de bugs (Patch)
    - v1.6.0: Novas Sprints/Recursos (Minor)
