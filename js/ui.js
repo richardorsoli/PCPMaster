@@ -22,8 +22,7 @@
           name: "NUCLEO", thickness: 1.2, qty: 1,
           route: [
             { machineId: "m1", setup: 30, prodUnit: 40 },
-            { machineId: "m2", setup: 20, prodUnit: 30 },
-            { machineId: "m3", setup: 30, prodUnit: 40 }
+            { machineId: "m2", setup: 20, prodUnit: 30 }
           ]
         },
         {
@@ -36,31 +35,46 @@
         {
           name: "TAMPA", thickness: 1.2, qty: 1,
           route: [
-            { machineId: "m1", setup: 20, prodUnit: 30 },
-            { machineId: "m3", setup: 20, prodUnit: 30 }
+            { machineId: "m1", setup: 20, prodUnit: 30 }
           ]
         },
         {
           name: "ORGANIZADOR", thickness: 1.0, qty: 1,
           route: [
-            { machineId: "m1", setup: 15, prodUnit: 25 },
-            { machineId: "m3", setup: 20, prodUnit: 25 }
+            { machineId: "m1", setup: 15, prodUnit: 25 }
           ]
         },
         {
           name: "CORPO", thickness: 1.5, qty: 1,
           route: [
             { machineId: "m1", setup: 40, prodUnit: 50 },
-            { machineId: "m2", setup: 30, prodUnit: 40 },
-            { machineId: "m5", setup: 20, prodUnit: 30 }
+            { machineId: "m2", setup: 30, prodUnit: 40 }
           ]
         }
       ];
 
       groupingRules = [{ machineId: "m1", partNames: ["NUCLEO", "DOBRADICA"] }];
       assemblyRules = [
-        { machineId: "m3", resultName: "CONJUNTO TAMPA COMPLETO", requiredPartNames: ["NUCLEO", "TAMPA", "ORGANIZADOR"] },
-        { machineId: "m5", resultName: "CAIXA COMPLETA EMBALADA", requiredPartNames: ["CONJUNTO TAMPA COMPLETO", "CORPO"] }
+        {
+          machineId: "m3",
+          resultName: "CONJUNTO TAMPA COMPLETO",
+          requiredPartNames: ["NUCLEO", "TAMPA", "ORGANIZADOR"],
+          juncao: { requer: ["NUCLEO", "TAMPA", "ORGANIZADOR"], maquina: "m3" },
+          setup: 30,
+          prodUnit: 40,
+          qty: 1,
+          route: [{ machineId: "m4", setup: 20, prodUnit: 25 }]
+        },
+        {
+          machineId: "m5",
+          resultName: "CAIXA COMPLETA EMBALADA",
+          requiredPartNames: ["CONJUNTO TAMPA COMPLETO", "CORPO"],
+          juncao: { requer: ["CONJUNTO TAMPA COMPLETO", "CORPO"], maquina: "m5" },
+          setup: 20,
+          prodUnit: 30,
+          qty: 1,
+          route: [{ machineId: "m6", setup: 10, prodUnit: 15 }]
+        }
       ];
 
       startDateStr = '2026-09-14';
@@ -136,6 +150,7 @@
       resetPartForm();
       const asmName = document.getElementById('assembly-result-name');
       if (asmName) asmName.value = '';
+      currentJoinBuildingRoute = [];
       const btnGroup = document.getElementById('btn-save-grouping');
       if (btnGroup) btnGroup.innerText = 'Agrupar Peças';
       const btnAsm = document.getElementById('btn-save-assembly');
@@ -546,14 +561,57 @@
     }
 
     // --- MONTAGEM ---
+    function addStepToCurrentJoin() {
+      const mId = document.getElementById('join-step-machine-select').value;
+      const setup = parseInt(document.getElementById('join-step-setup-time').value, 10) || 0;
+      const prodUnit = parseInt(document.getElementById('join-step-prod-time').value, 10) || 1;
+      if (!mId) return;
+      currentJoinBuildingRoute.push({ machineId: mId, setup, prodUnit });
+      renderCurrentJoinRoute();
+    }
+
+    function removeStepFromCurrentJoin(idx) {
+      currentJoinBuildingRoute.splice(idx, 1);
+      renderCurrentJoinRoute();
+    }
+
+    function renderCurrentJoinRoute() {
+      const container = document.getElementById('current-join-steps-container');
+      if (!container) return;
+      container.innerHTML = '';
+      if (currentJoinBuildingRoute.length === 0) {
+        container.innerHTML = '<span style="font-size:0.85rem; color:#64748b;">Sem sub-roteiro. O SKU formado encerra na junção, salvo novas etapas.</span>';
+        return;
+      }
+      currentJoinBuildingRoute.forEach((step, idx) => {
+        const m = lookupMachine(step.machineId);
+        container.innerHTML += `
+          <span class="step-tag">
+            ${idx + 1}º: <strong>${m ? m.name : '?'}</strong> (Setup: ${step.setup}m | Prod/u: ${step.prodUnit}m)
+            <span style="color:#ef4444; cursor:pointer; font-weight:bold; margin-left:5px;" onclick="removeStepFromCurrentJoin(${idx})">×</span>
+          </span>`;
+      });
+    }
+
     function addAssemblyRule() {
       const mId = document.getElementById('assembly-machine-select').value;
       const resultName = document.getElementById('assembly-result-name').value.trim().toUpperCase();
       const selected = [];
       document.querySelectorAll('.assembly-part-cb:checked').forEach(cb => selected.push(cb.value));
       if (!resultName) { alert('Informe o nome do subconjunto.'); return; }
-      if (selected.length < 2) { alert('Selecione ao menos 2 peças componentes.'); return; }
-      const rule = { machineId: mId, resultName, requiredPartNames: selected };
+      if (selected.length < 2) { alert('Selecione ao menos 2 peças/insumos (requer).'); return; }
+      const setup = parseInt(document.getElementById('join-setup-time').value, 10) || 1;
+      const prodUnit = parseInt(document.getElementById('join-prod-time').value, 10) || 1;
+      const rule = normalizeAssemblyRule({
+        machineId: mId,
+        resultName,
+        requiredPartNames: selected,
+        juncao: { requer: selected, maquina: mId },
+        setup,
+        prodUnit,
+        qty: 1,
+        route: currentJoinBuildingRoute.slice()
+      });
       if (editingAssemblyIndex >= 0) {
         assemblyRules[editingAssemblyIndex] = rule;
         editingAssemblyIndex = -1;
@@ -563,18 +621,25 @@
       }
       document.getElementById('assembly-result-name').value = '';
       document.querySelectorAll('.assembly-part-cb').forEach(cb => cb.checked = false);
+      currentJoinBuildingRoute = [];
+      document.getElementById('join-setup-time').value = '1';
+      document.getElementById('join-prod-time').value = '1';
       renderConfigUI();
     }
 
     function editAssemblyRule(idx) {
-      const a = assemblyRules[idx];
+      const a = normalizeAssemblyRule(assemblyRules[idx]);
       editingAssemblyIndex = idx;
       document.getElementById('assembly-machine-select').value = a.machineId;
       document.getElementById('assembly-result-name').value = a.resultName;
       document.querySelectorAll('.assembly-part-cb').forEach(cb => {
         cb.checked = a.requiredPartNames.includes(cb.value);
       });
+      document.getElementById('join-setup-time').value = a.setup || 1;
+      document.getElementById('join-prod-time').value = a.prodUnit || 1;
+      currentJoinBuildingRoute = (a.route || []).map(s => ({ machineId: s.machineId, setup: s.setup, prodUnit: s.prodUnit }));
       document.getElementById('btn-save-assembly').innerText = 'Salvar Alterações';
+      renderCurrentJoinRoute();
     }
 
     function removeAssemblyRule(idx) {
@@ -691,8 +756,9 @@
           </li>`;
       });
 
-      ['step-machine-select', 'group-machine-select', 'assembly-machine-select'].forEach(id => {
+      ['step-machine-select', 'group-machine-select', 'assembly-machine-select', 'join-step-machine-select'].forEach(id => {
         const sel = document.getElementById(id);
+        if (!sel) return;
         const prev = sel.value;
         sel.innerHTML = '';
         machines.forEach((m, idx) => sel.innerHTML += `<option value="${m.id}">M${idx + 1}: ${m.name}</option>`);
@@ -762,10 +828,17 @@
         aList.innerHTML = '<li style="color:#64748b;">Nenhuma união neste projeto.</li>';
       }
       assemblyRules.forEach((a, idx) => {
-        const m = lookupMachine(a.machineId);
+        const rule = normalizeAssemblyRule(a);
+        const m = lookupMachine(rule.machineId);
+        const sub = (rule.route || []).map(s => {
+          const sm = lookupMachine(s.machineId);
+          return sm ? sm.name : '?';
+        }).join(' ➔ ');
+        const requer = (rule.juncao && rule.juncao.requer) ? rule.juncao.requer : rule.requiredPartNames;
         aList.innerHTML += `<li>
-          <div><strong>Setor: ${m ? m.name : '?'}</strong> ➔ <span style="color:#22c55e;">${a.resultName}</span>
-          <div style="font-size:0.85rem; color:#f59e0b;">União de: ${a.requiredPartNames.join(' + ')}</div></div>
+          <div><strong>JOIN ${m ? m.name : '?'}</strong> ➔ <span style="color:#22c55e;">${rule.resultName}</span>
+          <div style="font-size:0.85rem; color:#f59e0b;">requer: ${requer.join(' + ')}</div>
+          <div style="font-size:0.8rem; color:#94a3b8;">Junção: setup ${rule.setup}m / prod ${rule.prodUnit}m${sub ? ` · Sub-roteiro: ${sub}` : ' · sem sub-roteiro'}</div></div>
           <div>
             <button class="btn btn-warning" onclick="editAssemblyRule(${idx})">Editar</button>
             <button class="btn btn-danger" onclick="removeAssemblyRule(${idx})">Excluir</button>
@@ -773,6 +846,7 @@
         </li>`;
       });
 
+      renderCurrentJoinRoute();
       renderHolidaysList();
       if (!document.getElementById('start-date').value) {
         document.getElementById('start-date').value = startDateStr || todayISODate();
@@ -796,6 +870,7 @@
 
     function statusLabel(status) {
       if (status === 'waiting') return { text: 'Aguardando Outras Peças para União', cls: 'badge-waiting' };
+      if (status === 'ready') return { text: 'PRONTA PARA PROGRAMAR', cls: 'badge-fila' };
       if (status === 'fila') return { text: 'FILA', cls: 'badge-fila' };
       if (status === 'setup') return { text: 'SETUP', cls: 'badge-setup' };
       if (status === 'working') return { text: 'EM PRODUÇÃO', cls: 'badge-working' };

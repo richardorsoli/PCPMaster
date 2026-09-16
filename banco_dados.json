@@ -903,11 +903,6 @@
               "machineId": "m1789391581287",
               "setup": 1,
               "prodUnit": 1
-            },
-            {
-              "machineId": "m1789391638329",
-              "setup": 1,
-              "prodUnit": 1
             }
           ]
         },
@@ -923,51 +918,6 @@
             },
             {
               "machineId": "m1789391576850",
-              "setup": 1,
-              "prodUnit": 1
-            },
-            {
-              "machineId": "m1789485676075",
-              "setup": 1,
-              "prodUnit": 1
-            },
-            {
-              "machineId": "m1789391638329",
-              "setup": 1,
-              "prodUnit": 1
-            },
-            {
-              "machineId": "m1789391604678",
-              "setup": 1,
-              "prodUnit": 1
-            },
-            {
-              "machineId": "m1789391662071",
-              "setup": 1,
-              "prodUnit": 1
-            },
-            {
-              "machineId": "m1789391670237",
-              "setup": 1,
-              "prodUnit": 1
-            },
-            {
-              "machineId": "m1789391695129",
-              "setup": 1,
-              "prodUnit": 1
-            },
-            {
-              "machineId": "m1789391701665",
-              "setup": 1,
-              "prodUnit": 1
-            },
-            {
-              "machineId": "m1789391707261",
-              "setup": 1,
-              "prodUnit": 1
-            },
-            {
-              "machineId": "m1789391725515",
               "setup": 1,
               "prodUnit": 1
             }
@@ -987,11 +937,6 @@
               "machineId": "m1789391581287",
               "setup": 1,
               "prodUnit": 1
-            },
-            {
-              "machineId": "m1789485676075",
-              "setup": 1,
-              "prodUnit": 1
             }
           ]
         },
@@ -1007,11 +952,6 @@
             },
             {
               "machineId": "m1789391581287",
-              "setup": 1,
-              "prodUnit": 1
-            },
-            {
-              "machineId": "m1789485676075",
               "setup": 1,
               "prodUnit": 1
             }
@@ -1049,11 +989,6 @@
             },
             {
               "machineId": "m1789391695129",
-              "setup": 1,
-              "prodUnit": 1
-            },
-            {
-              "machineId": "m1789391701665",
               "setup": 1,
               "prodUnit": 1
             }
@@ -1127,33 +1062,48 @@
         {
           "machineId": "m1789485676075",
           "resultName": "CORPO MARTELAMENTO",
-          "requiredPartNames": [
-            "CORPO",
-            "LATERAIS"
-          ]
+          "requiredPartNames": ["CORPO", "LATERAIS"],
+          "juncao": { "requer": ["CORPO", "LATERAIS"], "maquina": "m1789485676075" },
+          "setup": 1,
+          "prodUnit": 1,
+          "qty": 1,
+          "route": []
         },
         {
           "machineId": "m1789391604678",
           "resultName": "SOLDA CORPO",
-          "requiredPartNames": [
-            "SUPORTE",
-            "CORPO MARTELAMENTO"
-          ]
+          "requiredPartNames": ["SUPORTE", "CORPO MARTELAMENTO"],
+          "juncao": { "requer": ["SUPORTE", "CORPO MARTELAMENTO"], "maquina": "m1789391604678" },
+          "setup": 1,
+          "prodUnit": 1,
+          "qty": 1,
+          "route": []
         },
         {
           "machineId": "m1789391638329",
           "resultName": "CORPO COMPLETO",
-          "requiredPartNames": [
-            "BATEDOR",
-            "SOLDA CORPO"
+          "requiredPartNames": ["BATEDOR", "SOLDA CORPO"],
+          "juncao": { "requer": ["BATEDOR", "SOLDA CORPO"], "maquina": "m1789391638329" },
+          "setup": 1,
+          "prodUnit": 1,
+          "qty": 1,
+          "route": [
+            { "machineId": "m1789391662071", "setup": 1, "prodUnit": 1 },
+            { "machineId": "m1789391670237", "setup": 1, "prodUnit": 1 },
+            { "machineId": "m1789391695129", "setup": 1, "prodUnit": 1 }
           ]
         },
         {
           "machineId": "m1789391701665",
           "resultName": "DAE JUNDIAI",
-          "requiredPartNames": [
-            "TAMPA",
-            "CORPO COMPLETO"
+          "requiredPartNames": ["TAMPA", "CORPO COMPLETO"],
+          "juncao": { "requer": ["TAMPA", "CORPO COMPLETO"], "maquina": "m1789391701665" },
+          "setup": 1,
+          "prodUnit": 1,
+          "qty": 1,
+          "route": [
+            { "machineId": "m1789391707261", "setup": 1, "prodUnit": 1 },
+            { "machineId": "m1789391725515", "setup": 1, "prodUnit": 1 }
           ]
         }
       ],

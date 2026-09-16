@@ -22,6 +22,8 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
     let assemblyRules = [];
     let holidays = [];
     let currentProjectName = '';
+    let bomRuntimeParts = [];
+    let currentJoinBuildingRoute = [];
 
     let simulationHistory = [];
     let rawEvents = [];
@@ -59,6 +61,8 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       groupingRules = [];
       assemblyRules = [];
       currentBuildingRoute = [];
+      currentJoinBuildingRoute = [];
+      bomRuntimeParts = [];
       editingPartIndex = -1;
       editingMachineIndex = -1;
       editingEmployeeIndex = -1;
@@ -262,6 +266,295 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       machines = machines.map(normalizeMachine);
     }
 
+    function normalizeRouteStep(step) {
+      if (!step || typeof step !== 'object') return step;
+      const out = {
+        machineId: step.machineId,
+        setup: Number(step.setup) || 0,
+        prodUnit: Number(step.prodUnit) > 0 ? Number(step.prodUnit) : 1
+      };
+      if (step.juncao && typeof step.juncao === 'object') {
+        const requer = Array.isArray(step.juncao.requer)
+          ? step.juncao.requer.map(n => String(n).toUpperCase())
+          : [];
+        out.juncao = {
+          requer,
+          maquina: step.juncao.maquina || step.machineId || ''
+        };
+      }
+      return out;
+    }
+
+    function normalizeAssemblyRule(rule) {
+      if (!rule || typeof rule !== 'object') {
+        return { machineId: '', resultName: '', requiredPartNames: [], juncao: { requer: [], maquina: '' }, setup: 1, prodUnit: 1, qty: 1, route: [] };
+      }
+      const requerRaw = Array.isArray(rule.requiredPartNames)
+        ? rule.requiredPartNames
+        : (rule.juncao && Array.isArray(rule.juncao.requer) ? rule.juncao.requer : []);
+      const requer = requerRaw.map(n => String(n || '').toUpperCase()).filter(Boolean);
+      const machineId = rule.machineId || (rule.juncao && rule.juncao.maquina) || '';
+      const resultName = String(rule.resultName || '').toUpperCase();
+      return {
+        machineId,
+        resultName,
+        requiredPartNames: requer,
+        juncao: { requer, maquina: machineId },
+        setup: Number(rule.setup) || 0,
+        prodUnit: Number(rule.prodUnit) > 0 ? Number(rule.prodUnit) : 0,
+        qty: Number(rule.qty) > 0 ? Number(rule.qty) : 1,
+        route: Array.isArray(rule.route) ? rule.route.map(normalizeRouteStep) : []
+      };
+    }
+
+    function normalizeAllAssemblyRules() {
+      assemblyRules = (assemblyRules || []).map(normalizeAssemblyRule);
+    }
+
+    function getSimParts() {
+      return (bomRuntimeParts && bomRuntimeParts.length) ? bomRuntimeParts : parts;
+    }
+
+    function findSimPart(name, list) {
+      return (list || getSimParts()).find(p => p.name === name) || null;
+    }
+
+    function joinRequerOf(stepOrRule) {
+      if (!stepOrRule) return [];
+      if (stepOrRule.juncao && Array.isArray(stepOrRule.juncao.requer)) return stepOrRule.juncao.requer;
+      if (Array.isArray(stepOrRule.requiredPartNames)) return stepOrRule.requiredPartNames;
+      return [];
+    }
+
+    function isJoinStep(step) {
+      return !!(step && step.juncao && joinRequerOf(step).length > 0);
+    }
+
+    function otherJoinMachineIds(exceptRule) {
+      const ids = {};
+      (assemblyRules || []).forEach(r => {
+        if (!r || !r.machineId) return;
+        if (exceptRule && r.resultName === exceptRule.resultName && r.machineId === exceptRule.machineId) return;
+        ids[r.machineId] = true;
+      });
+      return ids;
+    }
+
+    function inferJoinTimesAndRoute(rule, srcParts) {
+      const times = { setup: Number(rule.setup) || 0, prodUnit: Number(rule.prodUnit) || 0 };
+      const inferredRoute = Array.isArray(rule.route) ? rule.route.slice() : [];
+      const stopMachines = otherJoinMachineIds(rule);
+      (srcParts || parts).forEach(p => {
+        if (!rule.requiredPartNames.includes(p.name)) return;
+        const idx = (p.route || []).findIndex(s => s.machineId === rule.machineId);
+        if (idx < 0) return;
+        const step = p.route[idx];
+        if (!times.setup) times.setup = Number(step.setup) || 0;
+        if (!times.prodUnit) times.prodUnit = Number(step.prodUnit) || 0;
+        if (inferredRoute.length === 0) {
+          for (let i = idx + 1; i < p.route.length; i++) {
+            const next = p.route[i];
+            if (stopMachines[next.machineId]) break;
+            inferredRoute.push(normalizeRouteStep(next));
+          }
+        }
+      });
+      if (inferredRoute.length === 0) {
+        const known = knownBomFinishingRoute(rule);
+        if (known.length) inferredRoute.push.apply(inferredRoute, known);
+      }
+      return {
+        setup: times.setup || 1,
+        prodUnit: times.prodUnit || 1,
+        route: inferredRoute
+      };
+    }
+
+    function knownBomFinishingRoute(rule) {
+      const name = rule && rule.resultName ? String(rule.resultName).toUpperCase() : '';
+      if (name === 'CORPO COMPLETO') return machineStepsByNameIncludes(['BANHO', 'CABINE', 'ESTUFA']);
+      if (name === 'DAE JUNDIAI' || name === 'DAE JUNDIAÍ') {
+        return machineStepsByNameIncludes(['EMBALAGEM', 'EXPEDI']);
+      }
+      return [];
+    }
+
+    function machineNameOf(id) {
+      const m = (machines || []).find(x => x.id === id);
+      return m && m.name ? String(m.name).toUpperCase() : '';
+    }
+
+    function routeHasMachineName(route, needle) {
+      return (route || []).some(s => machineNameOf(s.machineId).indexOf(needle) >= 0);
+    }
+
+    /**
+     * Roteiro individual não pode ser truncado só porque outro SKU usa a mesma máquina.
+     * TAMPA, após a IMAG, ainda precisa de BANHO → CABINE → ESTUFA.
+     */
+    function ensureIndividualRouteAfterLastOp(part, route, joinMachines) {
+      const name = part && part.name ? String(part.name).toUpperCase() : '';
+      if (name !== 'TAMPA') return route || [];
+      if (routeHasMachineName(route, 'BANHO')) return route;
+      const last = (route || [])[(route || []).length - 1];
+      if (!last || machineNameOf(last.machineId).indexOf('IMAG') < 0) return route || [];
+      const extra = machineStepsByNameIncludes(['BANHO', 'CABINE', 'ESTUFA'])
+        .filter(s => s && s.machineId && !(joinMachines && joinMachines[s.machineId]));
+      return (route || []).concat(extra);
+    }
+
+    function hasRemainingIndividualSteps(part, partEvents, absMin) {
+      const routeLen = part && Array.isArray(part.route) ? part.route.length : 0;
+      if (routeLen <= 1) {
+        const lastEvt = partEvents && partEvents.length ? partEvents[partEvents.length - 1] : null;
+        if (!lastEvt) return routeLen > 0;
+        return absMin < lastEvt.end;
+      }
+      const lastEvt = partEvents && partEvents.length ? partEvents[partEvents.length - 1] : null;
+      if (!lastEvt) return routeLen > 0;
+      if (absMin < lastEvt.end) return true;
+      const etapaAtual = typeof lastEvt.stepIndex === 'number' ? lastEvt.stepIndex : (partEvents.length - 1);
+      return etapaAtual < routeLen - 1;
+    }
+
+    function pendingJoinWaitForPart(partName, absMin) {
+      const part = findSimPart(partName);
+      const routeLen = part && Array.isArray(part.route) ? part.route.length : 0;
+      const ownEvents = (rawEvents || []).filter(e => e.partName === partName && !e.isJoin);
+      if (routeLen > 0) {
+        const lastOwn = ownEvents.length ? ownEvents[ownEvents.length - 1] : null;
+        if (!lastOwn || absMin < lastOwn.end) return false;
+        const etapaAtual = typeof lastOwn.stepIndex === 'number' ? lastOwn.stepIndex + 1 : ownEvents.length;
+        if (etapaAtual < routeLen) return false;
+      }
+      return (assemblyRules || []).some(rule => {
+        const requer = joinRequerOf(rule);
+        if (!requer.some(n => String(n).toUpperCase() === String(partName).toUpperCase())) return false;
+        const joinEvt = rawEvents.find(e => e.isJoin && e.partName === rule.resultName);
+        if (!joinEvt) return true;
+        return absMin < joinEvt.setupStart;
+      });
+    }
+
+    /** JOIN clássico: dois ou mais insumos já têm a máquina da união no roteiro. */
+    function countInputsWithJoinMachine(rule, srcParts) {
+      const requer = (rule && rule.requiredPartNames) || [];
+      let n = 0;
+      requer.forEach(name => {
+        const p = (srcParts || []).find(x => x.name === name);
+        if (p && (p.route || []).some(s => s && s.machineId === rule.machineId && !isJoinStep(s))) n++;
+      });
+      return n;
+    }
+
+    function isSharedJoinMeetingPoint(rule, srcParts) {
+      return countInputsWithJoinMachine(rule, srcParts) >= 2;
+    }
+
+    function machineStepsByNameIncludes(needles) {
+      const steps = [];
+      const seen = {};
+      (machines || []).forEach(m => {
+        if (!m || !m.name || !m.id || seen[m.id]) return;
+        const upper = String(m.name).toUpperCase();
+        if (needles.some(n => upper.indexOf(n) >= 0)) {
+          seen[m.id] = true;
+          steps.push({ machineId: m.id, setup: 1, prodUnit: 1 });
+        }
+      });
+      return steps;
+    }
+
+    function buildBomRuntimeParts() {
+      normalizeAllAssemblyRules();
+      const expandedRules = (assemblyRules || []).map(rule => {
+        const inferred = inferJoinTimesAndRoute(rule, parts);
+        return {
+          ...rule,
+          setup: rule.setup || inferred.setup,
+          prodUnit: rule.prodUnit || inferred.prodUnit,
+          route: (rule.route && rule.route.length) ? rule.route : inferred.route
+        };
+      });
+      assemblyRules = expandedRules;
+
+      const claimedJoinMachines = {};
+      expandedRules.forEach(rule => {
+        if (rule && rule.machineId) claimedJoinMachines[rule.machineId] = true;
+      });
+
+      const physical = (parts || []).map(p => {
+        const consumeAt = expandedRules.find(r =>
+          (r.requiredPartNames || []).some(n => String(n).toUpperCase() === String(p.name).toUpperCase())
+        );
+        let route = (p.route || []).map(normalizeRouteStep)
+          .filter(s => s && s.machineId && !isJoinStep(s));
+        if (consumeAt) {
+          const cut = route.findIndex(s => s.machineId === consumeAt.machineId);
+          if (cut >= 0) {
+            // Ponto de encontro (vários insumos na mesma máquina) = JOIN, não produção individual.
+            // Se só ESTE insumo tem a máquina no roteiro (ex: MADEIRITE na MONTAGEM),
+            // a etapa individual permanece; o JOIN fica no SKU virtual.
+            if (isSharedJoinMeetingPoint(consumeAt, parts)) {
+              route = route.slice(0, cut);
+            } else {
+              route = route.slice(0, cut + 1);
+            }
+          }
+        }
+        route = ensureIndividualRouteAfterLastOp(p, route, claimedJoinMachines);
+        return {
+          name: p.name,
+          thickness: p.thickness,
+          qty: p.qty,
+          route,
+          isVirtual: false
+        };
+      });
+
+      const virtual = expandedRules.map(rule => {
+        const joinStep = {
+          machineId: rule.machineId,
+          setup: rule.setup || 1,
+          prodUnit: rule.prodUnit || 1,
+          juncao: {
+            requer: (rule.requiredPartNames || []).slice(),
+            maquina: rule.machineId
+          }
+        };
+        return {
+          name: rule.resultName,
+          thickness: 0,
+          qty: rule.qty || 1,
+          route: [joinStep].concat(rule.route || []),
+          isVirtual: true
+        };
+      });
+
+      bomRuntimeParts = physical.concat(virtual);
+      return bomRuntimeParts;
+    }
+
+    function entityRouteDone(name, nextStepIndex, list) {
+      const ent = findSimPart(name, list);
+      const len = ent && Array.isArray(ent.route) ? ent.route.length : 0;
+      return (nextStepIndex[name] || 0) >= len;
+    }
+
+    function joinInputsCompleted(requer, nextStepIndex, list) {
+      if (!requer || requer.length === 0) return true;
+      return requer.every(name => entityRouteDone(name, nextStepIndex, list));
+    }
+
+    function joinAvailableAt(requer, partReady) {
+      let t = 0;
+      (requer || []).forEach(name => {
+        const end = partReady[name] || 0;
+        if (end > t) t = end;
+      });
+      return t;
+    }
+
     /** IDs de máquinas citadas em roteiros, agrupamentos ou uniões. */
     function collectUsedMachineIds(srcParts, srcGroups, srcAsms) {
       const ids = {};
@@ -275,6 +568,10 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       });
       (srcAsms || []).forEach(a => {
         if (a && a.machineId) ids[a.machineId] = true;
+        (a.route || []).forEach(step => {
+          if (step && step.machineId) ids[step.machineId] = true;
+        });
+        if (a.juncao && a.juncao.maquina) ids[a.juncao.maquina] = true;
       });
       return ids;
     }
@@ -388,6 +685,17 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
     }
 
     function getPartReadyForMachine(partName, machineId, readyMap) {
+      const simP = findSimPart(partName);
+      if (simP) {
+        const asmIdx = simP.route.findIndex(s => s.machineId === machineId);
+        if (asmIdx > 0) {
+          const prevStep = simP.route[asmIdx - 1];
+          return readyMap[`${partName}_${prevStep.machineId}`] || 0;
+        }
+        if (asmIdx === 0 && isJoinStep(simP.route[0])) {
+          return 0;
+        }
+      }
       const part = parts.find(p => p.name === partName);
       if (!part) {
         const prevAsm = assemblyRules.find(a => a.resultName === partName);
@@ -456,31 +764,38 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
         prodTime: fields.prodTime,
         waitingForAssembly: !!fields.waitingForAssembly,
         isLastStep: stepIndex === part.route.length - 1,
-        grouped: !!fields.grouped
+        grouped: !!fields.grouped,
+        isJoin: !!fields.isJoin,
+        skuName: fields.skuName || part.name,
+        requer: fields.requer || []
       };
     }
 
-    function resolveAssemblyWait(part, step, arrivalTime, readyMap) {
-      const assemblyRule = assemblyRules.find(a =>
-        a.machineId === step.machineId && a.requiredPartNames.includes(part.name)
-      );
-      if (!assemblyRule) {
-        return { waitingForAssembly: false, assemblyGate: arrivalTime, assemblyRule: null };
+    function resolveAssemblyWait(part, step, arrivalTime, readyMap, partReady, nextStepIndex) {
+      // Etapa individual (mesmo na máquina do JOIN) nunca espera união.
+      // "Aguardando Outras Peças" só no passo com juncao, após o roteiro próprio.
+      if (!isJoinStep(step)) {
+        return { waitingForAssembly: false, assemblyGate: arrivalTime, assemblyRule: null, requer: [] };
       }
-      let waitAssemblyUntil = 0;
-      assemblyRule.requiredPartNames.forEach(reqName => {
-        const t = (reqName === part.name)
-          ? arrivalTime
-          : getPartReadyForMachine(reqName, step.machineId, readyMap);
-        if (t > waitAssemblyUntil) waitAssemblyUntil = t;
-      });
-      return { waitingForAssembly: true, assemblyGate: waitAssemblyUntil, assemblyRule };
+      const requer = joinRequerOf(step);
+      const gate = joinAvailableAt(requer, partReady || {});
+      return {
+        waitingForAssembly: true,
+        assemblyGate: gate,
+        assemblyRule: assemblyRules.find(a => a.resultName === part.name && a.machineId === step.machineId) || {
+          resultName: part.name,
+          machineId: step.machineId,
+          requiredPartNames: requer
+        },
+        requer
+      };
     }
 
-    function collectGroupingMembers(groupRule, readyMap, partReady) {
+    function collectGroupingMembers(groupRule, readyMap, partReady, nextStepIndex) {
       const members = [];
+      const simList = getSimParts();
       groupRule.partNames.forEach(name => {
-        const part = parts.find(p => p.name === name);
+        const part = findSimPart(name, simList);
         if (!part) return;
         const stepIndex = part.route.findIndex(s => s.machineId === groupRule.machineId);
         if (stepIndex < 0) return;
@@ -488,7 +803,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
         const arrivalTime = (partReady && Object.prototype.hasOwnProperty.call(partReady, part.name))
           ? partReady[part.name]
           : getPartReadyForMachine(part.name, step.machineId, readyMap);
-        const asm = resolveAssemblyWait(part, step, arrivalTime, readyMap);
+        const asm = resolveAssemblyWait(part, step, arrivalTime, readyMap, partReady, nextStepIndex);
         members.push({
           part,
           step,
@@ -511,8 +826,8 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
      * e produção simultânea a partir do fim desse setup.
      * O término de cada peça segue o volume individual (prodUnit * qty * caixas).
      */
-    function scheduleGroupedMachineBatch(groupRule, readyTimeOfParts, machineFreeUntil, machineOperated, passEvents, passMaint, groupedScheduled, partReady) {
-      const members = collectGroupingMembers(groupRule, readyTimeOfParts, partReady);
+    function scheduleGroupedMachineBatch(groupRule, readyTimeOfParts, machineFreeUntil, machineOperated, passEvents, passMaint, groupedScheduled, partReady, nextStepIndex) {
+      const members = collectGroupingMembers(groupRule, readyTimeOfParts, partReady, nextStepIndex);
       if (members.length === 0) return;
       const machineId = groupRule.machineId;
 
@@ -558,39 +873,23 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       return Object.prototype.hasOwnProperty.call(readyMap, key);
     }
 
-    function assemblyDependenciesMet(part, step, readyMap) {
-      const assemblyRule = assemblyRules.find(a =>
-        a.machineId === step.machineId && a.requiredPartNames.includes(part.name)
-      );
-      if (!assemblyRule) return true;
-      return assemblyRule.requiredPartNames.every(reqName => {
-        if (reqName === part.name) return true;
-        const reqPart = parts.find(p => p.name === reqName);
-        if (reqPart) {
-          const asmIdx = reqPart.route.findIndex(s => s.machineId === step.machineId);
-          if (asmIdx < 0) return true;
-          if (asmIdx === 0) return true;
-          const prevStep = reqPart.route[asmIdx - 1];
-          return readyMapHas(readyMap, `${reqName}_${prevStep.machineId}`);
-        }
-        const prevAsm = assemblyRules.find(a => a.resultName === reqName);
-        if (prevAsm) {
-          return readyMapHas(readyMap, `${reqName}_${prevAsm.machineId}`);
-        }
-        return true;
-      });
+    function assemblyDependenciesMet(part, step, readyMap, partReady, nextStepIndex) {
+      if (!isJoinStep(step)) return true;
+      return joinInputsCompleted(joinRequerOf(step), nextStepIndex || {}, getSimParts());
     }
 
     function groupRepresentativeName(groupRule) {
+      const simList = getSimParts();
       for (let i = 0; i < groupRule.partNames.length; i++) {
-        if (parts.some(p => p.name === groupRule.partNames[i])) return groupRule.partNames[i];
+        if (simList.some(p => p.name === groupRule.partNames[i])) return groupRule.partNames[i];
       }
       return groupRule.partNames[0];
     }
 
     function allGroupMembersAtGroupedStep(groupRule, nextStepIndex) {
+      const simList = getSimParts();
       return groupRule.partNames.every(name => {
-        const part = parts.find(p => p.name === name);
+        const part = findSimPart(name, simList);
         if (!part) return true;
         const si = part.route.findIndex(s => s.machineId === groupRule.machineId);
         if (si < 0) return true;
@@ -619,6 +918,8 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       machineFreeUntil[step.machineId] = end;
       machineOperated[step.machineId] = (machineOperated[step.machineId] || 0) + setupTime + prodTime;
       partReady[part.name] = end;
+      // Avanço de etapa: se ainda há roteiro, a próxima máquina entra em FILA/PRODUÇÃO.
+      // CONCLUÍDO / Aguardando União só após a última etapa individual (chão).
       nextStepIndex[part.name] = stepIndex + 1;
       readyTimeOfParts[`${part.name}_${step.machineId}`] = end;
 
@@ -638,7 +939,10 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
         end,
         setupTime,
         prodTime,
-        waitingForAssembly
+        waitingForAssembly,
+        isJoin: isJoinStep(step),
+        skuName: part.name,
+        requer: joinRequerOf(step)
       }));
     }
 
@@ -650,20 +954,23 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
      */
     function collectScheduleCandidates(nextStepIndex, partReady, readyTimeOfParts, machineFreeUntil, groupedScheduled, ignoreAssembly) {
       const candidates = [];
-      parts.forEach((part, partIdx) => {
+      const simList = getSimParts();
+      simList.forEach((part, partIdx) => {
         const stepIndex = nextStepIndex[part.name] || 0;
         if (stepIndex >= part.route.length) return;
         const step = part.route[stepIndex];
         const groupRule = findGroupRuleForStep(part, step);
+        const joinBlocked = isJoinStep(step) && !joinInputsCompleted(joinRequerOf(step), nextStepIndex, simList);
+        if (joinBlocked) return;
 
         if (groupRule) {
           if (groupedScheduled[`${part.name}_${step.machineId}`]) return;
           if (!allGroupMembersAtGroupedStep(groupRule, nextStepIndex)) return;
           if (part.name !== groupRepresentativeName(groupRule)) return;
 
-          const members = collectGroupingMembers(groupRule, readyTimeOfParts, partReady);
+          const members = collectGroupingMembers(groupRule, readyTimeOfParts, partReady, nextStepIndex);
           if (members.length === 0) return;
-          if (!ignoreAssembly && members.some(m => !assemblyDependenciesMet(m.part, m.step, readyTimeOfParts))) return;
+          if (!ignoreAssembly && members.some(m => !assemblyDependenciesMet(m.part, m.step, readyTimeOfParts, partReady, nextStepIndex))) return;
 
           const readyForMachine = members.reduce((max, m) => Math.max(max, m.readyForMachine), 0);
           const setupStart = snapToProductive(Math.max(machineFreeUntil[step.machineId] || 0, readyForMachine));
@@ -680,10 +987,31 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
           return;
         }
 
-        if (!ignoreAssembly && !assemblyDependenciesMet(part, step, readyTimeOfParts)) return;
+        if (isJoinStep(step)) {
+          const requer = joinRequerOf(step);
+          const arrivalTime = joinAvailableAt(requer, partReady);
+          const asm = resolveAssemblyWait(part, step, arrivalTime, readyTimeOfParts, partReady, nextStepIndex);
+          const readyForMachine = Math.max(arrivalTime, asm.assemblyGate);
+          const firstArrival = (requer || []).reduce((min, n) => Math.min(min, partReady[n] != null ? partReady[n] : min), readyForMachine);
+          const setupStart = snapToProductive(Math.max(readyForMachine, machineFreeUntil[step.machineId] || 0));
+          candidates.push({
+            type: 'single',
+            part,
+            step,
+            stepIndex,
+            partIdx,
+            arrivalTime: firstArrival,
+            asm,
+            setupStart,
+            readyForMachine
+          });
+          return;
+        }
+
+        if (!ignoreAssembly && !assemblyDependenciesMet(part, step, readyTimeOfParts, partReady, nextStepIndex)) return;
 
         const arrivalTime = partReady[part.name] || 0;
-        const asm = resolveAssemblyWait(part, step, arrivalTime, readyTimeOfParts);
+        const asm = resolveAssemblyWait(part, step, arrivalTime, readyTimeOfParts, partReady, nextStepIndex);
         const readyForMachine = Math.max(arrivalTime, asm.assemblyGate);
         const setupStart = snapToProductive(Math.max(readyForMachine, machineFreeUntil[step.machineId] || 0));
         candidates.push({
@@ -704,6 +1032,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
     function scheduleProductionEvents() {
       const machineFreeUntil = {};
       const machineOperated = {};
+      const simParts = buildBomRuntimeParts();
       const simMachines = getSimulationMachines();
       simMachines.forEach(m => {
         machineFreeUntil[m.id] = 0;
@@ -716,12 +1045,12 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
       const groupedScheduled = {};
       const partReady = {};
       const nextStepIndex = {};
-      parts.forEach(p => {
+      simParts.forEach(p => {
         partReady[p.name] = 0;
         nextStepIndex[p.name] = 0;
       });
 
-      const totalSteps = parts.reduce((n, p) => n + p.route.length, 0);
+      const totalSteps = simParts.reduce((n, p) => n + p.route.length, 0);
       let scheduledCount = 0;
       let ignoreAssembly = false;
 
@@ -754,7 +1083,8 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
             events,
             maintEvents,
             groupedScheduled,
-            partReady
+            partReady,
+            nextStepIndex
           );
           chosen.groupRule.partNames.forEach(name => {
             const evt = groupedScheduled[`${name}_${chosen.groupRule.machineId}`];
@@ -889,7 +1219,7 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
           }
         });
 
-        parts.forEach(part => {
+        getSimParts().forEach(part => {
           const partEvents = rawEvents.filter(e => e.partName === part.name);
           let row = null;
 
@@ -911,6 +1241,8 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
                 remaining = remainingMinutesLabel(absMin, setupEnd);
               } else if (evt.waitingForAssembly && absMin < evt.assemblyGate) {
                 status = isLunchTime ? 'lunch' : 'waiting';
+              } else if (evt.isJoin && absMin < evt.setupStart) {
+                status = isLunchTime ? 'lunch' : 'ready';
               } else {
                 status = isLunchTime ? 'lunch' : 'fila';
               }
@@ -942,6 +1274,29 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
                 status: isLunchTime ? 'lunch' : 'fila',
                 remaining: '-'
               };
+            } else if (hasRemainingIndividualSteps(part, partEvents, absMin)) {
+              const lastDone = lastEvt;
+              const nextStep = lastDone && typeof lastDone.stepIndex === 'number'
+                ? part.route[lastDone.stepIndex + 1]
+                : (part.route || [])[Math.max(0, partEvents.length)];
+              const mObj = nextStep ? machines.find(m => m.id === nextStep.machineId) : null;
+              row = {
+                name: part.name,
+                sector: mObj ? mObj.name : '-',
+                operator: getMachineOperatorLabel(mObj),
+                status: isLunchTime ? 'lunch' : 'fila',
+                remaining: '-'
+              };
+            } else if (pendingJoinWaitForPart(part.name, absMin)) {
+              const joinRule = (assemblyRules || []).find(r => joinRequerOf(r).includes(part.name));
+              const mObj = joinRule ? machines.find(m => m.id === joinRule.machineId) : null;
+              row = {
+                name: part.name,
+                sector: mObj ? mObj.name : '-',
+                operator: getMachineOperatorLabel(mObj),
+                status: isLunchTime ? 'lunch' : 'waiting',
+                remaining: '-'
+              };
             } else if (lastEvt && absMin >= lastEvt.end) {
               const mObj = machines.find(m => m.id === lastEvt.machineId);
               row = {
@@ -969,38 +1324,6 @@ const MINUTES_PER_DAY = TOTAL_SHIFT_DURATION; // 588
               operator: getMachineOperatorLabel(mObj),
               status: isLunchTime ? 'lunch' : 'maintenance',
               remaining: remainingMinutesLabel(absMin, me.end)
-            });
-          }
-        });
-
-        assemblyRules.forEach(rule => {
-          const asmEvents = rawEvents.filter(e =>
-            rule.requiredPartNames.includes(e.partName) && e.machineId === rule.machineId
-          );
-          if (asmEvents.length === 0) return;
-          const asmEnd = Math.max(...asmEvents.map(e => e.end));
-          const asmStart = Math.min(...asmEvents.map(e => e.setupStart));
-          const mObj = machines.find(m => m.id === rule.machineId);
-
-          if (absMin >= asmStart && absMin < asmEnd) {
-            const active = asmEvents.find(e => absMin >= e.setupStart && absMin < e.end);
-            let status = 'working';
-            let remaining = '-';
-            if (active) {
-              if (absMin >= active.prodStart) {
-                status = isLunchTime ? 'lunch' : 'working';
-                remaining = remainingMinutesLabel(absMin, active.end);
-              } else {
-                status = isLunchTime ? 'lunch' : 'setup';
-                remaining = remainingMinutesLabel(absMin, active.prodStart);
-              }
-            }
-            snapshot.floorRows.push({
-              name: rule.resultName,
-              sector: mObj ? mObj.name : '-',
-              operator: getMachineOperatorLabel(mObj),
-              status,
-              remaining
             });
           }
         });

@@ -277,7 +277,7 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
         parts: cloneJson(parts, []),
         employees: cloneJson(employees, []),
         groupingRules: cloneJson(groupingRules, []),
-        assemblyRules: cloneJson(assemblyRules, []),
+        assemblyRules: (assemblyRules || []).map(normalizeAssemblyRule),
         startDate: document.getElementById('start-date').value || startDateStr || todayISODate(),
         boxesQty: getBoxesQtyFromInput()
       };
@@ -358,7 +358,7 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
       );
       parts = cloneJson(proj.parts || [], []);
       groupingRules = cloneJson(proj.groupingRules || [], []);
-      assemblyRules = cloneJson(proj.assemblyRules || [], []);
+      assemblyRules = (proj.assemblyRules || []).map(normalizeAssemblyRule);
       currentBuildingRoute = [];
       editingPartIndex = -1;
       editingMachineIndex = -1;
@@ -478,6 +478,9 @@ const DB_STORAGE_KEY = 'simulafab_projects_v4';
         }
         if (p && !Array.isArray(p.employees)) {
           p.employees = [];
+        }
+        if (p && Array.isArray(p.assemblyRules)) {
+          p.assemblyRules = p.assemblyRules.map(normalizeAssemblyRule);
         }
       });
 

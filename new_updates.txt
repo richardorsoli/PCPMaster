@@ -134,6 +134,47 @@ REGRAS CRÍTICAS:
 - Mantenha a arquitetura Vanilla JS (scripts clássicos simulation.js -> database.js -> ui.js -> app.js). Não usar ESM/bundlers.
 - Preserve o funcionamento do despacho job-shop, pausa do almoço (12:00-13:00) e agrupamento de corte já consolidados.
 
+SPRINT 9 (CONCLUÍDO)
+Estamos iniciando a **Sprint 9** do SimulaFab v1.5.0, focada em transformar a estrutura de roteiros de uma linha reta simples para uma **Estrutura de Produto em Árvore (BOM - Bill of Materials)** com eventos de **Junção (`JOIN`) e Transformação de SKU**.
+
+### CONTEXTO DA REGRA DE NEGÓCIO (Exemplo DAE JUNDIAI):
+1. **Corte Inicial (Nesting/Agrupamento):** Batedor, Corpo, Suporte e Laterais são cortados juntos.
+2. **Processamento Individual:** Cada peça segue para sua respectiva dobra em tempos e máquinas distintas.
+3. **Ponto de Espera / Sincronismo (JOIN 1):**
+   - `Corpo` (após dobra) aguarda `Laterais` na máquina de Martelamento.
+   - A tarefa de martelamento só pode iniciar quando AMBOS estiverem prontos: `DataInicioDisponivel = MAX(Fim(Corpo), Fim(Laterais))`.
+   - Ao concluir, o conjunto se transforma na entidade `CORPO\_MARTELAMENTO`.
+4. **Segunda Junção (JOIN 2):**
+   - `CORPO\_MARTELAMENTO` aguarda `Suporte` na Solda MIG.
+   - O Suporte NÃO possui tarefa individual na Solda MIG; sua presença é um insumo exigido pela tarefa do conjunto.
+   - Ao concluir a Solda MIG, vira a entidade `SOLDA\_CORPO`.
+5. **Terceira Junção e Novo Roteiro (JOIN 3 + Sub-roteiro):**
+   - `SOLDA\_CORPO` aguarda `Batedor` na Solda Ponto C30.
+   - Ao concluir, se transforma na entidade `CORPO\_COMPLETO`.
+   - O `CORPO\_COMPLETO` ganha um novo roteiro sequencial próprio: **Banho -> Cabine -> Estufa**.
+6. **Junção Final (JOIN 4):**
+   - `CORPO\_COMPLETO` aguarda `Tampa` (que possui seu próprio roteiro prévio) na Montagem Final para virar o produto final `DAE JUNDIAI`, avançando para **Embalagem**.
+
+---
+
+### O QUE DEVE SER IMPLEMENTADO / AJUSTADO NO CÓDIGO:
+
+1. **Atualização da Estrutura de Dados (BOM + Roteiros):**
+   - Modifique o modelo de dados dos projetos/jobs para suportar nós de junção (`juncao: { requer: \[...], maquina: "..." }`) e subconjuntos descendentes.
+   - Garanta que peças como o `Suporte` não fiquem com "tarefas fantasma" isoladas, figurando apenas como dependências (`requer`) na operação de junção.
+
+2. **Lógica de Liberação no Motor de Agendamento (Dispatch Engine):**
+   - Na fila de priorização das máquinas de junção/montagem/solda, uma tarefa só muda seu status para `PRONTA\_PARA\_PROGRAMAR` se **todos** os itens da lista `requer` já tiverem suas datas/horários de término concluídos.
+   - Respeite o cálculo da data de início: `DataInicioDisponivel = MAX(Fim(Insumo\_1), Fim(Insumo\_2), ..., Fim(Insumo\_N))`.
+
+3. **Troca de Identidade e Disparo de Sub-Roteiros:**
+   - Ao finalizar a operação de junção, o motor deve consumir/dar baixa nos insumos primários e criar dinamicamente a nova entidade (ex: `CORPO\_COMPLETO`), engatando-a no seu novo pipeline de roteiro (Ex: Banho -> Cabine -> Estufa).
+
+4. **Preservação e Persistência:**
+   - Atualize a rotina de salvar/carregar no `localStorage` (`banco\_dados.json`) para que a estrutura do `DAE JUNDIAI` e outros projetos reflitam esses novos parâmetros sem quebrar a união do Catálogo Global Mestre implementada na Sprint 8.
+
+Por favor, apresente as alterações nos arquivos correspondentes (módulos do motor, estrutura de dados e renderizadores) mantendo o alinhamento com os recursos atuais (pausa do almoço 12:00-13:00 e despacho job-shop).
+
 
 
 ========================================
@@ -142,55 +183,32 @@ REGRAS CRÍTICAS:
 [Sua Cabeça] ──> [Bloco de Notas] ──> [Trello: Backlog] ──> [Trello: Sprint A Fazer] ──> [Cursor + Git]
  (Ideia Solta)     (Rascunho Rápido)   (Ideias Organizadas)    (Prompt Formatado)        (Código Rodando)
 
-SPRINT 4
- - Um testador de trajetos de qual é a melhor ordem de start de peças para gerar menos tempo ocioso.
+SPRINT 4 - TESTER
+ - Um testador de trajetos de qual é a melhor ordem de start de peças para gerar menos tempo ocioso, porque eu penso em achar a melhor disposição de peças de cada projeto para depois colocar dois ou mais projetos para testar o andamento e comportamento na linha de produção (sprint 10).
 
-SPRINT 7
+SPRINT 7 - ANALYTICS
 1. SAI NO RELATORIO A ANALISE DE EFICIENCIA
 2. GERAR NO RELATÓRIO O GARFICO DE GANTT DO PROJETO
 3. GERAR RELATORIO DE HORA TRABALHADA POR FUNCIONARIO
 4. EDIÇÃO DAS ORDENS DO ROTEIRO DAS PEÇAS
+5. EM ANÁLISE DE EFICIENCIA NA LEGENDA MOSTRAR A SOMATÓRIA DE TEMPO POR EXEMPLO EM SETUP AO LADO DO QUADRADO VERDE QUANTOS MINUTOS TEM DE SETUP NO PROJETO, ASSIM POR DIANTE. 
+6. PERTMITIR ALTERAR A QUANTIDADE DE CAIXAS E RECALCULAR NA PAGINA DE SIMULAÇÃO MESMO
+7. AO GERAR RELATÓRIO PDF SAIR COM NOME DO PROJETO E QTDE DE CAIXAS
+8. PODE ESCOLHER A HORA DE INÍCIO DENTRO DOS HORAS QUE TEM NO TURNO, EXEMPLO: O TURNO INICIA AS 7H30, PARA 12H, VOLTA 13H, ENCERRA 17H18. SE EU QUISER RODAR UMA SIMULAÇÃO AS 10H EU CONSIGO, 11H30, ETC...
+9. QUANTO A SIMULAÇÃO TIVER MAIS DE 1 DIA AO LADO DA BARRA DE ROLAR, COLOCAR UM MENU SUSPENSO COM AS DATAS, E AO SELECIONAR ALGUMA DATA, A BARRA DEVE VOLTAR PARA O INÍCIO AUTOMATICAMENTE.
+10. PODE ALTERAR A ORDEM DE EXECUÇÃO DAS PEÇAS E DOS ROTEIROS DENTRO DAS PEÇAS CLICANDO NELAS E ARRASTANDO ENTRE ELAS.
 
-SPRINT 9
-Estamos iniciando a **Sprint 9** do SimulaFab v1.5.0, focada em transformar a estrutura de roteiros de uma linha reta simples para uma **Estrutura de Produto em Árvore (BOM - Bill of Materials)** com eventos de **Junção (`JOIN`) e Transformação de SKU**.
+SPRINT 10 - PLANO DE PRODUCAO
+1. UM MÓDULO QUE A PARTIR DOS PROJETOS JÁ CRIADOS PODEMOS ESCOLHER A DATA E HORA DE INÍCIO E A ORDEM E QUANTIDADE DOS PROJETOS QUE VÃO SER EXECUTADOS NA ORDEM PARA VERIFICAR O COMPORTAMENTO DAS MOVIMENTAÇÕES DE PEÇAS E FUNCIONÁRIOS NAS MÁQUINAS E DAR UMA PREVISÃO DE SAÍDA, tem casos que eu quero ver se entrar um projeto DAE JUNDIAI agora na linha de produção, com a caixa comando já iniciada, como será o andamento e a quando será a finalização dos produtos
 
-### CONTEXTO DA REGRA DE NEGÓCIO (Exemplo DAE JUNDIAI):
-1. **Corte Inicial (Nesting/Agrupamento):** Batedor, Corpo, Suporte e Laterais são cortados juntos.
-2. **Processamento Individual:** Cada peça segue para sua respectiva dobra em tempos e máquinas distintas.
-3. **Ponto de Espera / Sincronismo (JOIN 1):** 
-   - `Corpo` (após dobra) aguarda `Laterais` na máquina de Martelamento.
-   - A tarefa de martelamento só pode iniciar quando AMBOS estiverem prontos: `DataInicioDisponivel = MAX(Fim(Corpo), Fim(Laterais))`.
-   - Ao concluir, o conjunto se transforma na entidade `CORPO_MARTELAMENTO`.
-4. **Segunda Junção (JOIN 2):** 
-   - `CORPO_MARTELAMENTO` aguarda `Suporte` na Solda MIG.
-   - O Suporte NÃO possui tarefa individual na Solda MIG; sua presença é um insumo exigido pela tarefa do conjunto.
-   - Ao concluir a Solda MIG, vira a entidade `SOLDA_CORPO`.
-5. **Terceira Junção e Novo Roteiro (JOIN 3 + Sub-roteiro):** 
-   - `SOLDA_CORPO` aguarda `Batedor` na Solda Ponto C30.
-   - Ao concluir, se transforma na entidade `CORPO_COMPLETO`.
-   - O `CORPO_COMPLETO` ganha um novo roteiro sequencial próprio: **Banho -> Cabine -> Estufa**.
-6. **Junção Final (JOIN 4):**
-   - `CORPO_COMPLETO` aguarda `Tampa` (que possui seu próprio roteiro prévio) na Montagem Final para virar o produto final `DAE JUNDIAI`, avançando para **Embalagem**.
+SPRINT 11 - ESTUFA
+1. A MÁQUINA/TAREFA ESTUFA TEM UMA CAPACIDADE DE 2,00 x 1,75 x 3,85 metros (altura x largura x profundidade), o ideal é quando o pedido é muito grande a estufa receba a quantidade de peças que cabem nela, feche pelo período de 1h (30 min de queima + 30 de esfriamento) para descarregar as peças e poder enchê-la novamente e caso não de uma estufa cheia ou fecha ela com a capacidade que tiver, ou será preciso acrescentar um outro pedido ou pedaço de outro pedido que está vindo na sequência para também dar uma outra estufada
+2. quero que conte a quantidade de estufadas.
+3. pelo visto ao criar as peças que passem pela estufa preciso acrescentar altura x largura x profundidade da peça e o espaçamento ou quantas vão por fardo para ele programar a carga.
 
----
 
-### O QUE DEVE SER IMPLEMENTADO / AJUSTADO NO CÓDIGO:
-
-1. **Atualização da Estrutura de Dados (BOM + Roteiros):**
-   - Modifique o modelo de dados dos projetos/jobs para suportar nós de junção (`juncao: { requer: [...], maquina: "..." }`) e subconjuntos descendentes.
-   - Garanta que peças como o `Suporte` não fiquem com "tarefas fantasma" isoladas, figurando apenas como dependências (`requer`) na operação de junção.
-
-2. **Lógica de Liberação no Motor de Agendamento (Dispatch Engine):**
-   - Na fila de priorização das máquinas de junção/montagem/solda, uma tarefa só muda seu status para `PRONTA_PARA_PROGRAMAR` se **todos** os itens da lista `requer` já tiverem suas datas/horários de término concluídos.
-   - Respeite o cálculo da data de início: `DataInicioDisponivel = MAX(Fim(Insumo_1), Fim(Insumo_2), ..., Fim(Insumo_N))`.
-
-3. **Troca de Identidade e Disparo de Sub-Roteiros:**
-   - Ao finalizar a operação de junção, o motor deve consumir/dar baixa nos insumos primários e criar dinamicamente a nova entidade (ex: `CORPO_COMPLETO`), engatando-a no seu novo pipeline de roteiro (Ex: Banho -> Cabine -> Estufa).
-
-4. **Preservação e Persistência:**
-   - Atualize a rotina de salvar/carregar no `localStorage` (`banco_dados.json`) para que a estrutura do `DAE JUNDIAI` e outros projetos reflitam esses novos parâmetros sem quebrar a união do Catálogo Global Mestre implementada na Sprint 8.
-
-Por favor, apresente as alterações nos arquivos correspondentes (módulos do motor, estrutura de dados e renderizadores) mantendo o alinhamento com os recursos atuais (pausa do almoço 12:00-13:00 e despacho job-shop).
+SPRINT 12 - JUST IN TIME
+1. POR EXISTIR PEÇAS QUE VÃO DIRETO DO CORTE OU DA DOBRA PARA MONTAGEM, ESCOLHER UM MOMENTO MAIS "CASADO" QUE ELA SÓ INICIA QUANDO ESTIVER PERTO DE OUTRAS PEÇAS CHEGAREM NO SETOR. EXEMPLO A GUILHOTINA SÓ INICIA QUANDO O TEMPO NECESSÁRIO DELA ATÉ ENCERRAR FOR CASAR COM O ENCERRAMENTO DA MONTAGEM.
 
 ========================================
       INICIAR NOVO CHAT NO CURSOR
