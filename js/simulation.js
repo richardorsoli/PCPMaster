@@ -1,6 +1,6 @@
-/* SimulaFab v1.6.1 — Motor de simulação, calendário e manutenção preventiva */
+/* SimulaFab v1.6.2 — Motor de simulação, calendário e manutenção preventiva */
 
-const APP_VERSION = '1.6.1';
+const APP_VERSION = '1.6.2';
 
 // --- PARÂMETROS DO TURNO ---
 const SHIFT_START_MINUTES = 7 * 60 + 30;

@@ -1,4 +1,4 @@
-/* SimulaFab v1.6.1 — Manipulação de DOM, timeline, relógio, tabelas e PDF */
+/* SimulaFab v1.6.2 — Manipulação de DOM, timeline, relógio, tabelas e PDF */
 
     // --- EXEMPLO ---
     function loadExampleAndNavigate() {
@@ -450,6 +450,148 @@
     }
 
     // --- PEÇAS ---
+    const dndState = { kind: '', from: -1, partIdx: -1 };
+
+    function persistActiveProjectState() {
+      if (currentProjectName && typeof persistSavedProject === 'function') {
+        persistSavedProject(currentProjectName);
+      }
+    }
+
+    function moveArrayItem(arr, fromIdx, toIdx) {
+      if (!arr || fromIdx === toIdx) return false;
+      if (!Number.isInteger(fromIdx) || !Number.isInteger(toIdx)) return false;
+      if (fromIdx < 0 || toIdx < 0 || fromIdx >= arr.length || toIdx >= arr.length) return false;
+      const item = arr.splice(fromIdx, 1)[0];
+      arr.splice(toIdx, 0, item);
+      return true;
+    }
+
+    function dropDestinationIndex(fromIdx, targetIdx, placeAfter) {
+      let dest = placeAfter ? targetIdx + 1 : targetIdx;
+      if (fromIdx < dest) dest -= 1;
+      return dest;
+    }
+
+    function clearDragMarks(root) {
+      if (!root) return;
+      root.querySelectorAll('.is-dragging, .drag-over-before, .drag-over-after').forEach(el => {
+        el.classList.remove('is-dragging', 'drag-over-before', 'drag-over-after');
+      });
+    }
+
+    function bindSortable(container, options) {
+      if (!container) return;
+      const boundKey = 'dnd' + options.kind.replace(/[^a-zA-Z0-9]/g, '');
+      if (container.dataset[boundKey]) return;
+      container.dataset[boundKey] = '1';
+      const itemSelector = options.itemSelector;
+      const axis = options.axis || 'y';
+
+      container.addEventListener('dragstart', (e) => {
+        const item = e.target.closest(itemSelector);
+        if (!item || !container.contains(item)) return;
+        if (options.ignoreSelector && e.target.closest(options.ignoreSelector)) {
+          e.preventDefault();
+          return;
+        }
+        if (typeof options.allowDrag === 'function' && !options.allowDrag(e, item)) {
+          e.preventDefault();
+          return;
+        }
+        dndState.kind = options.kind;
+        dndState.from = Number(item.getAttribute(options.indexAttr));
+        dndState.partIdx = options.partIndexAttr
+          ? Number(item.getAttribute(options.partIndexAttr))
+          : -1;
+        item.classList.add('is-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', String(dndState.from));
+        if (e.stopPropagation) e.stopPropagation();
+      });
+
+      container.addEventListener('dragover', (e) => {
+        if (dndState.kind !== options.kind) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (e.stopPropagation) e.stopPropagation();
+        const item = e.target.closest(itemSelector);
+        container.querySelectorAll(itemSelector).forEach(el => {
+          el.classList.remove('drag-over-before', 'drag-over-after');
+        });
+        if (!item || item.classList.contains('is-dragging')) return;
+        const box = item.getBoundingClientRect();
+        const mid = axis === 'x' ? box.left + box.width / 2 : box.top + box.height / 2;
+        const pos = axis === 'x' ? e.clientX : e.clientY;
+        item.classList.add(pos < mid ? 'drag-over-before' : 'drag-over-after');
+      });
+
+      container.addEventListener('drop', (e) => {
+        if (dndState.kind !== options.kind) return;
+        e.preventDefault();
+        if (e.stopPropagation) e.stopPropagation();
+        const item = e.target.closest(itemSelector);
+        const fromIdx = dndState.from;
+        let toIdx = fromIdx;
+        if (item && !item.classList.contains('is-dragging')) {
+          const targetIdx = Number(item.getAttribute(options.indexAttr));
+          const placeAfter = item.classList.contains('drag-over-after');
+          toIdx = dropDestinationIndex(fromIdx, targetIdx, placeAfter);
+        }
+        const partIdx = dndState.partIdx;
+        clearDragMarks(container);
+        dndState.kind = '';
+        dndState.from = -1;
+        dndState.partIdx = -1;
+        if (fromIdx !== toIdx) options.onReorder(fromIdx, toIdx, partIdx);
+      });
+
+      container.addEventListener('dragend', () => {
+        clearDragMarks(container);
+        dndState.kind = '';
+        dndState.from = -1;
+        dndState.partIdx = -1;
+      });
+    }
+
+    function reorderPrimaryParts(fromIdx, toIdx) {
+      if (!moveArrayItem(parts, fromIdx, toIdx)) return;
+      if (editingPartIndex === fromIdx) editingPartIndex = toIdx;
+      else if (fromIdx < editingPartIndex && toIdx >= editingPartIndex) editingPartIndex -= 1;
+      else if (fromIdx > editingPartIndex && toIdx <= editingPartIndex) editingPartIndex += 1;
+      persistActiveProjectState();
+      renderConfigUI();
+    }
+
+    function reorderSavedPartRoute(partIdx, fromIdx, toIdx) {
+      const part = parts[partIdx];
+      if (!part || !Array.isArray(part.route)) return;
+      if (!moveArrayItem(part.route, fromIdx, toIdx)) return;
+      if (editingPartIndex === partIdx) {
+        currentBuildingRoute = part.route.map(s => ({ ...s }));
+      }
+      persistActiveProjectState();
+      renderConfigUI();
+    }
+
+    function reorderBuildingRouteSteps(fromIdx, toIdx) {
+      if (!moveArrayItem(currentBuildingRoute, fromIdx, toIdx)) return;
+      if (editingPartIndex >= 0 && parts[editingPartIndex]) {
+        parts[editingPartIndex].route = currentBuildingRoute.map(s => ({ ...s }));
+        persistActiveProjectState();
+      }
+      renderCurrentBuildingRoute();
+    }
+
+    function reorderAssemblyRules(fromIdx, toIdx) {
+      if (!moveArrayItem(assemblyRules, fromIdx, toIdx)) return;
+      if (editingAssemblyIndex === fromIdx) editingAssemblyIndex = toIdx;
+      else if (fromIdx < editingAssemblyIndex && toIdx >= editingAssemblyIndex) editingAssemblyIndex -= 1;
+      else if (fromIdx > editingAssemblyIndex && toIdx <= editingAssemblyIndex) editingAssemblyIndex += 1;
+      persistActiveProjectState();
+      renderConfigUI();
+    }
+
     function addStepToCurrentPart() {
       const mId = document.getElementById('step-machine-select').value;
       const setup = parseInt(document.getElementById('step-setup-time').value) || 0;
@@ -474,10 +616,18 @@
       currentBuildingRoute.forEach((step, idx) => {
         const m = lookupMachine(step.machineId);
         container.innerHTML += `
-          <span class="step-tag">
+          <span class="step-tag route-step" draggable="true" data-route-index="${idx}">
             ${idx + 1}º: <strong>${m ? m.name : '?'}</strong> (Setup: ${step.setup}m | Prod/u: ${step.prodUnit}m)
-            <span style="color:#ef4444; cursor:pointer; font-weight:bold; margin-left:5px;" onclick="removeStepFromCurrentPart(${idx})">×</span>
+            <span class="step-remove" style="color:#ef4444; cursor:pointer; font-weight:bold; margin-left:5px;" onclick="removeStepFromCurrentPart(${idx})">×</span>
           </span>`;
+      });
+      bindSortable(container, {
+        kind: 'building-route',
+        itemSelector: '.route-step',
+        indexAttr: 'data-route-index',
+        axis: 'x',
+        ignoreSelector: '.step-remove, button',
+        onReorder: reorderBuildingRouteSteps
       });
     }
 
@@ -776,22 +926,45 @@
         pList.innerHTML = '<li style="color:#64748b;">Nenhuma peça cadastrada neste projeto.</li>';
       }
       parts.forEach((p, idx) => {
-        const rText = p.route.map(s => {
+        const stepsHtml = p.route.map((s, sIdx) => {
           const m = lookupMachine(s.machineId);
-          return m ? m.name : '?';
-        }).join(' ➔ ');
+          return `<span class="step-tag route-step" draggable="true" data-route-index="${sIdx}" data-part-index="${idx}">${sIdx + 1}º ${m ? m.name : '?'}</span>`;
+        }).join('');
         pList.innerHTML += `
-          <li>
+          <li class="part-card" draggable="true" data-part-index="${idx}">
+            <span class="drag-handle" title="Arrastar peça" aria-hidden="true">⋮⋮</span>
             <div style="flex:1;">
               <strong>${p.name}</strong> (${p.qty} un | ${p.thickness}mm)
-              <div style="font-size:0.82rem; color:#38bdf8; margin-top:3px;"><strong>Roteiro:</strong> ${rText}</div>
+              <div class="part-route-steps">${stepsHtml}</div>
             </div>
-            <div>
+            <div class="part-card-actions">
               <button class="btn btn-warning" onclick="editPart(${idx})">Editar</button>
               <button class="btn btn-danger" onclick="removePart(${idx})">Excluir</button>
             </div>
           </li>`;
       });
+      if (parts.length > 0) {
+        bindSortable(pList, {
+          kind: 'parts',
+          itemSelector: 'li.part-card',
+          indexAttr: 'data-part-index',
+          axis: 'y',
+          ignoreSelector: 'button, .part-card-actions, .route-step',
+          allowDrag: (e) => !e.target.closest('.route-step, button, .part-card-actions'),
+          onReorder: reorderPrimaryParts
+        });
+        pList.querySelectorAll('.part-route-steps').forEach(stepsEl => {
+          bindSortable(stepsEl, {
+            kind: 'part-route',
+            itemSelector: '.route-step',
+            indexAttr: 'data-route-index',
+            partIndexAttr: 'data-part-index',
+            axis: 'x',
+            ignoreSelector: 'button',
+            onReorder: (fromIdx, toIdx, partIdx) => reorderSavedPartRoute(partIdx, fromIdx, toIdx)
+          });
+        });
+      }
 
       const groupCBContainer = document.getElementById('group-parts-checkboxes');
       groupCBContainer.innerHTML = '';
@@ -840,16 +1013,30 @@
           return sm ? sm.name : '?';
         }).join(' ➔ ');
         const requer = (rule.juncao && rule.juncao.requer) ? rule.juncao.requer : rule.requiredPartNames;
-        aList.innerHTML += `<li>
-          <div><strong>JOIN ${m ? m.name : '?'}</strong> ➔ <span style="color:#22c55e;">${rule.resultName}</span>
-          <div style="font-size:0.85rem; color:#f59e0b;">requer: ${requer.join(' + ')}</div>
-          <div style="font-size:0.8rem; color:#94a3b8;">Junção: setup ${rule.setup}m / prod ${rule.prodUnit}m${sub ? ` · Sub-roteiro: ${sub}` : ' · sem sub-roteiro'}</div></div>
-          <div>
+        aList.innerHTML += `<li class="part-card join-card" draggable="true" data-join-index="${idx}">
+          <span class="drag-handle" title="Arrastar junção" aria-hidden="true">⋮⋮</span>
+          <div style="flex:1;">
+            <strong>JOIN ${m ? m.name : '?'}</strong> ➔ <span style="color:#22c55e;">${rule.resultName}</span>
+            <div style="font-size:0.85rem; color:#f59e0b;">requer: ${requer.join(' + ')}</div>
+            <div style="font-size:0.8rem; color:#94a3b8;">Junção: setup ${rule.setup}m / prod ${rule.prodUnit}m${sub ? ` · Sub-roteiro: ${sub}` : ' · sem sub-roteiro'}</div>
+          </div>
+          <div class="part-card-actions">
             <button class="btn btn-warning" onclick="editAssemblyRule(${idx})">Editar</button>
             <button class="btn btn-danger" onclick="removeAssemblyRule(${idx})">Excluir</button>
           </div>
         </li>`;
       });
+      if (assemblyRules.length > 0) {
+        bindSortable(aList, {
+          kind: 'joins',
+          itemSelector: 'li.join-card',
+          indexAttr: 'data-join-index',
+          axis: 'y',
+          ignoreSelector: 'button, .part-card-actions',
+          allowDrag: (e) => !e.target.closest('button, .part-card-actions'),
+          onReorder: reorderAssemblyRules
+        });
+      }
 
       renderCurrentJoinRoute();
       renderHolidaysList();

@@ -1,4 +1,4 @@
-/* SimulaFab v1.6.1 — Inicialização, playback e integração dos módulos */
+/* SimulaFab v1.6.2 — Inicialização, playback e integração dos módulos */
 
     function syncSimHeaderFields() {
       const simBoxes = document.getElementById('sim-boxes-qty');
