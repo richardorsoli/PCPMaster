@@ -1,4 +1,4 @@
-/* SimulaFab v1.6.3 — Manipulação de DOM, timeline, relógio, tabelas, analytics e PDF */
+/* SimulaFab v1.6.4 — Manipulação de DOM, timeline, relógio, tabelas, Gantt, analytics e PDF */
 
     // --- EXEMPLO ---
     function loadExampleAndNavigate() {
@@ -114,6 +114,7 @@
       const charts = document.getElementById('machine-charts-container');
       if (charts) charts.innerHTML = '';
       resetAnalyticsView();
+      resetGanttView();
       const dayWrap = document.getElementById('day-select-wrap');
       if (dayWrap) dayWrap.style.display = 'none';
       const startAbs = getSimulationStartAbsMin();
@@ -481,6 +482,11 @@
       });
     }
 
+    function isNestedDraggable(e, item) {
+      const src = e.target.closest('[draggable="true"]');
+      return !!(src && item && src !== item && item.contains(src));
+    }
+
     function bindSortable(container, options) {
       if (!container) return;
       const boundKey = 'dnd' + options.kind.replace(/[^a-zA-Z0-9]/g, '');
@@ -493,11 +499,11 @@
         const item = e.target.closest(itemSelector);
         if (!item || !container.contains(item)) return;
         if (options.ignoreSelector && e.target.closest(options.ignoreSelector)) {
-          e.preventDefault();
+          if (!isNestedDraggable(e, item)) e.preventDefault();
           return;
         }
         if (typeof options.allowDrag === 'function' && !options.allowDrag(e, item)) {
-          e.preventDefault();
+          if (!isNestedDraggable(e, item)) e.preventDefault();
           return;
         }
         dndState.kind = options.kind;
@@ -589,6 +595,43 @@
       if (editingAssemblyIndex === fromIdx) editingAssemblyIndex = toIdx;
       else if (fromIdx < editingAssemblyIndex && toIdx >= editingAssemblyIndex) editingAssemblyIndex -= 1;
       else if (fromIdx > editingAssemblyIndex && toIdx <= editingAssemblyIndex) editingAssemblyIndex += 1;
+      persistActiveProjectState();
+      renderConfigUI();
+    }
+
+    function syncJoinRouteToActiveRule() {
+      if (editingAssemblyIndex < 0 || !assemblyRules[editingAssemblyIndex]) return;
+      assemblyRules[editingAssemblyIndex].route = currentJoinBuildingRoute.map(s => ({
+        machineId: s.machineId,
+        setup: s.setup,
+        prodUnit: s.prodUnit
+      }));
+      persistActiveProjectState();
+    }
+
+    function reorderJoinBuildingRouteSteps(fromIdx, toIdx) {
+      if (!moveArrayItem(currentJoinBuildingRoute, fromIdx, toIdx)) return;
+      if (editingAssemblyIndex >= 0) {
+        const keepIdx = editingAssemblyIndex;
+        syncJoinRouteToActiveRule();
+        renderConfigUI();
+        editAssemblyRule(keepIdx);
+        return;
+      }
+      renderCurrentJoinRoute();
+    }
+
+    function reorderSavedJoinRoute(joinIdx, fromIdx, toIdx) {
+      const rule = assemblyRules[joinIdx];
+      if (!rule || !Array.isArray(rule.route)) return;
+      if (!moveArrayItem(rule.route, fromIdx, toIdx)) return;
+      if (editingAssemblyIndex === joinIdx) {
+        currentJoinBuildingRoute = rule.route.map(s => ({
+          machineId: s.machineId,
+          setup: s.setup,
+          prodUnit: s.prodUnit
+        }));
+      }
       persistActiveProjectState();
       renderConfigUI();
     }
@@ -723,11 +766,13 @@
       const prodUnit = parseInt(document.getElementById('join-step-prod-time').value, 10) || 1;
       if (!mId) return;
       currentJoinBuildingRoute.push({ machineId: mId, setup, prodUnit });
+      syncJoinRouteToActiveRule();
       renderCurrentJoinRoute();
     }
 
     function removeStepFromCurrentJoin(idx) {
       currentJoinBuildingRoute.splice(idx, 1);
+      syncJoinRouteToActiveRule();
       renderCurrentJoinRoute();
     }
 
@@ -742,10 +787,18 @@
       currentJoinBuildingRoute.forEach((step, idx) => {
         const m = lookupMachine(step.machineId);
         container.innerHTML += `
-          <span class="step-tag">
+          <span class="step-tag route-step join-route-step" draggable="true" data-join-route-index="${idx}">
             ${idx + 1}º: <strong>${m ? m.name : '?'}</strong> (Setup: ${step.setup}m | Prod/u: ${step.prodUnit}m)
-            <span style="color:#ef4444; cursor:pointer; font-weight:bold; margin-left:5px;" onclick="removeStepFromCurrentJoin(${idx})">×</span>
+            <span class="step-remove" style="color:#ef4444; cursor:pointer; font-weight:bold; margin-left:5px;" onclick="removeStepFromCurrentJoin(${idx})">×</span>
           </span>`;
+      });
+      bindSortable(container, {
+        kind: 'join-building-route',
+        itemSelector: '.join-route-step',
+        indexAttr: 'data-join-route-index',
+        axis: 'x',
+        ignoreSelector: '.step-remove, button',
+        onReorder: reorderJoinBuildingRouteSteps
       });
     }
 
@@ -1009,17 +1062,18 @@
       assemblyRules.forEach((a, idx) => {
         const rule = normalizeAssemblyRule(a);
         const m = lookupMachine(rule.machineId);
-        const sub = (rule.route || []).map(s => {
+        const subHtml = (rule.route || []).map((s, sIdx) => {
           const sm = lookupMachine(s.machineId);
-          return sm ? sm.name : '?';
-        }).join(' ➔ ');
+          return `<span class="step-tag route-step join-saved-step" draggable="true" data-join-route-index="${sIdx}" data-join-index="${idx}">${sIdx + 1}º ${sm ? sm.name : '?'}</span>`;
+        }).join('');
         const requer = (rule.juncao && rule.juncao.requer) ? rule.juncao.requer : rule.requiredPartNames;
         aList.innerHTML += `<li class="part-card join-card" draggable="true" data-join-index="${idx}">
           <span class="drag-handle" title="Arrastar junção" aria-hidden="true">⋮⋮</span>
           <div style="flex:1;">
             <strong>JOIN ${m ? m.name : '?'}</strong> ➔ <span style="color:#22c55e;">${rule.resultName}</span>
             <div style="font-size:0.85rem; color:#f59e0b;">requer: ${requer.join(' + ')}</div>
-            <div style="font-size:0.8rem; color:#94a3b8;">Junção: setup ${rule.setup}m / prod ${rule.prodUnit}m${sub ? ` · Sub-roteiro: ${sub}` : ' · sem sub-roteiro'}</div>
+            <div style="font-size:0.8rem; color:#94a3b8;">Junção: setup ${rule.setup}m / prod ${rule.prodUnit}m${subHtml ? '' : ' · sem sub-roteiro'}</div>
+            ${subHtml ? `<div class="part-route-steps join-sub-route">${subHtml}</div>` : ''}
           </div>
           <div class="part-card-actions">
             <button class="btn btn-warning" onclick="editAssemblyRule(${idx})">Editar</button>
@@ -1033,9 +1087,20 @@
           itemSelector: 'li.join-card',
           indexAttr: 'data-join-index',
           axis: 'y',
-          ignoreSelector: 'button, .part-card-actions',
-          allowDrag: (e) => !e.target.closest('button, .part-card-actions'),
+          ignoreSelector: 'button, .part-card-actions, .join-saved-step, .join-sub-route',
+          allowDrag: (e) => !e.target.closest('button, .part-card-actions, .join-saved-step, .join-sub-route'),
           onReorder: reorderAssemblyRules
+        });
+        aList.querySelectorAll('.join-sub-route').forEach(stepsEl => {
+          bindSortable(stepsEl, {
+            kind: 'join-route',
+            itemSelector: '.join-saved-step',
+            indexAttr: 'data-join-route-index',
+            partIndexAttr: 'data-join-index',
+            axis: 'x',
+            ignoreSelector: 'button',
+            onReorder: (fromIdx, toIdx, joinIdx) => reorderSavedJoinRoute(joinIdx, fromIdx, toIdx)
+          });
         });
       }
 
@@ -1127,6 +1192,8 @@
           kpiStatus.style.color = '#4ade80';
         }
       }
+
+      if (typeof updateGanttPlaybackCursor === 'function') updateGanttPlaybackCursor();
     }
 
     function updatePlayButtonUI() {
@@ -1259,6 +1326,175 @@
         </tr>`).join('');
     }
 
+    let ganttViewMode = 'day';
+    let lastGanttRange = null;
+    let lastGanttDayIndex = -1;
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[ch]));
+    }
+
+    function ganttKindClass(kind) {
+      if (kind === 'setup') return 'gantt-block-setup';
+      if (kind === 'prod') return 'gantt-block-prod';
+      if (kind === 'wait') return 'gantt-block-wait';
+      if (kind === 'maint') return 'gantt-block-maint';
+      return '';
+    }
+
+    function ganttKindLabel(kind) {
+      if (kind === 'setup') return 'Setup';
+      if (kind === 'prod') return 'Produção';
+      if (kind === 'wait') return 'Espera/Fila';
+      if (kind === 'maint') return 'Manutenção';
+      return kind;
+    }
+
+    function pctInRange(absMin, range) {
+      const span = Math.max(1, range.end - range.start);
+      return ((absMin - range.start) / span) * 100;
+    }
+
+    function ganttAxisTicks(range) {
+      const ticks = [];
+      if (range.mode === 'day') {
+        const marks = [0, 30, 90, 150, 210, 270, 330, 390, 450, 510, 570];
+        marks.forEach(m => {
+          ticks.push({ abs: range.start + m, label: minuteInDayToTimeStr(m) });
+        });
+        return ticks;
+      }
+      const span = range.end - range.start;
+      const step = span > MINUTES_PER_DAY * 2 ? 120 : 60;
+      for (let t = range.start; t <= range.end; t += step) {
+        ticks.push({ abs: t, label: absMinuteToTimeLabel(t).split(' ').pop() });
+      }
+      dayBoundaryAbsMins(range.start, range.end).forEach(t => {
+        ticks.push({ abs: t, label: formatDisplayDate((absMinuteToParts(t).dateIso)) });
+      });
+      return ticks;
+    }
+
+    function updateGanttModeButtons() {
+      const dayBtn = document.getElementById('gantt-mode-day');
+      const lotBtn = document.getElementById('gantt-mode-lot');
+      if (dayBtn) dayBtn.classList.toggle('is-active', ganttViewMode !== 'lot');
+      if (lotBtn) lotBtn.classList.toggle('is-active', ganttViewMode === 'lot');
+    }
+
+    function setGanttViewMode(mode) {
+      ganttViewMode = mode === 'lot' ? 'lot' : 'day';
+      lastGanttDayIndex = -1;
+      updateGanttModeButtons();
+      renderGanttChart();
+    }
+
+    function resetGanttView() {
+      lastGanttRange = null;
+      lastGanttDayIndex = -1;
+      const host = document.getElementById('gantt-chart');
+      if (host) host.innerHTML = '<div class="gantt-empty">Gere a simulação para montar o Gantt.</div>';
+      const label = document.getElementById('gantt-range-label');
+      if (label) label.textContent = 'Gere a simulação para ver o cronograma por posto.';
+      updateGanttModeButtons();
+    }
+
+    function updateGanttPlaybackCursor() {
+      if (!lastGanttRange) return;
+      if (ganttViewMode !== 'lot' && selectedDayIndex !== lastGanttDayIndex) {
+        renderGanttChart();
+        return;
+      }
+      const lines = document.querySelectorAll('#gantt-chart .gantt-now');
+      if (!lines.length) return;
+      const pct = pctInRange(getCurrentAbsMinute(), lastGanttRange);
+      lines.forEach(line => {
+        if (pct < 0 || pct > 100) {
+          line.style.display = 'none';
+          return;
+        }
+        line.style.display = 'block';
+        line.style.left = pct + '%';
+      });
+    }
+
+    function renderGanttChart() {
+      const host = document.getElementById('gantt-chart');
+      const label = document.getElementById('gantt-range-label');
+      updateGanttModeButtons();
+      if (!host) return;
+      if (!simulationHistory.length) {
+        resetGanttView();
+        return;
+      }
+
+      const range = ganttViewMode === 'lot'
+        ? getGanttRangeForLot()
+        : getGanttRangeForDay(selectedDayIndex);
+      lastGanttRange = range;
+      lastGanttDayIndex = range.mode === 'day' ? range.dayIndex : -1;
+
+      const rows = buildGanttRows(range.start, range.end);
+      const lunches = lunchOverlaysInRange(range.start, range.end);
+      const dayMarks = range.mode === 'lot' ? dayBoundaryAbsMins(range.start, range.end) : [];
+      const ticks = ganttAxisTicks(range);
+      const span = Math.max(1, range.end - range.start);
+
+      if (label) {
+        if (range.mode === 'day') {
+          const iso = workDays[range.dayIndex] || startDateStr;
+          label.textContent = 'Dia ' + (range.dayIndex + 1) + ' (' + formatDisplayDate(iso) + ') · turno 07:30–17:18 · almoço 12:00–13:00';
+        } else {
+          label.textContent = 'Lote contínuo: ' + absMinuteToTimeLabel(range.start) + ' → ' + absMinuteToTimeLabel(Math.max(range.start, range.end - 1));
+        }
+      }
+
+      const axisHtml = ticks.map(tk => {
+        const left = pctInRange(tk.abs, range);
+        if (left < -1 || left > 101) return '';
+        return `<span class="gantt-tick" style="left:${left.toFixed(2)}%">${escapeHtml(tk.label)}</span>`;
+      }).join('');
+
+      const lunchHtml = lunches.map(b => {
+        const left = pctInRange(b.start, range);
+        const width = Math.max(0.4, ((b.end - b.start) / span) * 100);
+        return `<div class="gantt-lunch" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%"></div>`;
+      }).join('');
+
+      const marksHtml = dayMarks.map(t => {
+        const left = pctInRange(t, range);
+        return `<div class="gantt-day-mark" style="left:${left.toFixed(2)}%"></div>`;
+      }).join('');
+
+      const nowPct = pctInRange(getCurrentAbsMinute(), range);
+      const nowVisible = nowPct >= 0 && nowPct <= 100;
+      const nowStyle = nowVisible
+        ? `left:${nowPct.toFixed(2)}%`
+        : 'display:none;left:0';
+
+      const rowsHtml = rows.map(row => {
+        const blocks = row.blocks.map(b => {
+          const left = pctInRange(b.start, range);
+          const width = Math.max(0.35, ((b.end - b.start) / span) * 100);
+          const title = `${row.name} · ${b.partName} · ${ganttKindLabel(b.kind)} ${minuteInDayToTimeStr(b.start % MINUTES_PER_DAY)}–${minuteInDayToTimeStr((b.end - 1) % MINUTES_PER_DAY)}`;
+          return `<div class="gantt-block ${ganttKindClass(b.kind)}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%" title="${escapeHtml(title)}"></div>`;
+        }).join('');
+        return `<div class="gantt-row">
+          <div class="gantt-label">${escapeHtml(row.name)}</div>
+          <div class="gantt-track">${lunchHtml}${marksHtml}${blocks}<div class="gantt-now" style="${nowStyle}"></div></div>
+        </div>`;
+      }).join('');
+
+      if (!rows.length) {
+        host.innerHTML = '<div class="gantt-empty">Nenhuma máquina ativa neste lote.</div>';
+        return;
+      }
+
+      host.innerHTML = `<div class="gantt-axis">${axisHtml}</div>${rowsHtml}`;
+    }
+
     function renderCharts() {
       const container = document.getElementById('machine-charts-container');
       if (!container) return;
@@ -1266,6 +1502,7 @@
 
       if (!simulationHistory.length) {
         resetAnalyticsView();
+        resetGanttView();
         return;
       }
 
@@ -1279,6 +1516,7 @@
       setLegendLabel('legend-idle', 'Ocioso', t.idle);
       renderAnalyticsKpis(analytics);
       renderOperatorHoursTable(analytics.operatorRows);
+      renderGanttChart();
 
       const windowLen = Math.max(1, analytics.histEnd - analytics.histStart);
       const pct = (n) => ((n / windowLen) * 100).toFixed(1);
@@ -1303,37 +1541,312 @@
       });
     }
 
-    function generatePDFReport() {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ orientation: 'landscape' });
+    function drawPdfReportHeader(doc) {
+      const meta = getPdfReportMeta();
+      const pageW = doc.internal.pageSize.getWidth();
+      doc.setFillColor(241, 245, 249);
+      doc.rect(0, 0, pageW, 30, 'F');
+      doc.setDrawColor(2, 132, 199);
+      doc.setLineWidth(0.6);
+      doc.line(0, 30, pageW, 30);
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(16);
+      doc.setFontSize(13);
       doc.setTextColor(2, 132, 199);
-      doc.text('Relatório de Cronograma da Produção - SimulaFab v' + APP_VERSION, 14, 16);
+      doc.text('Relatório de Produção — SimulaFab v' + APP_VERSION, 14, 9);
 
-      doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(80);
-      const firstDay = workDays[0] || startDateStr;
-      const lastDay = workDays[workDays.length - 1] || startDateStr;
-      const multiNote = workDays.length > 1
-        ? `Produção multi-dia: ${workDays.length} dias úteis (${formatDisplayDate(firstDay)} → ${formatDisplayDate(lastDay)})`
-        : `Produção em 1 dia útil (${formatDisplayDate(firstDay)})`;
+      doc.setFontSize(8);
+      doc.setTextColor(30);
+      doc.text('Projeto / SKU Final: ' + meta.label, 14, 15);
+      doc.text('Quantidade de Caixas: ' + meta.boxes, 14, 20);
+      doc.text('Data de emissão: ' + meta.issuedStr + '    |    Hora inicial da simulação: ' + meta.startTime, 14, 25);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Versão da aplicação: v' + APP_VERSION, pageW - 14, 9, { align: 'right' });
+      doc.setFont('helvetica', 'normal');
+      doc.text('Data inicial: ' + meta.startDate + '    |    Turno 07:30–17:18    |    Almoço 12:00–13:00', pageW - 14, 25, { align: 'right' });
+      return 36;
+    }
 
-      doc.text(`Data Inicial: ${formatDisplayDate(firstDay)} | ${multiNote}`, 14, 23);
-      doc.text(`Turno: 07:30–17:18 | Início: ${startTimeStr || DEFAULT_START_TIME} | Almoço: 12:00–13:00 | Qtd. Caixas: ${boxesQty} | Emitido: ${new Date().toLocaleDateString('pt-BR')}`, 14, 29);
+    function pdfEnsureSpace(doc, y, needed) {
+      const pageH = doc.internal.pageSize.getHeight();
+      if (y + needed > pageH - 10) {
+        doc.addPage();
+        return drawPdfReportHeader(doc);
+      }
+      return y;
+    }
+
+    function drawPdfSectionTitle(doc, y, title) {
+      y = pdfEnsureSpace(doc, y, 10);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(2, 132, 199);
+      doc.text(title, 14, y);
+      return y + 5;
+    }
+
+    function drawPdfKpiBoxes(doc, y, analytics) {
+      y = pdfEnsureSpace(doc, y, 28);
+      const pageW = doc.internal.pageSize.getWidth();
+      const gap = 6;
+      const boxW = (pageW - 28 - gap * 2) / 3;
+      const boxH = 22;
+      const items = [
+        {
+          title: 'Makespan Total',
+          value: analytics && analytics.makespanElapsed > 0 ? formatMinutesWithHours(analytics.makespanElapsed) : '—',
+          hint: analytics && analytics.makespanElapsed > 0
+            ? ('Conclusão ' + absMinuteToTimeLabel(analytics.completionAbs) + ' · líquido ' + formatMinutesWithHours(analytics.makespanNet))
+            : 'Sem eventos'
+        },
+        {
+          title: 'Eficiência Global',
+          value: analytics && analytics.occupied > 0 ? analytics.efficiencyPct.toFixed(1) + '%' : '—',
+          hint: analytics && analytics.occupied > 0
+            ? (formatMinutesWithHours(analytics.productive) + ' prod / ' + formatMinutesWithHours(analytics.occupied) + ' ocup.')
+            : 'Produtivo / Ocupado'
+        },
+        {
+          title: 'Gargalo Identificado',
+          value: analytics && analytics.bottleneck ? analytics.bottleneck.name : 'Nenhum gargalo',
+          hint: analytics && analytics.bottleneck
+            ? ('Ocupação ' + formatMinutesWithHours(analytics.bottleneck.occupied) + ' · Fila ' + formatMinutesWithHours(analytics.bottleneck.wait))
+            : 'Maior ocupação + fila'
+        }
+      ];
+      items.forEach((item, i) => {
+        const x = 14 + i * (boxW + gap);
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(203, 213, 225);
+        doc.roundedRect(x, y, boxW, boxH, 1.5, 1.5, 'FD');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(100);
+        doc.text(item.title.toUpperCase(), x + 3, y + 5);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(2, 132, 199);
+        doc.text(doc.splitTextToSize(item.value, boxW - 6), x + 3, y + 11);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(90);
+        doc.text(doc.splitTextToSize(item.hint, boxW - 6), x + 3, y + 17);
+      });
+      return y + boxH + 6;
+    }
+
+    function drawPdfGantt(doc, y, range, title) {
+      const rows = buildGanttRows(range.start, range.end);
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 14;
+      const labelW = 46;
+      const chartX = margin + labelW;
+      const chartW = pageW - margin - chartX;
+      const rowH = 7;
+      const axisH = 8;
+      const needed = 10 + axisH + Math.max(1, rows.length) * rowH + 10;
+      y = pdfEnsureSpace(doc, y, Math.min(needed, pageH - 50));
+      y = drawPdfSectionTitle(doc, y, title);
+
+      const span = Math.max(1, range.end - range.start);
+      const xOf = (abs) => chartX + ((abs - range.start) / span) * chartW;
+      const chartTop = y + 2;
+      const chartBottom = chartTop + axisH + rows.length * rowH;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6);
+      doc.setTextColor(90);
+      if (range.mode === 'day') {
+        [0, 90, 210, 270, 330, 450, 570].forEach(m => {
+          const abs = range.start + m;
+          const x = xOf(abs);
+          doc.text(minuteInDayToTimeStr(m), x, chartTop, { align: 'center' });
+        });
+      } else {
+        const step = span > MINUTES_PER_DAY * 2 ? 180 : 90;
+        for (let t = range.start; t <= range.end; t += step) {
+          doc.text(minuteInDayToTimeStr(t % MINUTES_PER_DAY), xOf(t), chartTop, { align: 'center' });
+        }
+      }
+
+      const trackTop = chartTop + axisH;
+      lunchOverlaysInRange(range.start, range.end).forEach(b => {
+        const x = xOf(b.start);
+        const w = Math.max(0.8, xOf(b.end) - x);
+        if (doc.GState) {
+          doc.setGState(new doc.GState({ opacity: 0.22 }));
+          doc.setFillColor(148, 163, 184);
+          doc.rect(x, trackTop, w, rows.length * rowH, 'F');
+          doc.setGState(new doc.GState({ opacity: 1 }));
+        } else {
+          doc.setFillColor(226, 232, 240);
+          doc.rect(x, trackTop, w, rows.length * rowH, 'F');
+        }
+        doc.setDrawColor(148, 163, 184);
+        try {
+          if (typeof doc.setLineDashPattern === 'function') doc.setLineDashPattern([1.2, 1.2], 0);
+        } catch (err) { /* ignore */ }
+        doc.line(x, trackTop, x, trackTop + rows.length * rowH);
+        doc.line(x + w, trackTop, x + w, trackTop + rows.length * rowH);
+        try {
+          if (typeof doc.setLineDashPattern === 'function') doc.setLineDashPattern([], 0);
+        } catch (err) { /* ignore */ }
+      });
+
+      const colors = {
+        wait: [100, 116, 139],
+        setup: [249, 115, 22],
+        prod: [34, 197, 94],
+        maint: [168, 85, 247]
+      };
+
+      rows.forEach((row, idx) => {
+        const ry = trackTop + idx * rowH;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(40);
+        doc.text(doc.splitTextToSize(row.name, labelW - 2)[0] || row.name, margin, ry + 5);
+        doc.setDrawColor(226, 232, 240);
+        doc.setFillColor(248, 250, 252);
+        doc.rect(chartX, ry + 0.6, chartW, rowH - 1.2, 'FD');
+        sortGanttBlocksForPaint(row.blocks).forEach(b => {
+          const x = xOf(b.start);
+          const w = Math.max(0.6, xOf(b.end) - x);
+          const rgb = colors[b.kind] || [100, 116, 139];
+          doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+          doc.rect(x, ry + 1.4, w, rowH - 2.8, 'F');
+        });
+      });
+
+      doc.setFontSize(6.5);
+      doc.setTextColor(80);
+      const legendY = chartBottom + 4;
+      const legend = [
+        { c: [249, 115, 22], t: 'Setup' },
+        { c: [34, 197, 94], t: 'Produção' },
+        { c: [100, 116, 139], t: 'Espera/Fila' },
+        { c: [148, 163, 184], t: 'Almoço 12:00–13:00' }
+      ];
+      let lx = margin;
+      legend.forEach(item => {
+        doc.setFillColor(item.c[0], item.c[1], item.c[2]);
+        doc.rect(lx, legendY - 2.2, 3.5, 3.5, 'F');
+        doc.text(item.t, lx + 5, legendY + 0.6);
+        lx += 38;
+      });
+      return legendY + 8;
+    }
+
+    function generatePDFReport() {
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert('Biblioteca de PDF não carregada.');
+        return;
+      }
+      if (!simulationHistory.length) {
+        alert('Gere a simulação antes de exportar o relatório.');
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape' });
+      const meta = getPdfReportMeta();
+      const analytics = computeEfficiencyAnalytics();
+      const tableMargin = { top: 34, left: 14, right: 14, bottom: 12 };
+
+      let y = drawPdfReportHeader(doc);
+      y = drawPdfSectionTitle(doc, y, 'Resumo Executivo de KPIs');
+      y = drawPdfKpiBoxes(doc, y, analytics);
+
+      y = drawPdfSectionTitle(doc, y, 'Horas Trabalhadas por Operador');
+      const opRows = (analytics.operatorRows || []).map(r => [
+        r.operator,
+        r.principalMachine,
+        formatMinutesWithHours(r.production),
+        formatMinutesWithHours(r.setup),
+        formatMinutesWithHours(r.inactive),
+        formatMinutesWithHours(r.worked)
+      ]);
+      doc.autoTable({
+        startY: y,
+        head: [['Operador', 'Posto/Máquina Principal', 'Produção', 'Setup', 'Ociosidade / Espera', 'Total no Turno']],
+        body: opRows.length ? opRows : [['—', '—', '—', '—', '—', '—']],
+        theme: 'striped',
+        margin: tableMargin,
+        rowPageBreak: 'avoid',
+        showHead: 'everyPage',
+        headStyles: { fillColor: [2, 132, 199], fontSize: 7, textColor: 255 },
+        styles: { fontSize: 7, cellPadding: 1.6, minCellHeight: 7, overflow: 'linebreak' },
+        didDrawPage: (data) => {
+          if (data.pageNumber > 1) drawPdfReportHeader(doc);
+        }
+      });
+      y = (doc.lastAutoTable && doc.lastAutoTable.finalY ? doc.lastAutoTable.finalY : y) + 8;
+
+      y = drawPdfSectionTitle(doc, y, 'Tempos por Peça / Subconjunto e Estrutura BOM / JOIN');
+      const bomRows = buildBomDetailRows().map(r => [
+        r.name,
+        r.kind,
+        String(r.qty),
+        r.route,
+        String(r.setup),
+        String(r.prod),
+        r.startLabel,
+        r.endLabel,
+        r.requer
+      ]);
+      doc.autoTable({
+        startY: y,
+        head: [['Peça / SKU', 'Tipo', 'Qtd', 'Roteiro', 'Setup (min)', 'Prod (min)', 'Início', 'Fim', 'BOM / requer']],
+        body: bomRows.length ? bomRows : [['—', '—', '—', '—', '—', '—', '—', '—', '—']],
+        theme: 'striped',
+        margin: tableMargin,
+        rowPageBreak: 'avoid',
+        showHead: 'everyPage',
+        headStyles: { fillColor: [2, 132, 199], fontSize: 6.5, textColor: 255 },
+        styles: { fontSize: 6.5, cellPadding: 1.4, minCellHeight: 7, overflow: 'linebreak' },
+        columnStyles: { 3: { cellWidth: 52 }, 8: { cellWidth: 42 } },
+        didDrawPage: (data) => {
+          if (data.pageNumber > 1) drawPdfReportHeader(doc);
+        }
+      });
+      y = (doc.lastAutoTable && doc.lastAutoTable.finalY ? doc.lastAutoTable.finalY : y) + 8;
+
+      const usedDays = Math.max(1, Math.ceil(Math.max(1, getProjectMakespanEndAbsMin()) / MINUTES_PER_DAY));
+      for (let d = 0; d < usedDays; d++) {
+        const range = getGanttRangeForDay(d);
+        const iso = workDays[d] || startDateStr;
+        const dayTitle = 'Gráfico de Gantt — Dia ' + (d + 1) + ' (' + formatDisplayDate(iso) + ')';
+        if (d === 0) {
+          const pageH = doc.internal.pageSize.getHeight();
+          if (y > pageH - 70) {
+            doc.addPage();
+            y = drawPdfReportHeader(doc);
+          }
+        } else {
+          doc.addPage();
+          y = drawPdfReportHeader(doc);
+        }
+        y = drawPdfGantt(doc, y, range, dayTitle);
+      }
+
+      if (usedDays > 1) {
+        doc.addPage();
+        y = drawPdfReportHeader(doc);
+        y = drawPdfGantt(doc, y, getGanttRangeForLot(), 'Gráfico de Gantt — Lote contínuo');
+      }
+
+      doc.addPage();
+      y = drawPdfReportHeader(doc);
+      y = drawPdfSectionTitle(doc, y, 'Cronoanálise do Chão de Fábrica');
 
       const tableRows = [];
-
       rawEvents.forEach((evt, evtIdx) => {
         const mObj = machines.find(mach => mach.id === evt.machineId);
         const sector = mObj ? mObj.name : '-';
         const operador = getMachineOperatorLabel(mObj);
         const qty = evt.qty;
-        const tempoSimuladoSetup = String(evt.setupTime);
-        const tempoSimuladoProd = String(evt.prodTime);
-
         if (evt.setupTime > 0) {
           tableRows.push({
             abs: evt.setupStart,
@@ -1344,7 +1857,7 @@
               evt.partName,
               String(qty),
               String(evt.setupUnit),
-              tempoSimuladoSetup,
+              String(evt.setupTime),
               sector,
               operador,
               'Em Ajuste / Setup',
@@ -1354,7 +1867,6 @@
             ]
           });
         }
-
         tableRows.push({
           abs: evt.prodStart,
           kind: 1,
@@ -1364,7 +1876,7 @@
             evt.partName,
             String(qty),
             String(evt.prodUnit),
-            tempoSimuladoProd,
+            String(evt.prodTime),
             sector,
             operador,
             'Em Processamento / Produção',
@@ -1374,7 +1886,6 @@
           ]
         });
       });
-
       maintenanceEvents.forEach(me => {
         const mObj = machines.find(mach => mach.id === me.machineId);
         tableRows.push({
@@ -1396,12 +1907,10 @@
           ]
         });
       });
-
       tableRows.sort((a, b) => (a.abs - b.abs) || ((a.kind || 0) - (b.kind || 0)) || ((a.seq || 0) - (b.seq || 0)));
-      const tableData = tableRows.map(r => r.cells);
 
       doc.autoTable({
-        startY: 34,
+        startY: y,
         head: [[
           'Horário',
           'Peça / Componente',
@@ -1415,23 +1924,30 @@
           'Descrição / Como foi feito',
           'Desempenho (Reg. vs Sim.)'
         ]],
-        body: tableData,
+        body: tableRows.map(r => r.cells),
         theme: 'striped',
-        headStyles: { fillColor: [2, 132, 199], fontSize: 6 },
-        styles: { fontSize: 6, cellPadding: 1.5, minCellHeight: 10 },
+        margin: tableMargin,
+        rowPageBreak: 'avoid',
+        showHead: 'everyPage',
+        headStyles: { fillColor: [2, 132, 199], fontSize: 6, textColor: 255 },
+        styles: { fontSize: 6, cellPadding: 1.5, minCellHeight: 8, overflow: 'linebreak' },
         columnStyles: {
           8: { cellWidth: 22 },
           9: { cellWidth: 38 },
           10: { cellWidth: 24 }
+        },
+        didDrawPage: (data) => {
+          if (data.pageNumber > 1) drawPdfReportHeader(doc);
         }
       });
 
-      const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY + 8 : 180;
+      y = (doc.lastAutoTable && doc.lastAutoTable.finalY ? doc.lastAutoTable.finalY : y) + 8;
+      y = pdfEnsureSpace(doc, y, 10);
       doc.setFontSize(8);
       doc.setTextColor(90);
-      doc.text('Cronoanálise: preencha Tempo Registrado e Descrição/Como foi feito à mão. Use Desempenho (Reg. vs Sim.) para premiação.', 14, finalY);
+      doc.text('Cronoanálise: preencha Tempo Registrado e Descrição/Como foi feito à mão. Use Desempenho (Reg. vs Sim.) para premiação.', 14, y);
 
-      doc.save('Relatorio_Producao_SimulaFab.pdf');
+      doc.save(meta.filename);
     }
 
 function navigateTo(screenId) {

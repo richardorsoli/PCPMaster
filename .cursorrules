@@ -1,4 +1,4 @@
-# SimulaFab v1.6.3 — Regras do Projeto
+# SimulaFab v1.6.4 — Regras do Projeto
 
 App web de simulação PPCP / chão de fábrica (HTML + JS vanilla + CSS). UI em português (pt-BR). Tema escuro industrial. Entry point: `index.html`.
 
@@ -26,7 +26,7 @@ Scripts clássicos no escopo global (não ES modules), para `onclick` e abertura
 
 | Arquivo | Contém | Não colocar aqui |
 |---------|--------|------------------|
-| `simulation.js` | Constantes de turno, estado, `calculateSimulationHistory`, calendário multi-dia, manutenção preventiva, helpers de data/tempo/velocidade, `computeEfficiencyAnalytics` | Persistência, PDF, markup |
+| `simulation.js` | Constantes de turno, estado, `calculateSimulationHistory`, calendário multi-dia, manutenção preventiva, helpers de data/tempo/velocidade, `computeEfficiencyAnalytics`, `buildGanttRows` | Persistência, PDF, markup |
 | `database.js` | `DB_STORAGE_KEY`, save/load/export/import, normalização de import | Motor de simulação, render de tela |
 | `ui.js` | CRUD (funcionários, máquinas, peças, regras), `renderConfigUI`, chão, charts, `generatePDFReport` | Persistência bruta, loop de playback |
 | `app.js` | `startSimulation`, `runLoop`, play/stop/step/speed, `onTimelineChange` | Cálculo de eventos, schema DB |
@@ -38,7 +38,7 @@ Antes de mudar regra de negócio, localizar o módulo certo. Preferir editar os 
 
 1. **welcome** — exemplo, projeto novo, carregar projeto, import/export JSON  
 2. **config** — engenharia: funcionários → máquinas → peças/roteiros (drag-and-drop de prioridade e de etapas) → agrupamento → união → feriados → qtd. caixas + data/hora inicial  
-3. **sim** — play/pause/stop, ±1 min, velocidade 1x/5x/10x, recálculo ao vivo da qtd. de caixas, hora de início flexível, relógio `DD/MM/AA - HH:MM:SS`, tabela do chão, timeline full-width no card, dropdown de datas ao lado da timeline, gráficos com totais na legenda, painel Makespan/Eficiência/Gargalo, horas por operador, PDF  
+3. **sim** — play/pause/stop, ±1 min, velocidade 1x/5x/10x, recálculo ao vivo da qtd. de caixas, hora de início flexível, relógio `DD/MM/AA - HH:MM:SS`, tabela do chão, timeline full-width no card, dropdown de datas ao lado da timeline, Gantt por dia ou lote contínuo, gráficos com totais na legenda, painel Makespan/Eficiência/Gargalo, horas por operador, PDF parametrizado  
 
 ## Regras de negócio ativas
 
@@ -79,14 +79,20 @@ Antes de mudar regra de negócio, localizar o módulo certo. Preferir editar os 
 - Painel: **Makespan Total**, **Índice de Eficiência Global (%)** = `(Tempo Produtivo / Tempo Ocupado) * 100` com ocupado = produção + setup, **Gargalo** = posto com maior ocupação+fila.
 - Tabela de horas por operador: Produção, Setup, Inativo/Aguardando, Total trabalhado (produção + setup); posto principal = máquina com maior ocupação.
 
+### PDF (landscape, jsPDF 2.5.1 + autotable 3.5.28)
+Cabeçalho parametrizado em todas as páginas: **Projeto / SKU Final**, **Qtd. Caixas**, **Data de emissão**, **Hora inicial**, **Versão v1.6.4**.  
+Arquivo: `Relatorio_SimulaFab_[NomeDoProjeto]_[QtdCaixas]cx_v1.6.4.pdf`.  
+Conteúdo: KPIs (Makespan, Eficiência, Gargalo), horas por operador, BOM/JOIN, Gantt por dia (e lote contínuo se multi-dia), cronoanálise.  
+Tabelas usam `rowPageBreak: 'avoid'`. Colunas da cronoanálise em branco para preenchimento manual / premiação.
+
+### Gantt (v1.6.4)
+- UI na simulação: linhas por máquina; Setup laranja, Produção verde, Espera/Fila cinza, almoço 12:00–13:00 em faixa; modos **Por dia** (segue o dropdown) e **Lote contínuo**.
+- PDF: um Gantt por dia útil do lote; se multi-dia, Gantt contínuo adicional.
+
 ### Playback
 - Play/Pause (verde ativo / verde opaco pausado); Stop → Dia 1, 07:30:00.
 - Velocidade **1x / 5x / 10x** (`simulationSpeed`, `getTickIntervalMs`, `getSecondsPerTick`).
 - Timeline full-width no `floor-card`; scrubbing pausa e atualiza estado imediatamente.
-
-### PDF (landscape, jsPDF + autotable)
-Colunas típicas: Horário | Peça | Qtd | Tempo Indiv. | Tempo Total Simulado | Setor | Operador | Status | Tempo Registrado | Descrição / Como foi feito | Desempenho (Reg. vs Sim.).  
-Campos finais em branco para preenchimento manual / premiação.
 
 ## Banco de dados
 
@@ -154,4 +160,4 @@ Campos finais em branco para preenchimento manual / premiação.
 
 ## Versão
 
-Documento alinhado à **v1.6.3** (Sprint 7 Batch 3: analytics — totais na legenda, makespan/eficiência/gargalo, horas por operador; Batches 1–2 intactos: drag-and-drop, hora de início, caixas ao vivo, dropdown de datas; BOM JOIN Sprint 9 e catálogo Sprint 8 intactos).
+Documento alinhado à **v1.6.4** (Sprint 7 Batch 4: Gantt na tela e no PDF, cabeçalho parametrizado, KPIs/operadores/BOM no relatório; Batches 1–3 intactos).

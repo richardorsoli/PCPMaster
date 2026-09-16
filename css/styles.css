@@ -154,9 +154,33 @@
     .operator-hours-wrap { margin-top: 22px; overflow-x: auto; }
     .operator-hours-wrap h3 { color: #38bdf8; font-size: 1.05rem; margin-bottom: 10px; font-weight: 700; }
     .operator-hours-table th, .operator-hours-table td { white-space: nowrap; }
+    .gantt-card { margin-top: 16px; }
+    .gantt-header-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+    .gantt-mode-btns { display: inline-flex; gap: 6px; }
+    .gantt-subtitle { font-size: 0.8rem; color: #94a3b8; margin: 0 0 10px; }
+    .gantt-chart { overflow-x: auto; }
+    .gantt-empty { color: #64748b; font-size: 0.85rem; padding: 12px 0; }
+    .gantt-axis { display: flex; margin-left: 168px; position: relative; height: 22px; }
+    .gantt-tick { position: absolute; transform: translateX(-50%); font-size: 0.68rem; color: #94a3b8; white-space: nowrap; }
+    .gantt-row { display: flex; align-items: stretch; min-height: 28px; margin-bottom: 6px; }
+    .gantt-label { width: 160px; flex-shrink: 0; font-size: 0.78rem; color: #cbd5e1; padding: 6px 8px 6px 0; line-height: 1.25; }
+    .gantt-track { position: relative; flex: 1; height: 26px; background: #0f172a; border: 1px solid #334155; border-radius: 4px; overflow: hidden; }
+    .gantt-lunch { position: absolute; top: 0; bottom: 0; background: rgba(148, 163, 184, 0.28); border-left: 1px dashed #cbd5e1; border-right: 1px dashed #cbd5e1; pointer-events: none; z-index: 1; }
+    .gantt-day-mark { position: absolute; top: 0; bottom: 0; width: 1px; background: #38bdf8; opacity: 0.45; pointer-events: none; z-index: 1; }
+    .gantt-block { position: absolute; top: 3px; height: 20px; border-radius: 3px; min-width: 2px; z-index: 2; box-sizing: border-box; }
+    .gantt-block-wait { background: #64748b; z-index: 2; }
+    .gantt-block-maint { background: #a855f7; z-index: 3; }
+    .gantt-block-setup { background: #f97316; z-index: 4; }
+    .gantt-block-prod { background: #22c55e; z-index: 5; }
+    .gantt-now { position: absolute; top: 0; bottom: 0; width: 2px; background: #38bdf8; box-shadow: 0 0 6px rgba(56, 189, 248, 0.8); z-index: 6; pointer-events: none; }
+    @media print {
+      .pdf-keep-together, .chart-card, .gantt-card, .operator-hours-wrap, .analytics-kpis, table { page-break-inside: avoid; break-inside: avoid; }
+    }
     @media (max-width: 860px) {
       .analytics-kpis { grid-template-columns: 1fr; }
       .operator-hours-table th, .operator-hours-table td { white-space: normal; }
+      .gantt-axis { margin-left: 120px; }
+      .gantt-label { width: 112px; font-size: 0.72rem; }
     }
 
     .bar-container { margin-bottom: 12px; }

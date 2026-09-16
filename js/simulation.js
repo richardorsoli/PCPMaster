@@ -1,6 +1,6 @@
-/* SimulaFab v1.6.3 — Motor de simulação, calendário, manutenção e analytics */
+/* SimulaFab v1.6.4 — Motor de simulação, calendário, manutenção, analytics e Gantt */
 
-const APP_VERSION = '1.6.3';
+const APP_VERSION = '1.6.4';
 
 // --- PARÂMETROS DO TURNO ---
 const SHIFT_START_MINUTES = 7 * 60 + 30;
@@ -908,6 +908,269 @@ const DEFAULT_START_TIME = '07:30';
         completionAbs: histEnd,
         operatorRows: computeOperatorHourRows(perMachine, histStart, histEnd)
       };
+    }
+
+    function getFinalSkuName() {
+      const names = (assemblyRules || []).map(r => r && r.resultName).filter(Boolean);
+      if (names.length) {
+        const required = {};
+        (assemblyRules || []).forEach(r => {
+          joinRequerOf(r).forEach(n => { required[n] = true; });
+        });
+        const finals = names.filter(n => !required[n]);
+        return finals[finals.length - 1] || names[names.length - 1];
+      }
+      const sim = getSimParts();
+      if (sim.length) return sim[sim.length - 1].name;
+      if (parts.length) return parts[parts.length - 1].name;
+      return '';
+    }
+
+    function getReportProjectLabel() {
+      const proj = (currentProjectName || '').trim();
+      const sku = getFinalSkuName();
+      if (proj && sku && proj.toUpperCase() !== sku) return proj + ' / ' + sku;
+      return proj || sku || 'Projeto sem nome';
+    }
+
+    function sanitizePdfFilenamePart(s) {
+      const cleaned = String(s || 'Projeto')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\w\-]+/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '')
+        .slice(0, 48);
+      return cleaned || 'Projeto';
+    }
+
+    function getPdfReportMeta() {
+      const issued = new Date();
+      const issuedStr = issued.toLocaleDateString('pt-BR') + ' ' +
+        issued.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const projectName = (currentProjectName || '').trim() || getFinalSkuName() || 'Projeto sem nome';
+      return {
+        version: 'v' + APP_VERSION,
+        projectName,
+        sku: getFinalSkuName() || '—',
+        label: getReportProjectLabel(),
+        boxes: boxesQty,
+        startTime: startTimeStr || DEFAULT_START_TIME,
+        startDate: formatDisplayDate(workDays[0] || startDateStr),
+        issuedStr,
+        filename: 'Relatorio_SimulaFab_' + sanitizePdfFilenamePart(projectName) + '_' + boxesQty + 'cx_v' + APP_VERSION + '.pdf'
+      };
+    }
+
+    function clipAbsInterval(start, end, rangeStart, rangeEnd) {
+      const s = Math.max(Number(start) || 0, rangeStart);
+      const e = Math.min(Number(end) || 0, rangeEnd);
+      return e > s ? { start: s, end: e } : null;
+    }
+
+    function excludeLunchFromInterval(start, end) {
+      const out = [];
+      let t = Math.max(0, start);
+      const limit = Math.max(t, end);
+      let guard = 0;
+      while (t < limit && guard++ < 4000) {
+        if (isLunchAbsMinute(t)) {
+          t = Math.floor(t / MINUTES_PER_DAY) * MINUTES_PER_DAY + LUNCH_END_OFFSET;
+          continue;
+        }
+        const dayStart = Math.floor(t / MINUTES_PER_DAY) * MINUTES_PER_DAY;
+        const lunchStart = dayStart + LUNCH_START_OFFSET;
+        const dayEnd = dayStart + MINUTES_PER_DAY;
+        const next = t < lunchStart ? Math.min(limit, lunchStart) : Math.min(limit, dayEnd);
+        if (next > t) out.push({ start: t, end: next });
+        t = next;
+      }
+      return out;
+    }
+
+    function lunchOverlaysInRange(rangeStart, rangeEnd) {
+      const bands = [];
+      if (rangeEnd <= rangeStart) return bands;
+      const startDay = Math.floor(rangeStart / MINUTES_PER_DAY);
+      const endDay = Math.floor((rangeEnd - 1) / MINUTES_PER_DAY);
+      for (let d = startDay; d <= endDay; d++) {
+        const clipped = clipAbsInterval(
+          d * MINUTES_PER_DAY + LUNCH_START_OFFSET,
+          d * MINUTES_PER_DAY + LUNCH_END_OFFSET,
+          rangeStart,
+          rangeEnd
+        );
+        if (clipped) bands.push(clipped);
+      }
+      return bands;
+    }
+
+    function dayBoundaryAbsMins(rangeStart, rangeEnd) {
+      const marks = [];
+      const first = Math.ceil(rangeStart / MINUTES_PER_DAY) * MINUTES_PER_DAY;
+      for (let t = first; t < rangeEnd; t += MINUTES_PER_DAY) {
+        if (t > rangeStart) marks.push(t);
+      }
+      return marks;
+    }
+
+    function getGanttRangeForDay(dayIndex) {
+      const day = Math.max(0, Number(dayIndex) || 0);
+      const start = day * MINUTES_PER_DAY;
+      const end = start + MINUTES_PER_DAY;
+      return { start, end, mode: 'day', dayIndex: day };
+    }
+
+    function getGanttRangeForLot() {
+      const startAbs = getSimulationStartAbsMin();
+      const endAbs = Math.max(startAbs + 1, getProjectMakespanEndAbsMin());
+      const histEnd = Math.max(startAbs + 1, Math.min(simulationHistory.length || endAbs, endAbs));
+      return { start: startAbs, end: histEnd, mode: 'lot', dayIndex: -1 };
+    }
+
+    function pushGanttBlocks(blocks, kind, start, end, rangeStart, rangeEnd, partName) {
+      const clipped = clipAbsInterval(start, end, rangeStart, rangeEnd);
+      if (!clipped) return;
+      excludeLunchFromInterval(clipped.start, clipped.end).forEach(seg => {
+        blocks.push({ kind, start: seg.start, end: seg.end, partName: partName || '' });
+      });
+    }
+
+    function ganttKindRank(kind) {
+      if (kind === 'prod') return 4;
+      if (kind === 'setup') return 3;
+      if (kind === 'maint') return 2;
+      if (kind === 'wait') return 1;
+      return 0;
+    }
+
+    function sortGanttBlocksForPaint(blocks) {
+      return (blocks || []).slice().sort((a, b) => {
+        const rankDiff = ganttKindRank(a.kind) - ganttKindRank(b.kind);
+        if (rankDiff !== 0) return rankDiff;
+        return a.start - b.start;
+      });
+    }
+
+    /**
+     * Ocupação da máquina: Produção > Setup > Manutenção > Espera/Fila.
+     * Peças na fila não pintam de cinza um intervalo em que a máquina já corta/produz.
+     */
+    function resolveGanttMachineBlocks(blocks) {
+      const src = (blocks || []).filter(b => b && b.end > b.start);
+      if (src.length === 0) return [];
+      const times = [];
+      src.forEach(b => {
+        times.push(b.start, b.end);
+      });
+      times.sort((a, b) => a - b);
+      const uniq = [];
+      times.forEach(t => {
+        if (uniq.length === 0 || uniq[uniq.length - 1] !== t) uniq.push(t);
+      });
+      const resolved = [];
+      for (let i = 0; i < uniq.length - 1; i++) {
+        const t0 = uniq[i];
+        const t1 = uniq[i + 1];
+        let bestRank = 0;
+        let bestKind = '';
+        const names = [];
+        src.forEach(b => {
+          if (b.start >= t1 || b.end <= t0) return;
+          const rank = ganttKindRank(b.kind);
+          if (rank > bestRank) {
+            bestRank = rank;
+            bestKind = b.kind;
+            names.length = 0;
+            if (b.partName) names.push(b.partName);
+          } else if (rank === bestRank && b.partName && names.indexOf(b.partName) < 0) {
+            names.push(b.partName);
+          }
+        });
+        if (!bestKind) continue;
+        const partName = names.join(' + ');
+        const last = resolved[resolved.length - 1];
+        if (last && last.kind === bestKind && last.end === t0) {
+          last.end = t1;
+          const existing = last.partName ? last.partName.split(' + ') : [];
+          names.forEach(n => {
+            if (n && existing.indexOf(n) < 0) existing.push(n);
+          });
+          last.partName = existing.join(' + ');
+        } else {
+          resolved.push({ kind: bestKind, start: t0, end: t1, partName });
+        }
+      }
+      return resolved;
+    }
+
+    function buildGanttRows(rangeStart, rangeEnd) {
+      const machinesList = getActiveMachines();
+      return machinesList.map(m => {
+        const blocks = [];
+        (rawEvents || []).filter(e => e.machineId === m.id).forEach(evt => {
+          pushGanttBlocks(blocks, 'wait', evt.arrivalTime, evt.setupStart, rangeStart, rangeEnd, evt.partName);
+          pushGanttBlocks(blocks, 'setup', evt.setupStart, eventSetupEnd(evt), rangeStart, rangeEnd, evt.partName);
+          pushGanttBlocks(blocks, 'prod', evt.prodStart, evt.end, rangeStart, rangeEnd, evt.partName);
+        });
+        (maintenanceEvents || []).filter(e => e.machineId === m.id).forEach(me => {
+          pushGanttBlocks(blocks, 'maint', me.start, me.end, rangeStart, rangeEnd, 'Manutenção');
+        });
+        return { id: m.id, name: m.name, blocks: sortGanttBlocksForPaint(resolveGanttMachineBlocks(blocks)) };
+      });
+    }
+
+    function buildBomDetailRows() {
+      const rows = [];
+      (parts || []).forEach(p => {
+        const evts = (rawEvents || []).filter(e => e.partName === p.name && !e.isJoin);
+        const setup = evts.reduce((s, e) => s + (Number(e.setupTime) || 0), 0);
+        const prod = evts.reduce((s, e) => s + (Number(e.prodTime) || 0), 0);
+        const start = evts.length ? Math.min.apply(null, evts.map(e => e.setupStart)) : null;
+        const end = evts.length ? Math.max.apply(null, evts.map(e => e.end)) : null;
+        const route = (p.route || []).map(s => {
+          const m = machines.find(x => x.id === s.machineId);
+          return m ? m.name : (s.machineId || '?');
+        }).join(' → ');
+        rows.push({
+          name: p.name,
+          kind: 'Peça',
+          qty: (Number(p.qty) || 1) * (boxesQty || 1),
+          route: route || '—',
+          setup,
+          prod,
+          startLabel: start != null ? absMinuteToTimeLabel(start) : '—',
+          endLabel: end != null ? absMinuteToTimeLabel(end) : '—',
+          requer: '—'
+        });
+      });
+      (assemblyRules || []).forEach(r => {
+        const evts = (rawEvents || []).filter(e => e.partName === r.resultName);
+        const setup = evts.reduce((s, e) => s + (Number(e.setupTime) || 0), 0);
+        const prod = evts.reduce((s, e) => s + (Number(e.prodTime) || 0), 0);
+        const start = evts.length ? Math.min.apply(null, evts.map(e => e.setupStart)) : null;
+        const end = evts.length ? Math.max.apply(null, evts.map(e => e.end)) : null;
+        const joinMachine = machines.find(x => x.id === r.machineId);
+        const sub = (r.route || []).map(s => {
+          const m = machines.find(x => x.id === s.machineId);
+          return m ? m.name : (s.machineId || '?');
+        });
+        const routeParts = [];
+        if (joinMachine) routeParts.push(joinMachine.name + ' (JOIN)');
+        routeParts.push.apply(routeParts, sub);
+        rows.push({
+          name: r.resultName,
+          kind: 'JOIN / SKU',
+          qty: (Number(r.qty) || 1) * (boxesQty || 1),
+          route: routeParts.join(' → ') || '—',
+          setup,
+          prod,
+          startLabel: start != null ? absMinuteToTimeLabel(start) : '—',
+          endLabel: end != null ? absMinuteToTimeLabel(end) : '—',
+          requer: joinRequerOf(r).join(' + ') || '—'
+        });
+      });
+      return rows;
     }
 
 // --- MOTOR DE SIMULAÇÃO ---

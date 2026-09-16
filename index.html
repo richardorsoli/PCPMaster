@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SimulaFab v1.6.3</title>
+  <title>SimulaFab v1.6.4</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
@@ -14,9 +14,9 @@
   <!-- TELA 1: INICIAL -->
   <div id="screen-welcome" class="screen active">
     <div style="background: #1e293b; padding: 40px; border-radius: 12px; border: 1px solid #334155; text-align: center; max-width: 780px; margin: 40px auto;">
-      <h1 style="color: #38bdf8; font-size: 2.3rem; margin-bottom: 15px;">SimulaFab v1.6.3</h1>
+      <h1 style="color: #38bdf8; font-size: 2.3rem; margin-bottom: 15px;">SimulaFab v1.6.4</h1>
       <p style="color: #94a3b8; font-size: 1.05rem; line-height: 1.6; margin-bottom: 30px;">
-        Simulação multi-dia com hora de início flexível, recálculo por caixas, indicadores de eficiência, feriados, manutenção preventiva e relatórios PDF.
+        Simulação multi-dia com Gantt, relatórios PDF, indicadores de eficiência, hora de início flexível, recálculo por caixas e manutenção preventiva.
       </p>
 
       <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 25px; flex-wrap: wrap;">
@@ -264,12 +264,12 @@
           </div>
         </div>
         <div style="margin-top: 10px;">
-          <label style="font-size:0.8rem; color:#94a3b8;">Sequência após a transformação de SKU:</label>
+          <label style="font-size:0.8rem; color:#94a3b8;">Sequência após a transformação de SKU: (arraste as etapas para reordenar)</label>
           <div id="current-join-steps-container" style="margin-top:5px; min-height: 35px;"></div>
         </div>
       </div>
       <ul id="assemblies-list" class="item-list"></ul>
-      <p style="font-size:0.78rem; color:#64748b; margin-top:8px;">Arraste os cards de JOIN para reordenar a exibição e o desempate no motor. As dependências de requer continuam ligadas pelos nomes dos insumos.</p>
+      <p style="font-size:0.78rem; color:#64748b; margin-top:8px;">Arraste os cards de JOIN para reordenar a exibição e o desempate no motor. Arraste as badges do sub-roteiro para inverter a sequência pós-junção. As dependências de requer continuam ligadas pelos nomes dos insumos.</p>
     </div>
 
     <!-- FERIADOS -->
@@ -326,7 +326,7 @@
     <div class="dashboard">
       <div>
         <div class="sim-header-row">
-          <div style="color:#f8fafc; font-size:1.15rem; font-weight:700;">SimulaFab v1.6.3 - Controle de Chão de Fábrica</div>
+          <div style="color:#f8fafc; font-size:1.15rem; font-weight:700;">SimulaFab v1.6.4 - Controle de Chão de Fábrica</div>
           <button type="button" class="btn btn-secondary" id="btn-new-project-sim" onclick="startNewProject(true)">Novo Projeto</button>
         </div>
         <div class="sim-controls">
@@ -404,6 +404,27 @@
       <div>
         <button class="btn btn-success" onclick="generatePDFReport()">📄 Gerar Relatório PDF</button>
         <button class="btn btn-secondary" onclick="navigateTo('screen-config')">Ajustar Roteiro</button>
+      </div>
+    </div>
+
+    <div class="chart-card gantt-card pdf-keep-together">
+      <div class="gantt-header-row">
+        <h2 style="color: #38bdf8; font-size: 1.2rem; margin: 0;">Gráfico de Gantt do Projeto</h2>
+        <div class="gantt-mode-btns" role="group" aria-label="Visualização do Gantt">
+          <button type="button" class="btn btn-speed is-active" id="gantt-mode-day" onclick="setGanttViewMode('day')">Por dia</button>
+          <button type="button" class="btn btn-speed" id="gantt-mode-lot" onclick="setGanttViewMode('lot')">Lote contínuo</button>
+        </div>
+      </div>
+      <p class="gantt-subtitle" id="gantt-range-label">Gere a simulação para ver o cronograma por posto.</p>
+      <div class="legend gantt-legend">
+        <div class="legend-item"><div class="color-box" style="background:#f97316;"></div> Setup</div>
+        <div class="legend-item"><div class="color-box" style="background:#22c55e;"></div> Produção</div>
+        <div class="legend-item"><div class="color-box" style="background:#64748b;"></div> Espera/Fila</div>
+        <div class="legend-item"><div class="color-box" style="background:#a855f7;"></div> Manutenção</div>
+        <div class="legend-item"><div class="color-box" style="background:rgba(148,163,184,0.45); border:1px dashed #cbd5e1;"></div> Almoço 12:00–13:00</div>
+      </div>
+      <div id="gantt-chart" class="gantt-chart">
+        <div class="gantt-empty">Gere a simulação para montar o Gantt.</div>
       </div>
     </div>
 

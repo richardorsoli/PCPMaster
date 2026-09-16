@@ -1,4 +1,4 @@
-/* SimulaFab v1.6.3 — Inicialização, playback e integração dos módulos */
+/* SimulaFab v1.6.4 — Inicialização, playback e integração dos módulos */
 
     function syncSimHeaderFields() {
       const simBoxes = document.getElementById('sim-boxes-qty');
@@ -169,7 +169,7 @@ window.onload = () => {
   startDateStr = document.getElementById('start-date').value;
   applyStartTimeToState(document.getElementById('start-time') && document.getElementById('start-time').value);
   document.title = 'SimulaFab v' + APP_VERSION;
-  console.info('SimulaFab v' + APP_VERSION + ' — Sprint 7 Batch 3 (Analytics & Indicadores)');
+  console.info('SimulaFab v' + APP_VERSION + ' — Sprint 7 Batch 4 (Gantt & Relatório PDF)');
   renderConfigUI();
   updatePlayButtonUI();
   updateSpeedButtonsUI();

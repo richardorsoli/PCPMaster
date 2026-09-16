@@ -1,10 +1,19 @@
 ==================================================
  PROJETO: SimulaFab
- VERSÃO ATUAL: v1.6.3 (Sprint 7 Batch 3 — Analytics & Indicadores)
+ VERSÃO ATUAL: v1.6.4 (Sprint 7 Batch 4 — Gantt & Relatório PDF)
  REGRA DE VERSIONAMENTO: 
    - v1.5.x: Correções de bugs (Patch)
    - v1.6.x: Sprints/Recursos (Minor)
 ==================================================
+
+[v1.6.4] - Sprint 7 Batch 4 (CONCLUÍDO)
+- Versão visível: SimulaFab v1.6.4 (títulos, cabeçalho, APP_VERSION, PDF, console).
+- PDF com cabeçalho parametrizado: Projeto/SKU Final, qtd. caixas, data de emissão, hora inicial, versão.
+- Arquivo: Relatorio_SimulaFab_[NomeDoProjeto]_[QtdCaixas]cx_v1.6.4.pdf.
+- Gantt na simulação (por dia ou lote contínuo) e no PDF: Setup laranja, Produção verde, Espera/Fila cinza, almoço 12:00–13:00.
+- PDF inclui KPIs (Makespan, Eficiência, Gargalo), horas por operador, BOM/JOIN e cronoanálise, com rowPageBreak avoid.
+
+Arquivos: index.html, css/styles.css, js/simulation.js, js/ui.js, js/app.js, js/database.js, banco_dados.json, .cursorrules
 
 [v1.6.3] - Sprint 7 Batch 3 (CONCLUÍDO)
 - Versão visível: SimulaFab v1.6.3 (títulos, cabeçalho da simulação, APP_VERSION, PDF, console).
@@ -185,7 +194,16 @@ Estamos iniciando a **Sprint 9** do SimulaFab v1.5.0, focada em transformar a es
 
 Por favor, apresente as alterações nos arquivos correspondentes (módulos do motor, estrutura de dados e renderizadores) mantendo o alinhamento com os recursos atuais (pausa do almoço 12:00-13:00 e despacho job-shop).
 
-
+SPRINT 7 - ANALYTICS (CONCLUÍDO)
+1. SAI NO RELATORIO A ANALISE DE EFICIENCIA
+3. GERAR RELATORIO DE HORA TRABALHADA POR FUNCIONARIO
+5. EM ANÁLISE DE EFICIENCIA NA LEGENDA MOSTRAR A SOMATÓRIA DE TEMPO POR EXEMPLO EM SETUP AO LADO DO QUADRADO VERDE QUANTOS MINUTOS TEM DE SETUP NO PROJETO, ASSIM POR DIANTE. 
+4. EDIÇÃO DAS ORDENS DO ROTEIRO DAS PEÇAS, PODE ALTERAR A ORDEM DE EXECUÇÃO DAS PEÇAS E DOS ROTEIROS DENTRO DAS PEÇAS CLICANDO NELAS E ARRASTANDO ENTRE ELAS.
+6. PERTMITIR ALTERAR A QUANTIDADE DE CAIXAS E RECALCULAR NA PAGINA DE SIMULAÇÃO MESMO
+8. PODE ESCOLHER A HORA DE INÍCIO DENTRO DOS HORAS QUE TEM NO TURNO, EXEMPLO: O TURNO INICIA AS 7H30, PARA 12H, VOLTA 13H, ENCERRA 17H18. SE EU QUISER RODAR UMA SIMULAÇÃO AS 10H EU CONSIGO, 11H30, ETC...
+9. QUANTO A SIMULAÇÃO TIVER MAIS DE 1 DIA AO LADO DA BARRA DE ROLAR, COLOCAR UM MENU SUSPENSO COM AS DATAS, E AO SELECIONAR ALGUMA DATA, A BARRA DEVE VOLTAR PARA O INÍCIO AUTOMATICAMENTE.
+2. GERAR NO RELATÓRIO O GARFICO DE GANTT DO PROJETO
+7. AO GERAR RELATÓRIO PDF SAIR COM NOME DO PROJETO E QTDE DE CAIXAS
 
 ========================================
  PRÓXIMAS SPRINTS (A FAZER)
@@ -196,21 +214,6 @@ Por favor, apresente as alterações nos arquivos correspondentes (módulos do m
 SPRINT 4 - TESTER
  - Um testador de trajetos de qual é a melhor ordem de start de peças para gerar menos tempo ocioso, porque eu penso em achar a melhor disposição de peças de cada projeto para depois colocar dois ou mais projetos para testar o andamento e comportamento na linha de produção (sprint 10).
 
-SPRINT 7 - ANALYTICS
-1. SAI NO RELATORIO A ANALISE DE EFICIENCIA
-3. GERAR RELATORIO DE HORA TRABALHADA POR FUNCIONARIO
-5. EM ANÁLISE DE EFICIENCIA NA LEGENDA MOSTRAR A SOMATÓRIA DE TEMPO POR EXEMPLO EM SETUP AO LADO DO QUADRADO VERDE QUANTOS MINUTOS TEM DE SETUP NO PROJETO, ASSIM POR DIANTE. 
-4. EDIÇÃO DAS ORDENS DO ROTEIRO DAS PEÇAS, PODE ALTERAR A ORDEM DE EXECUÇÃO DAS PEÇAS E DOS ROTEIROS DENTRO DAS PEÇAS CLICANDO NELAS E ARRASTANDO ENTRE ELAS.
-
-6. PERTMITIR ALTERAR A QUANTIDADE DE CAIXAS E RECALCULAR NA PAGINA DE SIMULAÇÃO MESMO
-8. PODE ESCOLHER A HORA DE INÍCIO DENTRO DOS HORAS QUE TEM NO TURNO, EXEMPLO: O TURNO INICIA AS 7H30, PARA 12H, VOLTA 13H, ENCERRA 17H18. SE EU QUISER RODAR UMA SIMULAÇÃO AS 10H EU CONSIGO, 11H30, ETC...
-9. QUANTO A SIMULAÇÃO TIVER MAIS DE 1 DIA AO LADO DA BARRA DE ROLAR, COLOCAR UM MENU SUSPENSO COM AS DATAS, E AO SELECIONAR ALGUMA DATA, A BARRA DEVE VOLTAR PARA O INÍCIO AUTOMATICAMENTE.
-
-2. GERAR NO RELATÓRIO O GARFICO DE GANTT DO PROJETO
-7. AO GERAR RELATÓRIO PDF SAIR COM NOME DO PROJETO E QTDE DE CAIXAS
-
-
-
 SPRINT 10 - PLANO DE PRODUCAO
 1. UM MÓDULO QUE A PARTIR DOS PROJETOS JÁ CRIADOS PODEMOS ESCOLHER A DATA E HORA DE INÍCIO E A ORDEM E QUANTIDADE DOS PROJETOS QUE VÃO SER EXECUTADOS NA ORDEM PARA VERIFICAR O COMPORTAMENTO DAS MOVIMENTAÇÕES DE PEÇAS E FUNCIONÁRIOS NAS MÁQUINAS E DAR UMA PREVISÃO DE SAÍDA, tem casos que eu quero ver se entrar um projeto DAE JUNDIAI agora na linha de produção, com a caixa comando já iniciada, como será o andamento e a quando será a finalização dos produtos
 
@@ -219,12 +222,13 @@ SPRINT 11 - ESTUFA
 2. quero que conte a quantidade de estufadas.
 3. pelo visto ao criar as peças que passem pela estufa preciso acrescentar altura x largura x profundidade da peça e o espaçamento ou quantas vão por fardo para ele programar a carga.
 
-
 SPRINT 12 - JUST IN TIME
 1. POR EXISTIR PEÇAS QUE VÃO DIRETO DO CORTE OU DA DOBRA PARA MONTAGEM, ESCOLHER UM MOMENTO MAIS "CASADO" QUE ELA SÓ INICIA QUANDO ESTIVER PERTO DE OUTRAS PEÇAS CHEGAREM NO SETOR. EXEMPLO A GUILHOTINA SÓ INICIA QUANDO O TEMPO NECESSÁRIO DELA ATÉ ENCERRAR FOR CASAR COM O ENCERRAMENTO DA MONTAGEM.
 
 SPRINT 13 - ULTIMATE DESIGN
 1. REMOVER OU ACRESCENTAR BOTÕES E FUNCIONALIDADES
+A. RECOLHER MENUS DE FUNCIONARIOS E MAQUINAS
+B. SEPARAR O BANCO DE DADOS EM TABELAS? 1.MAQUINAS/ 2.FUNCIONARIOS /3.PROJETOS/PEÇAS / 4.FERIADOS /5.TURNOS
 
 ========================================
       INICIAR NOVO CHAT NO CURSOR
