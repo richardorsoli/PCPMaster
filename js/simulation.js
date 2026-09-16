@@ -1,6 +1,6 @@
-/* SimulaFab v1.6.2 — Motor de simulação, calendário e manutenção preventiva */
+/* SimulaFab v1.6.3 — Motor de simulação, calendário, manutenção e analytics */
 
-const APP_VERSION = '1.6.2';
+const APP_VERSION = '1.6.3';
 
 // --- PARÂMETROS DO TURNO ---
 const SHIFT_START_MINUTES = 7 * 60 + 30;
@@ -751,6 +751,163 @@ const DEFAULT_START_TIME = '07:30';
         : machineOrId;
       if (!m || !m.defaultOperatorId) return '-';
       return formatEmployeeLabel(getEmployeeById(m.defaultOperatorId));
+    }
+
+    function emptyEfficiencyTotals() {
+      return { setup: 0, working: 0, waiting: 0, lunch: 0, idle: 0, maintenance: 0 };
+    }
+
+    function countMachineState(totals, state) {
+      if (totals[state] != null) totals[state]++;
+      else totals.idle++;
+    }
+
+    /** "420 min (7h00m)" */
+    function formatMinutesWithHours(mins) {
+      const n = Math.max(0, Math.round(Number(mins) || 0));
+      const h = Math.floor(n / 60);
+      const m = n % 60;
+      return `${n} min (${h}h${pad2(m)}m)`;
+    }
+
+    function getProjectMakespanEndAbsMin() {
+      let maxEnd = 0;
+      (rawEvents || []).forEach(e => { if (e.end > maxEnd) maxEnd = e.end; });
+      (maintenanceEvents || []).forEach(e => { if (e.end > maxEnd) maxEnd = e.end; });
+      return maxEnd;
+    }
+
+    function machineStateAt(absMin, machineId) {
+      const snap = simulationHistory[absMin];
+      if (!snap || !snap.machinesStatus || !snap.machinesStatus[machineId]) return 'idle';
+      return snap.machinesStatus[machineId].state || 'idle';
+    }
+
+    function computeOperatorHourRows(perMachine, histStart, histEnd) {
+      const rank = { working: 5, setup: 4, waiting: 3, maintenance: 2, lunch: 1, idle: 0 };
+      const rows = [];
+      const assignedIds = {};
+
+      (employees || []).forEach(emp => {
+        const mlist = perMachine.filter(pm => pm.operatorId === emp.id);
+        if (mlist.length === 0) return;
+        mlist.forEach(pm => { assignedIds[pm.id] = true; });
+        rows.push({ emp, mlist, unassigned: false });
+      });
+
+      const orphan = perMachine.filter(pm => !assignedIds[pm.id]);
+      if (orphan.length > 0) {
+        rows.push({
+          emp: { name: 'Sem operador', matricula: '' },
+          mlist: orphan,
+          unassigned: true
+        });
+      }
+
+      return rows.map(group => {
+        let production = 0, setup = 0, inactive = 0;
+        for (let absMin = histStart; absMin < histEnd; absMin++) {
+          let best = 'idle';
+          let bestRank = 0;
+          group.mlist.forEach(pm => {
+            const st = machineStateAt(absMin, pm.id);
+            const r = rank[st] != null ? rank[st] : 0;
+            if (r > bestRank) {
+              bestRank = r;
+              best = st;
+            }
+          });
+          if (best === 'working') production++;
+          else if (best === 'setup') setup++;
+          else if (best !== 'lunch') inactive++;
+        }
+
+        let principal = group.mlist[0];
+        group.mlist.forEach(pm => {
+          if (!principal || pm.occupied > principal.occupied ||
+              (pm.occupied === principal.occupied && pm.wait > principal.wait)) {
+            principal = pm;
+          }
+        });
+
+        return {
+          operator: group.unassigned ? 'Sem operador' : formatEmployeeLabel(group.emp),
+          principalMachine: principal ? principal.name : '—',
+          production,
+          setup,
+          inactive,
+          worked: production + setup
+        };
+      });
+    }
+
+    /**
+     * Indicadores do lote a partir do histórico do motor (caixas, hora inicial, almoço).
+     * Janela: início configurado → término do último evento (sem ocioso residual do dia).
+     */
+    function computeEfficiencyAnalytics() {
+      const machinesList = getActiveMachines();
+      const startAbs = getSimulationStartAbsMin();
+      const endAbs = getProjectMakespanEndAbsMin();
+      const histStart = Math.max(0, Math.min(startAbs, simulationHistory.length));
+      const histEnd = Math.max(histStart, Math.min(simulationHistory.length, endAbs));
+
+      const global = emptyEfficiencyTotals();
+      const perMachine = machinesList.map(m => {
+        const totals = emptyEfficiencyTotals();
+        for (let absMin = histStart; absMin < histEnd; absMin++) {
+          countMachineState(totals, machineStateAt(absMin, m.id));
+        }
+        global.setup += totals.setup;
+        global.working += totals.working;
+        global.waiting += totals.waiting;
+        global.lunch += totals.lunch;
+        global.idle += totals.idle;
+        global.maintenance += totals.maintenance;
+        return {
+          id: m.id,
+          name: m.name,
+          operatorId: m.defaultOperatorId || '',
+          totals,
+          occupied: totals.setup + totals.working,
+          wait: totals.waiting
+        };
+      });
+
+      const productive = global.working;
+      const occupied = global.working + global.setup;
+      const efficiencyPct = occupied > 0 ? (productive / occupied) * 100 : 0;
+
+      let bottleneck = null;
+      let bottleneckScore = -1;
+      perMachine.forEach(pm => {
+        const score = pm.occupied + pm.wait;
+        if (score > bottleneckScore) {
+          bottleneck = pm;
+          bottleneckScore = score;
+        } else if (score === bottleneckScore && bottleneck && pm.wait > bottleneck.wait) {
+          bottleneck = pm;
+        }
+      });
+      if (bottleneck && bottleneckScore <= 0) bottleneck = null;
+
+      const makespanElapsed = Math.max(0, histEnd - histStart);
+      const makespanNet = productiveMinutesBetween(histStart, histEnd);
+
+      return {
+        histStart,
+        histEnd,
+        totals: global,
+        perMachine,
+        productive,
+        occupied,
+        efficiencyPct,
+        bottleneck,
+        makespanElapsed,
+        makespanNet,
+        completionAbs: histEnd,
+        operatorRows: computeOperatorHourRows(perMachine, histStart, histEnd)
+      };
     }
 
 // --- MOTOR DE SIMULAÇÃO ---

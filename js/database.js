@@ -1,4 +1,4 @@
-/* SimulaFab v1.6.2 — Persistência localStorage e import/export banco_dados.json */
+/* SimulaFab v1.6.3 — Persistência localStorage e import/export banco_dados.json */
 
 const DB_STORAGE_KEY = 'simulafab_projects_v4';
 

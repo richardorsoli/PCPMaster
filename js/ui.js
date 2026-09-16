@@ -1,4 +1,4 @@
-/* SimulaFab v1.6.2 — Manipulação de DOM, timeline, relógio, tabelas e PDF */
+/* SimulaFab v1.6.3 — Manipulação de DOM, timeline, relógio, tabelas, analytics e PDF */
 
     // --- EXEMPLO ---
     function loadExampleAndNavigate() {
@@ -113,6 +113,7 @@
       if (tbody) tbody.innerHTML = '';
       const charts = document.getElementById('machine-charts-container');
       if (charts) charts.innerHTML = '';
+      resetAnalyticsView();
       const dayWrap = document.getElementById('day-select-wrap');
       if (dayWrap) dayWrap.style.display = 'none';
       const startAbs = getSimulationStartAbsMin();
@@ -1149,40 +1150,154 @@
       });
     }
 
+    function setLegendLabel(id, title, minutes) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (minutes == null) {
+        el.textContent = title;
+        return;
+      }
+      el.textContent = `${title}: ${formatMinutesWithHours(minutes)}`;
+    }
+
+    function resetAnalyticsView() {
+      setLegendLabel('legend-working', 'Produção');
+      setLegendLabel('legend-setup', 'Setup');
+      setLegendLabel('legend-waiting', 'Espera/Fila');
+      setLegendLabel('legend-maintenance', 'Manutenção Preventiva');
+      setLegendLabel('legend-lunch', 'Almoço');
+      setLegendLabel('legend-idle', 'Ocioso');
+
+      const makespan = document.getElementById('kpi-makespan');
+      if (makespan) makespan.textContent = '—';
+      const makespanHint = document.getElementById('kpi-makespan-hint');
+      if (makespanHint) makespanHint.textContent = 'Tempo até a conclusão do lote/caixas';
+      const efficiency = document.getElementById('kpi-efficiency');
+      if (efficiency) efficiency.textContent = '—';
+      const efficiencyHint = document.getElementById('kpi-efficiency-hint');
+      if (efficiencyHint) efficiencyHint.textContent = 'Produtivo / Ocupado (Produção + Setup) × 100';
+      const bottleneck = document.getElementById('kpi-bottleneck');
+      if (bottleneck) bottleneck.textContent = '—';
+      const bottleneckHint = document.getElementById('kpi-bottleneck-hint');
+      if (bottleneckHint) bottleneckHint.textContent = 'Posto com maior ocupação (e fila)';
+
+      const tbody = document.getElementById('operator-hours-body');
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:#64748b;">Gere a simulação para ver o relatório por operador.</td></tr>';
+      }
+    }
+
+    function renderAnalyticsKpis(analytics) {
+      const makespanEl = document.getElementById('kpi-makespan');
+      const makespanHint = document.getElementById('kpi-makespan-hint');
+      const efficiencyEl = document.getElementById('kpi-efficiency');
+      const bottleneckEl = document.getElementById('kpi-bottleneck');
+      const bottleneckHint = document.getElementById('kpi-bottleneck-hint');
+
+      if (!analytics || analytics.makespanElapsed <= 0) {
+        if (makespanEl) makespanEl.textContent = '—';
+        if (makespanHint) makespanHint.textContent = 'Sem eventos no lote';
+        if (efficiencyEl) efficiencyEl.textContent = '—';
+        const efficiencyHintEmpty = document.getElementById('kpi-efficiency-hint');
+        if (efficiencyHintEmpty) efficiencyHintEmpty.textContent = 'Produtivo / Ocupado (Produção + Setup) × 100';
+        if (bottleneckEl) bottleneckEl.textContent = '—';
+        if (bottleneckHint) bottleneckHint.textContent = 'Posto com maior ocupação (e fila)';
+        return;
+      }
+
+      if (makespanEl) makespanEl.textContent = formatMinutesWithHours(analytics.makespanElapsed);
+      if (makespanHint) {
+        const doneAbs = Math.max(0, analytics.completionAbs);
+        const lastMin = Math.max(analytics.histStart, doneAbs > 0 ? doneAbs - 1 : 0);
+        const firstDay = Math.floor(analytics.histStart / MINUTES_PER_DAY);
+        const lastDay = Math.floor(lastMin / MINUTES_PER_DAY);
+        const days = Math.max(1, lastDay - firstDay + 1);
+        const dayTxt = days > 1 ? `${days} dias úteis` : '1 dia útil';
+        const doneLabel = absMinuteToTimeLabel(doneAbs);
+        makespanHint.textContent = `Conclusão: ${doneLabel} · ${dayTxt} · líquido (sem almoço): ${formatMinutesWithHours(analytics.makespanNet)}`;
+      }
+
+      if (efficiencyEl) {
+        efficiencyEl.textContent = analytics.occupied > 0
+          ? analytics.efficiencyPct.toFixed(1) + '%'
+          : '—';
+      }
+      const efficiencyHint = document.getElementById('kpi-efficiency-hint');
+      if (efficiencyHint) {
+        efficiencyHint.textContent = analytics.occupied > 0
+          ? `${formatMinutesWithHours(analytics.productive)} produtivo / ${formatMinutesWithHours(analytics.occupied)} ocupado`
+          : 'Produtivo / Ocupado (Produção + Setup) × 100';
+      }
+
+      if (analytics.bottleneck) {
+        const bn = analytics.bottleneck;
+        if (bottleneckEl) bottleneckEl.textContent = bn.name;
+        if (bottleneckHint) {
+          bottleneckHint.textContent = `Ocupação: ${formatMinutesWithHours(bn.occupied)} · Fila: ${formatMinutesWithHours(bn.wait)}`;
+        }
+      } else {
+        if (bottleneckEl) bottleneckEl.textContent = 'Nenhum gargalo';
+        if (bottleneckHint) bottleneckHint.textContent = 'Sem ocupação relevante no lote';
+      }
+    }
+
+    function renderOperatorHoursTable(rows) {
+      const tbody = document.getElementById('operator-hours-body');
+      if (!tbody) return;
+      if (!rows || rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:#64748b;">Nenhum operador associado às máquinas ativas deste lote.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(row => `
+        <tr>
+          <td><strong>${row.operator}</strong></td>
+          <td>${row.principalMachine}</td>
+          <td>${formatMinutesWithHours(row.production)}</td>
+          <td>${formatMinutesWithHours(row.setup)}</td>
+          <td>${formatMinutesWithHours(row.inactive)}</td>
+          <td><strong>${formatMinutesWithHours(row.worked)}</strong></td>
+        </tr>`).join('');
+    }
+
     function renderCharts() {
       const container = document.getElementById('machine-charts-container');
+      if (!container) return;
       container.innerHTML = '';
 
-      const chartMachines = getActiveMachines();
-      chartMachines.forEach((m, idx) => {
-        let setupTime = 0, workTime = 0, waitTime = 0, lunchTime = 0, idleTime = 0, maintTime = 0;
+      if (!simulationHistory.length) {
+        resetAnalyticsView();
+        return;
+      }
 
-        simulationHistory.forEach(snap => {
-          const st = snap.machinesStatus[m.id] ? snap.machinesStatus[m.id].state : 'idle';
-          if (st === 'setup') setupTime++;
-          else if (st === 'working') workTime++;
-          else if (st === 'waiting') waitTime++;
-          else if (st === 'lunch') lunchTime++;
-          else if (st === 'maintenance') maintTime++;
-          else idleTime++;
-        });
+      const analytics = computeEfficiencyAnalytics();
+      const t = analytics.totals;
+      setLegendLabel('legend-working', 'Produção', t.working);
+      setLegendLabel('legend-setup', 'Setup', t.setup);
+      setLegendLabel('legend-waiting', 'Espera/Fila', t.waiting);
+      setLegendLabel('legend-maintenance', 'Manutenção Preventiva', t.maintenance);
+      setLegendLabel('legend-lunch', 'Almoço', t.lunch);
+      setLegendLabel('legend-idle', 'Ocioso', t.idle);
+      renderAnalyticsKpis(analytics);
+      renderOperatorHoursTable(analytics.operatorRows);
 
-        const total = Math.max(1, simulationHistory.length);
-        const pct = (n) => ((n / total) * 100).toFixed(1);
+      const windowLen = Math.max(1, analytics.histEnd - analytics.histStart);
+      const pct = (n) => ((n / windowLen) * 100).toFixed(1);
 
+      analytics.perMachine.forEach((pm, idx) => {
+        const tt = pm.totals;
         container.innerHTML += `
           <div class="bar-container">
             <div class="bar-label">
-              <span><strong>M${idx + 1}: ${m.name}</strong></span>
-              <span>Setup: ${setupTime}m | Prod: ${workTime}m | Espera: ${waitTime}m | Manut: ${maintTime}m | Almoço: ${lunchTime}m | Ocioso: ${idleTime}m</span>
+              <span><strong>M${idx + 1}: ${pm.name}</strong></span>
+              <span>Setup: ${tt.setup}m | Prod: ${tt.working}m | Espera: ${tt.waiting}m | Manut: ${tt.maintenance}m | Almoço: ${tt.lunch}m | Ocioso: ${tt.idle}m</span>
             </div>
             <div class="bar-track">
-              <div class="bar-segment" style="width: ${pct(setupTime)}%; background: #f97316;"></div>
-              <div class="bar-segment" style="width: ${pct(workTime)}%; background: #22c55e;"></div>
-              <div class="bar-segment" style="width: ${pct(waitTime)}%; background: #eab308;"></div>
-              <div class="bar-segment" style="width: ${pct(maintTime)}%; background: #a855f7;"></div>
-              <div class="bar-segment" style="width: ${pct(lunchTime)}%; background: #64748b;"></div>
-              <div class="bar-segment" style="width: ${pct(idleTime)}%; background: #334155;"></div>
+              <div class="bar-segment" style="width: ${pct(tt.setup)}%; background: #f97316;"></div>
+              <div class="bar-segment" style="width: ${pct(tt.working)}%; background: #22c55e;"></div>
+              <div class="bar-segment" style="width: ${pct(tt.waiting)}%; background: #eab308;"></div>
+              <div class="bar-segment" style="width: ${pct(tt.maintenance)}%; background: #a855f7;"></div>
+              <div class="bar-segment" style="width: ${pct(tt.lunch)}%; background: #64748b;"></div>
+              <div class="bar-segment" style="width: ${pct(tt.idle)}%; background: #334155;"></div>
             </div>
           </div>`;
       });

@@ -1,10 +1,20 @@
 ==================================================
  PROJETO: SimulaFab
- VERSÃO ATUAL: v1.5.0 (Em desenvolvimento)
+ VERSÃO ATUAL: v1.6.3 (Sprint 7 Batch 3 — Analytics & Indicadores)
  REGRA DE VERSIONAMENTO: 
    - v1.5.x: Correções de bugs (Patch)
-   - v1.6.0: Novas Sprints/Recursos (Minor)
+   - v1.6.x: Sprints/Recursos (Minor)
 ==================================================
+
+[v1.6.3] - Sprint 7 Batch 3 (CONCLUÍDO)
+- Versão visível: SimulaFab v1.6.3 (títulos, cabeçalho da simulação, APP_VERSION, PDF, console).
+- Legenda de eficiência com somatório do lote em minutos e horas:minutos (Produção, Setup, Espera/Fila, Manutenção, Almoço, Ocioso).
+- Painel analítico: Makespan Total, Índice de Eficiência Global (%) = Produtivo / Ocupado (Produção + Setup), Gargalo (posto com maior ocupação+fila).
+- Relatório de horas por funcionário/operador: posto principal, produção, setup, inativo/aguardando, total trabalhado no turno.
+- Cálculos derivados do motor (caixas, hora de início, almoço). Recursos v1.6.1/v1.6.2 preservados.
+
+Arquivos: index.html, css/styles.css, js/simulation.js, js/ui.js, js/app.js, js/database.js, banco_dados.json, .cursorrules
+
 ==================================================
  HISTÓRICO DE VERSÕES (CONCLUÍDAS)
 ==================================================

@@ -1,4 +1,4 @@
-# SimulaFab v1.6.2 — Regras do Projeto
+# SimulaFab v1.6.3 — Regras do Projeto
 
 App web de simulação PPCP / chão de fábrica (HTML + JS vanilla + CSS). UI em português (pt-BR). Tema escuro industrial. Entry point: `index.html`.
 
@@ -26,7 +26,7 @@ Scripts clássicos no escopo global (não ES modules), para `onclick` e abertura
 
 | Arquivo | Contém | Não colocar aqui |
 |---------|--------|------------------|
-| `simulation.js` | Constantes de turno, estado, `calculateSimulationHistory`, calendário multi-dia, manutenção preventiva, helpers de data/tempo/velocidade | Persistência, PDF, markup |
+| `simulation.js` | Constantes de turno, estado, `calculateSimulationHistory`, calendário multi-dia, manutenção preventiva, helpers de data/tempo/velocidade, `computeEfficiencyAnalytics` | Persistência, PDF, markup |
 | `database.js` | `DB_STORAGE_KEY`, save/load/export/import, normalização de import | Motor de simulação, render de tela |
 | `ui.js` | CRUD (funcionários, máquinas, peças, regras), `renderConfigUI`, chão, charts, `generatePDFReport` | Persistência bruta, loop de playback |
 | `app.js` | `startSimulation`, `runLoop`, play/stop/step/speed, `onTimelineChange` | Cálculo de eventos, schema DB |
@@ -38,7 +38,7 @@ Antes de mudar regra de negócio, localizar o módulo certo. Preferir editar os 
 
 1. **welcome** — exemplo, projeto novo, carregar projeto, import/export JSON  
 2. **config** — engenharia: funcionários → máquinas → peças/roteiros (drag-and-drop de prioridade e de etapas) → agrupamento → união → feriados → qtd. caixas + data/hora inicial  
-3. **sim** — play/pause/stop, ±1 min, velocidade 1x/5x/10x, recálculo ao vivo da qtd. de caixas, hora de início flexível, relógio `DD/MM/AA - HH:MM:SS`, tabela do chão, timeline full-width no card, dropdown de datas ao lado da timeline, gráficos, PDF  
+3. **sim** — play/pause/stop, ±1 min, velocidade 1x/5x/10x, recálculo ao vivo da qtd. de caixas, hora de início flexível, relógio `DD/MM/AA - HH:MM:SS`, tabela do chão, timeline full-width no card, dropdown de datas ao lado da timeline, gráficos com totais na legenda, painel Makespan/Eficiência/Gargalo, horas por operador, PDF  
 
 ## Regras de negócio ativas
 
@@ -71,7 +71,13 @@ Antes de mudar regra de negócio, localizar o módulo certo. Preferir editar os 
 
 ### Funcionários / operadores
 - `employees[]`: `{ id, name, matricula }`.
-- Máquina: `defaultOperatorId` → coluna **Operador** no chão e **Operador Responsável** no PDF.
+- Máquina: `defaultOperatorId` → coluna **Operador** no chão, **Operador Responsável** no PDF e relatório de horas por funcionário.
+
+### Analytics (v1.6.3)
+- Cálculos derivados de `simulationHistory` / eventos do motor na janela início configurado → término do último evento (respeita caixas, hora inicial e almoço).
+- Legenda dos gráficos: somatório do lote em `N min (XhYYm)` por estado (Produção, Setup, Espera/Fila, Manutenção, Almoço, Ocioso).
+- Painel: **Makespan Total**, **Índice de Eficiência Global (%)** = `(Tempo Produtivo / Tempo Ocupado) * 100` com ocupado = produção + setup, **Gargalo** = posto com maior ocupação+fila.
+- Tabela de horas por operador: Produção, Setup, Inativo/Aguardando, Total trabalhado (produção + setup); posto principal = máquina com maior ocupação.
 
 ### Playback
 - Play/Pause (verde ativo / verde opaco pausado); Stop → Dia 1, 07:30:00.
@@ -148,4 +154,4 @@ Campos finais em branco para preenchimento manual / premiação.
 
 ## Versão
 
-Documento alinhado à **v1.6.2** (Sprint 7 Batch 2: drag-and-drop de peças e roteiro; Batch 1: hora de início, caixas ao vivo, dropdown de datas; BOM JOIN Sprint 9 e catálogo Sprint 8 intactos).
+Documento alinhado à **v1.6.3** (Sprint 7 Batch 3: analytics — totais na legenda, makespan/eficiência/gargalo, horas por operador; Batches 1–2 intactos: drag-and-drop, hora de início, caixas ao vivo, dropdown de datas; BOM JOIN Sprint 9 e catálogo Sprint 8 intactos).
