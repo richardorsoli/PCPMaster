@@ -158,9 +158,12 @@ Import aceita envelope legado (`app: SimulaFab`, `projects`/`holidays`/`employee
 ```
 
 ### Schema peça / rota
-- Peça: `{ name, thickness, qty, altura_m, largura_m, comprimento_m, pecas_por_fardo, route: [{ machineId, setup, prodUnit }] }`.
-- Volume do fardo = A×L×C. Nº de fardos = ceil(qty×caixas / pecas_por_fardo). Sem dimensões, 1 fardo ocupa a cabine inteira (conservador).
-- JOIN/SKU virtual também pode ter as mesmas dimensões de fardo (sub-roteiro com Estufa).
+- Peça: `{ name, thickness, qty, peca_altura_m, peca_largura_m, peca_comprimento_m, peca_max_fardo, peca_espacamento_mm, route: [{ machineId, setup, prodUnit }] }`.
+- Dimensões são da **peça individual**. Folga: `altura_efetiva = peca_altura_m + (peca_espacamento_mm/1000)` (idem largura/comprimento).
+- `volume_unitario_com_folga` = A_ef × L_ef × C_ef. `volume_fardo` = volume_unitario_com_folga × peca_max_fardo. `total_fardos` = ceil(qty×caixas / peca_max_fardo).
+- Empacotamento da Estufa usa `volume_fardo` na cabine 13.475 m³; caixa 3D usa dimensões efetivas (anti-colisão). Sem dimensões, 1 fardo ocupa a cabine inteira (conservador).
+- Import legado aceita `altura_m` / `largura_m` / `comprimento_m` / `pecas_por_fardo`.
+- JOIN/SKU virtual também pode ter as mesmas dimensões de peça/fardo (sub-roteiro com Estufa).
 
 ### Estufa — batelada 3D e ciclo GLP (Sprint 12)
 - Identificação: `isEstufa` ou nome contendo `ESTUFA`. Não usa mais `prodUnit × qty` no posto.

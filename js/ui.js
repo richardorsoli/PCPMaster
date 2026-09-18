@@ -541,39 +541,40 @@
     function updatePartVolumeHint() {
       const hint = document.getElementById('part-volume-hint');
       if (!hint) return;
-      const h = parseFloat(document.getElementById('new-part-altura') && document.getElementById('new-part-altura').value) || 0;
-      const w = parseFloat(document.getElementById('new-part-largura') && document.getElementById('new-part-largura').value) || 0;
-      const d = parseFloat(document.getElementById('new-part-comprimento') && document.getElementById('new-part-comprimento').value) || 0;
-      const ppf = parseInt(document.getElementById('new-part-ppf') && document.getElementById('new-part-ppf').value, 10) || 1;
-      const vol = h * w * d;
-      if (vol <= 0) {
+      const dims = readPartDimFields();
+      const volPeca = Number(dims.volume_unitario_com_folga) || 0;
+      const volFardo = Number(dims.volume_fardo) || 0;
+      const n = dims.peca_max_fardo || 1;
+      if (volPeca <= 0) {
         hint.textContent = 'Volume útil: — (sem dimensões, 1 fardo ocupa a cabine inteira)';
         return;
       }
-      const cabin = typeof ESTUFA_CABIN_VOLUME === 'number' ? ESTUFA_CABIN_VOLUME : 13.475;
-      const fit = vol > 0 ? Math.floor(cabin / vol) : 0;
-      hint.textContent = 'Volume útil: ' + vol.toFixed(3) + ' m³/fardo · ~' + fit + ' fardo(s) por ciclo · ' + ppf + ' pç/fardo';
+      hint.textContent = 'Volume Peça: ' + volPeca.toFixed(3) + ' m³ | Volume Fardo (' + n + ' pcs): ' + volFardo.toFixed(3) + ' m³';
     }
 
     function readPartDimFields() {
-      return {
-        altura_m: parseFloat(document.getElementById('new-part-altura') && document.getElementById('new-part-altura').value) || 0,
-        largura_m: parseFloat(document.getElementById('new-part-largura') && document.getElementById('new-part-largura').value) || 0,
-        comprimento_m: parseFloat(document.getElementById('new-part-comprimento') && document.getElementById('new-part-comprimento').value) || 0,
-        pecas_por_fardo: parseInt(document.getElementById('new-part-ppf') && document.getElementById('new-part-ppf').value, 10) || 1
+      const raw = {
+        peca_altura_m: parseFloat(document.getElementById('peca_altura_m') && document.getElementById('peca_altura_m').value) || 0,
+        peca_largura_m: parseFloat(document.getElementById('peca_largura_m') && document.getElementById('peca_largura_m').value) || 0,
+        peca_comprimento_m: parseFloat(document.getElementById('peca_comprimento_m') && document.getElementById('peca_comprimento_m').value) || 0,
+        peca_max_fardo: parseInt(document.getElementById('peca_max_fardo') && document.getElementById('peca_max_fardo').value, 10) || 1,
+        peca_espacamento_mm: parseFloat(document.getElementById('peca_espacamento_mm') && document.getElementById('peca_espacamento_mm').value) || 0
       };
+      return typeof normalizePartDims === 'function' ? normalizePartDims(raw) : raw;
     }
 
     function fillPartDimFields(p) {
       const dims = typeof normalizePartDims === 'function' ? normalizePartDims(p || {}) : (p || {});
-      const hEl = document.getElementById('new-part-altura');
-      const wEl = document.getElementById('new-part-largura');
-      const dEl = document.getElementById('new-part-comprimento');
-      const ppfEl = document.getElementById('new-part-ppf');
-      if (hEl) hEl.value = dims.altura_m || 0;
-      if (wEl) wEl.value = dims.largura_m || 0;
-      if (dEl) dEl.value = dims.comprimento_m || 0;
-      if (ppfEl) ppfEl.value = dims.pecas_por_fardo || 1;
+      const hEl = document.getElementById('peca_altura_m');
+      const wEl = document.getElementById('peca_largura_m');
+      const dEl = document.getElementById('peca_comprimento_m');
+      const ppfEl = document.getElementById('peca_max_fardo');
+      const gapEl = document.getElementById('peca_espacamento_mm');
+      if (hEl) hEl.value = dims.peca_altura_m || 0;
+      if (wEl) wEl.value = dims.peca_largura_m || 0;
+      if (dEl) dEl.value = dims.peca_comprimento_m || 0;
+      if (ppfEl) ppfEl.value = dims.peca_max_fardo || 1;
+      if (gapEl) gapEl.value = dims.peca_espacamento_mm || 0;
       updatePartVolumeHint();
     }
 
@@ -996,7 +997,7 @@
       document.getElementById('btn-save-part').innerText = 'Salvar e Cadastrar Peça';
       document.getElementById('btn-cancel-edit').style.display = 'none';
       currentBuildingRoute = [];
-      fillPartDimFields({ altura_m: 0, largura_m: 0, comprimento_m: 0, pecas_por_fardo: 1 });
+      fillPartDimFields({ peca_altura_m: 0, peca_largura_m: 0, peca_comprimento_m: 0, peca_max_fardo: 1, peca_espacamento_mm: 0 });
       renderCurrentBuildingRoute();
     }
 
@@ -1103,10 +1104,11 @@
         prodUnit,
         qty: 1,
         route: currentJoinBuildingRoute.slice(),
-        altura_m: parseFloat(document.getElementById('join-altura') && document.getElementById('join-altura').value) || 0,
-        largura_m: parseFloat(document.getElementById('join-largura') && document.getElementById('join-largura').value) || 0,
-        comprimento_m: parseFloat(document.getElementById('join-comprimento') && document.getElementById('join-comprimento').value) || 0,
-        pecas_por_fardo: parseInt(document.getElementById('join-ppf') && document.getElementById('join-ppf').value, 10) || 1
+        peca_altura_m: parseFloat(document.getElementById('join-altura') && document.getElementById('join-altura').value) || 0,
+        peca_largura_m: parseFloat(document.getElementById('join-largura') && document.getElementById('join-largura').value) || 0,
+        peca_comprimento_m: parseFloat(document.getElementById('join-comprimento') && document.getElementById('join-comprimento').value) || 0,
+        peca_max_fardo: parseInt(document.getElementById('join-ppf') && document.getElementById('join-ppf').value, 10) || 1,
+        peca_espacamento_mm: parseFloat(document.getElementById('join-espacamento') && document.getElementById('join-espacamento').value) || 0
       });
       if (editingAssemblyIndex >= 0) {
         assemblyRules[editingAssemblyIndex] = rule;
@@ -1124,10 +1126,12 @@
       const jl = document.getElementById('join-largura');
       const jc = document.getElementById('join-comprimento');
       const jp = document.getElementById('join-ppf');
+      const jg = document.getElementById('join-espacamento');
       if (ja) ja.value = '0';
       if (jl) jl.value = '0';
       if (jc) jc.value = '0';
       if (jp) jp.value = '1';
+      if (jg) jg.value = '0';
       renderConfigUI();
     }
 
@@ -1145,10 +1149,12 @@
       const jl = document.getElementById('join-largura');
       const jc = document.getElementById('join-comprimento');
       const jp = document.getElementById('join-ppf');
-      if (ja) ja.value = a.altura_m || 0;
-      if (jl) jl.value = a.largura_m || 0;
-      if (jc) jc.value = a.comprimento_m || 0;
-      if (jp) jp.value = a.pecas_por_fardo || 1;
+      const jg = document.getElementById('join-espacamento');
+      if (ja) ja.value = a.peca_altura_m || 0;
+      if (jl) jl.value = a.peca_largura_m || 0;
+      if (jc) jc.value = a.peca_comprimento_m || 0;
+      if (jp) jp.value = a.peca_max_fardo || 1;
+      if (jg) jg.value = a.peca_espacamento_mm || 0;
       currentJoinBuildingRoute = (a.route || []).map(s => ({ machineId: s.machineId, setup: s.setup, prodUnit: s.prodUnit }));
       document.getElementById('btn-save-assembly').innerText = 'Salvar Alterações';
       renderCurrentJoinRoute();
@@ -1295,9 +1301,10 @@
           return `<span class="step-tag route-step" draggable="true" data-route-index="${sIdx}" data-part-index="${idx}">${sIdx + 1}º ${m ? m.name : '?'} (${fmtStepTime(s.setup)}/${fmtStepTime(s.prodUnit)})</span>`;
         }).join('');
         const dims = typeof normalizePartDims === 'function' ? normalizePartDims(p) : p;
-        const vol = (dims.altura_m || 0) * (dims.largura_m || 0) * (dims.comprimento_m || 0);
-        const dimTxt = vol > 0
-          ? ` · fardo ${dims.altura_m}×${dims.largura_m}×${dims.comprimento_m} m (${vol.toFixed(3)} m³) · ${dims.pecas_por_fardo} pç/fardo`
+        const volPeca = Number(dims.volume_unitario_com_folga) || 0;
+        const gapTxt = (dims.peca_espacamento_mm > 0) ? ` · folga ${dims.peca_espacamento_mm} mm` : '';
+        const dimTxt = volPeca > 0
+          ? ` · peça ${dims.peca_altura_m}×${dims.peca_largura_m}×${dims.peca_comprimento_m} m (${volPeca.toFixed(3)} m³) · fardo ${dims.peca_max_fardo} pcs (${Number(dims.volume_fardo).toFixed(3)} m³)${gapTxt}`
           : '';
         pList.innerHTML += `
           <li class="part-card" draggable="true" data-part-index="${idx}">

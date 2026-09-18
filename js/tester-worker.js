@@ -11,6 +11,7 @@ function pcpmasterTesterWorkerBootstrap() {
   const ESTUFA_CABIN_H = 2.00;
   const ESTUFA_CABIN_W = 1.75;
   const ESTUFA_CABIN_D = 3.85;
+  const ESTUFA_CABIN_VOLUME = ESTUFA_CABIN_H * ESTUFA_CABIN_W * ESTUFA_CABIN_D;
   const ESTUFA_QUEIMA_MIN = 30;
   const ESTUFA_RESFRIO_MIN = 30;
   const ESTUFA_CICLO_MIN = ESTUFA_QUEIMA_MIN + ESTUFA_RESFRIO_MIN;
@@ -143,16 +144,66 @@ function pcpmasterTesterWorkerBootstrap() {
   }
 
   function normalizePartDims(src) {
-    const altura = Number(src && src.altura_m);
-    const largura = Number(src && src.largura_m);
-    const comprimento = Number(src && src.comprimento_m);
-    const ppf = Number(src && src.pecas_por_fardo);
+    src = src || {};
+    const alturaNew = Number(src.peca_altura_m);
+    const alturaOld = Number(src.altura_m);
+    const h = (isFinite(alturaNew) && alturaNew > 0) ? alturaNew : ((isFinite(alturaOld) && alturaOld > 0) ? alturaOld : 0);
+    const larguraNew = Number(src.peca_largura_m);
+    const larguraOld = Number(src.largura_m);
+    const w = (isFinite(larguraNew) && larguraNew > 0) ? larguraNew : ((isFinite(larguraOld) && larguraOld > 0) ? larguraOld : 0);
+    const comprimentoNew = Number(src.peca_comprimento_m);
+    const comprimentoOld = Number(src.comprimento_m);
+    const d = (isFinite(comprimentoNew) && comprimentoNew > 0) ? comprimentoNew : ((isFinite(comprimentoOld) && comprimentoOld > 0) ? comprimentoOld : 0);
+    const maxNew = Number(src.peca_max_fardo);
+    const maxOld = Number(src.pecas_por_fardo);
+    let maxFardo = 1;
+    if (isFinite(maxNew) && maxNew >= 1) maxFardo = Math.round(maxNew);
+    else if (isFinite(maxOld) && maxOld >= 1) maxFardo = Math.round(maxOld);
+    const gapRaw = Number(src.peca_espacamento_mm);
+    const gap = (isFinite(gapRaw) && gapRaw >= 0) ? gapRaw : 0;
+    const gapM = gap / 1000;
+    const hEff = h > 0 ? h + gapM : 0;
+    const wEff = w > 0 ? w + gapM : 0;
+    const dEff = d > 0 ? d + gapM : 0;
+    const volUnit = hEff * wEff * dEff;
     return {
-      altura_m: isFinite(altura) && altura > 0 ? altura : 0,
-      largura_m: isFinite(largura) && largura > 0 ? largura : 0,
-      comprimento_m: isFinite(comprimento) && comprimento > 0 ? comprimento : 0,
-      pecas_por_fardo: isFinite(ppf) && ppf >= 1 ? Math.round(ppf) : 1
+      peca_altura_m: h,
+      peca_largura_m: w,
+      peca_comprimento_m: d,
+      peca_max_fardo: maxFardo,
+      peca_espacamento_mm: gap,
+      altura_m: h,
+      largura_m: w,
+      comprimento_m: d,
+      pecas_por_fardo: maxFardo,
+      altura_efetiva: hEff,
+      largura_efetiva: wEff,
+      comprimento_efetivo: dEff,
+      volume_unitario_com_folga: volUnit,
+      volume_fardo: volUnit * maxFardo
     };
+  }
+
+  function hasPhysicalPartDims(dims) {
+    return !!(dims && dims.peca_altura_m > 0 && dims.peca_largura_m > 0 && dims.peca_comprimento_m > 0);
+  }
+
+  function fardoBoxDims(spec) {
+    return {
+      h: Number(spec && spec.altura_efetiva) || Number(spec && spec.peca_altura_m) || 0,
+      w: Number(spec && spec.largura_efetiva) || Number(spec && spec.peca_largura_m) || 0,
+      d: Number(spec && spec.comprimento_efetivo) || Number(spec && spec.peca_comprimento_m) || 0
+    };
+  }
+
+  function unitFardoOccupancyVolume(unit, cabin) {
+    const spec = (unit && unit.spec) || {};
+    const cabinVol = (cabin && cabin.volume) || ESTUFA_CABIN_VOLUME;
+    if (spec.missingDims) return cabinVol;
+    const vu = Number(spec.volume_unitario_com_folga) || 0;
+    if (!(vu > 0)) return cabinVol;
+    const pieces = Number(unit && unit.pieces) > 0 ? Number(unit.pieces) : (spec.peca_max_fardo || spec.pecas_por_fardo || 1);
+    return vu * pieces;
   }
 
   function normalizeMachine(m) {
@@ -216,6 +267,11 @@ function pcpmasterTesterWorkerBootstrap() {
       prodUnit: parseTimeMinutes(rule.prodUnit, 0),
       qty: Number(rule.qty) > 0 ? Number(rule.qty) : 1,
       route: Array.isArray(rule.route) ? rule.route.map(normalizeRouteStep) : [],
+      peca_altura_m: dims.peca_altura_m,
+      peca_largura_m: dims.peca_largura_m,
+      peca_comprimento_m: dims.peca_comprimento_m,
+      peca_max_fardo: dims.peca_max_fardo,
+      peca_espacamento_mm: dims.peca_espacamento_mm,
       altura_m: dims.altura_m,
       largura_m: dims.largura_m,
       comprimento_m: dims.comprimento_m,
@@ -414,7 +470,7 @@ function pcpmasterTesterWorkerBootstrap() {
       const src = findEntityByName(key);
       if (src) {
         const d = normalizePartDims(src);
-        if (d.altura_m > 0 && d.largura_m > 0 && d.comprimento_m > 0) return d;
+        if (hasPhysicalPartDims(d)) return d;
       }
       const rule = (sim.assemblyRules || []).find(r => String(r.resultName || '').toUpperCase() === key);
       if (!rule) return null;
@@ -423,7 +479,7 @@ function pcpmasterTesterWorkerBootstrap() {
       (rule.requiredPartNames || []).forEach(n => {
         const d = resolveFardoDimsForName(n, visited);
         if (!d) return;
-        const vol = d.altura_m * d.largura_m * d.comprimento_m;
+        const vol = Number(d.volume_fardo) || (d.peca_altura_m * d.peca_largura_m * d.peca_comprimento_m);
         if (vol > bestVol) { bestVol = vol; best = d; }
       });
       return best;
@@ -435,11 +491,22 @@ function pcpmasterTesterWorkerBootstrap() {
 
     function partFardoSpec(part, cabin) {
       const dims = normalizePartDims(part);
-      if (dims.altura_m > 0 && dims.largura_m > 0 && dims.comprimento_m > 0) return dims;
+      if (hasPhysicalPartDims(dims)) return dims;
       const inherited = inheritFardoDimsFromBom(part);
-      if (inherited) return inherited;
-      const cap = cabin || { h: ESTUFA_CABIN_H, w: ESTUFA_CABIN_W, d: ESTUFA_CABIN_D };
-      return { altura_m: cap.h, largura_m: cap.w, comprimento_m: cap.d, pecas_por_fardo: dims.pecas_por_fardo || 1 };
+      if (inherited && hasPhysicalPartDims(inherited)) return inherited;
+      const cap = cabin || { h: ESTUFA_CABIN_H, w: ESTUFA_CABIN_W, d: ESTUFA_CABIN_D, volume: ESTUFA_CABIN_VOLUME };
+      const capVol = cap.volume || (cap.h * cap.w * cap.d);
+      const missing = normalizePartDims({
+        peca_altura_m: cap.h,
+        peca_largura_m: cap.w,
+        peca_comprimento_m: cap.d,
+        peca_max_fardo: dims.peca_max_fardo || 1,
+        peca_espacamento_mm: dims.peca_espacamento_mm || 0
+      });
+      missing.missingDims = true;
+      missing.volume_unitario_com_folga = capVol;
+      missing.volume_fardo = capVol;
+      return missing;
     }
 
     function partEffectiveQty(part) {
@@ -448,7 +515,8 @@ function pcpmasterTesterWorkerBootstrap() {
 
     function partTotalFardos(part, cabin) {
       const spec = partFardoSpec(part, cabin);
-      return Math.max(1, Math.ceil(partEffectiveQty(part) / spec.pecas_por_fardo));
+      const perFardo = spec.peca_max_fardo || spec.pecas_por_fardo || 1;
+      return Math.max(1, Math.ceil(partEffectiveQty(part) / perFardo));
     }
 
     function uniqueRotations(h, w, d) {
@@ -471,7 +539,8 @@ function pcpmasterTesterWorkerBootstrap() {
     }
 
     function fardoFitsEmptyCabin(spec, cabin) {
-      return uniqueRotations(spec.altura_m, spec.largura_m, spec.comprimento_m)
+      const box = fardoBoxDims(spec);
+      return uniqueRotations(box.h, box.w, box.d)
         .some(r => r.h <= cabin.h + 1e-9 && r.w <= cabin.w + 1e-9 && r.d <= cabin.d + 1e-9);
     }
 
@@ -486,7 +555,8 @@ function pcpmasterTesterWorkerBootstrap() {
         points.push({ x: p.x, y: p.y, z: p.z + p.d });
       });
       let best = null;
-      uniqueRotations(spec.altura_m, spec.largura_m, spec.comprimento_m).forEach(rot => {
+      const boxDims = fardoBoxDims(spec);
+      uniqueRotations(boxDims.h, boxDims.w, boxDims.d).forEach(rot => {
         if (rot.h > cabin.h + 1e-9 || rot.w > cabin.w + 1e-9 || rot.d > cabin.d + 1e-9) return;
         points.forEach(pt => {
           if (pt.x + rot.w > cabin.w + 1e-9 || pt.y + rot.h > cabin.h + 1e-9 || pt.z + rot.d > cabin.d + 1e-9) return;
@@ -508,11 +578,19 @@ function pcpmasterTesterWorkerBootstrap() {
       let volume = 0;
       units.forEach(unit => {
         if (volume >= cabin.volume - 1e-9) { skipped.push(unit); return; }
+        const vf = unitFardoOccupancyVolume(unit, cabin);
+        if (packed.length > 0 && volume + vf > cabin.volume + 1e-9) { skipped.push(unit); return; }
         const box = tryPlaceFardo(packed.map(p => p.box), unit.spec, cabin);
         if (!box) { skipped.push(unit); return; }
+        if (box.forced) {
+          if (packed.length) { skipped.push(unit); return; }
+          packed.push(Object.assign({}, unit, { box: box }));
+          volume = cabin.volume;
+          return;
+        }
         packed.push(Object.assign({}, unit, { box: box }));
-        volume += box.volume;
-        if (box.forced) volume = cabin.volume;
+        volume += vf;
+        if (volume >= cabin.volume - 1e-9) volume = Math.min(volume, cabin.volume);
       });
       return { packed: packed, skipped: skipped, volume: volume, occupancy: cabin.volume > 0 ? Math.min(1, volume / cabin.volume) : 0 };
     }
@@ -816,9 +894,10 @@ function pcpmasterTesterWorkerBootstrap() {
           const total = partTotalFardos(mem.part, cabin);
           const done = packedFardosMap[mem.part.name] || 0;
           const left = Math.max(0, total - done);
-          const qtyLeft = Math.max(0, partEffectiveQty(mem.part) - done * spec.pecas_por_fardo);
+          const perFardo = spec.peca_max_fardo || spec.pecas_por_fardo || 1;
+          const qtyLeft = Math.max(0, partEffectiveQty(mem.part) - done * perFardo);
           for (let i = 0; i < left; i++) {
-            const pieces = (i === left - 1) ? Math.max(1, qtyLeft - spec.pecas_por_fardo * (left - 1)) : spec.pecas_por_fardo;
+            const pieces = (i === left - 1) ? Math.max(1, qtyLeft - perFardo * (left - 1)) : perFardo;
             units.push({ part: mem.part, step: mem.step, stepIndex: mem.stepIndex, partIdx: mem.partIdx, arrivalTime: mem.arrivalTime, asm: mem.asm, spec: spec, pieces: pieces });
           }
         });
@@ -1053,17 +1132,13 @@ function pcpmasterTesterWorkerBootstrap() {
           }
         }
         route = ensureIndividualRouteAfterLastOp(p, route, claimedJoinMachines);
-        return {
+        return Object.assign({
           name: p.name,
           thickness: p.thickness,
           qty: p.qty,
           route: route,
-          isVirtual: false,
-          altura_m: normalizePartDims(p).altura_m,
-          largura_m: normalizePartDims(p).largura_m,
-          comprimento_m: normalizePartDims(p).comprimento_m,
-          pecas_por_fardo: normalizePartDims(p).pecas_por_fardo
-        };
+          isVirtual: false
+        }, normalizePartDims(p));
       });
       const virtual = expandedRules.map(rule => {
         const joinStep = {
@@ -1076,20 +1151,16 @@ function pcpmasterTesterWorkerBootstrap() {
           }
         };
         const ownDims = normalizePartDims(rule);
-        const dims = (ownDims.altura_m > 0 && ownDims.largura_m > 0 && ownDims.comprimento_m > 0)
+        const dims = hasPhysicalPartDims(ownDims)
           ? ownDims
           : (inheritFardoDimsFromBom({ name: rule.resultName }) || ownDims);
-        return {
+        return Object.assign({
           name: rule.resultName,
           thickness: 0,
           qty: rule.qty || 1,
           route: [joinStep].concat(rule.route || []),
-          isVirtual: true,
-          altura_m: dims.altura_m,
-          largura_m: dims.largura_m,
-          comprimento_m: dims.comprimento_m,
-          pecas_por_fardo: dims.pecas_por_fardo
-        };
+          isVirtual: true
+        }, dims);
       });
       sim.bomRuntimeParts = physical.concat(virtual);
       return sim.bomRuntimeParts;
