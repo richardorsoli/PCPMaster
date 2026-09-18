@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PCPMaster v1.6.4</title>
+  <title>PCPMaster v1.8.0</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=1.6.4-s10b3">
+  <link rel="stylesheet" href="css/styles.css?v=1.8.0-s11-ui3">
 </head>
 <body>
 
@@ -16,6 +16,7 @@
     <div class="app-nav-links" role="navigation" aria-label="Navegação principal">
       <button type="button" class="btn btn-secondary" data-nav="screen-config" onclick="navigateTo('screen-config')">Engenharia</button>
       <button type="button" class="btn btn-secondary" data-nav="screen-sim" onclick="navigateTo('screen-sim')">Simulação</button>
+      <button type="button" class="btn btn-secondary" data-nav="screen-plan" onclick="openPlanScreen()">Plano de Produção</button>
       <button type="button" class="btn btn-secondary" data-nav="screen-tester" onclick="openTesterScreen()">Otimizador TESTER</button>
     </div>
   </nav>
@@ -23,9 +24,9 @@
   <!-- TELA 1: INICIAL -->
   <div id="screen-welcome" class="screen active">
     <div style="background: #1e293b; padding: 40px; border-radius: 12px; border: 1px solid #334155; text-align: center; max-width: 780px; margin: 40px auto;">
-      <h1 style="color: #38bdf8; font-size: 2.3rem; margin-bottom: 15px;">PCPMaster v1.6.4</h1>
+      <h1 style="color: #38bdf8; font-size: 2.3rem; margin-bottom: 15px;">PCPMaster v1.8.0</h1>
       <p style="color: #94a3b8; font-size: 1.05rem; line-height: 1.6; margin-bottom: 30px;">
-        Simulação multi-dia com Gantt, relatórios PDF, indicadores de eficiência, hora de início flexível, recálculo por caixas e manutenção preventiva.
+        Simulação multi-dia com Gantt, plano de produção multiprojeto, relatórios PDF, indicadores de eficiência, hora de início flexível, recálculo por caixas e manutenção preventiva.
       </p>
 
       <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 25px; flex-wrap: wrap;">
@@ -50,7 +51,7 @@
           <input type="file" id="import-db-file" accept=".json,application/json" style="display:none;" onchange="importDatabaseJSON(event)">
         </div>
         <p style="font-size: 0.78rem; color: #64748b; margin-top: 8px;">
-          O backup inclui as 6 tabelas do schema v2.0 (máquinas, funcionários, projetos/peças, feriados, turnos e histórico do TESTER) com metadados de versão. O arquivo é gerado como <code>PCPMaster_DB_Backup_YYYY-MM-DD_HHmm.json</code>.
+          O backup inclui as 7 tabelas do schema v2.0 (máquinas, funcionários, projetos/peças, feriados, turnos, histórico do TESTER e planos de produção) com metadados de versão. O arquivo é gerado como <code>PCPMaster_DB_Backup_YYYY-MM-DD_HHmm.json</code>.
         </p>
         <p class="db-status-text" style="font-size: 0.78rem; color: #38bdf8; margin-top: 8px;">Banco ativo: v2.0</p>
       </div>
@@ -374,7 +375,7 @@
     <div class="dashboard">
       <div>
         <div class="sim-header-row">
-          <div id="sim-project-title" style="color:#f8fafc; font-size:1.15rem; font-weight:700;">PCPMaster v1.6.4 - Controle de Chão de Fábrica</div>
+          <div id="sim-project-title" style="color:#f8fafc; font-size:1.15rem; font-weight:700;">PCPMaster v1.8.0 - Controle de Chão de Fábrica</div>
           <div class="sim-header-actions">
             <button type="button" class="btn btn-secondary" onclick="openTesterScreen()">Otimizador TESTER</button>
             <button type="button" class="btn btn-secondary" id="btn-new-project-sim" onclick="startNewProject(true)">Novo Projeto</button>
@@ -408,6 +409,7 @@
             </div>
           </div>
         </div>
+        <p id="sim-plan-banner" class="plan-sim-banner" hidden>Modo Plano Multiprojeto: quantidade de caixas e hora de início vêm da fila. Ajuste no Plano de Produção.</p>
       </div>
       <div class="sim-clock-box" id="kpi-clock">14/09/26 - 07:30:00</div>
     </div>
@@ -453,14 +455,14 @@
         <div class="kpi-value" id="kpi-status" style="color: #4ade80;">PRODUZINDO</div>
       </div>
       <div>
-        <button class="btn btn-success" onclick="generatePDFReport()">📄 Gerar Relatório PDF</button>
+        <button class="btn btn-success" id="btn-export-pdf" onclick="generatePDFReport()">📄 Gerar Relatório PDF</button>
         <button class="btn btn-secondary" onclick="navigateTo('screen-config')">Ajustar Roteiro</button>
       </div>
     </div>
 
     <div class="chart-card gantt-card pdf-keep-together">
       <div class="gantt-header-row">
-        <h2 style="color: #38bdf8; font-size: 1.2rem; margin: 0;">Gráfico de Gantt do Projeto</h2>
+        <h2 id="gantt-chart-title" style="color: #38bdf8; font-size: 1.2rem; margin: 0;">Gráfico de Gantt do Projeto</h2>
         <div class="gantt-mode-btns" role="group" aria-label="Visualização do Gantt">
           <button type="button" class="btn btn-speed is-active" id="gantt-mode-day" onclick="setGanttViewMode('day')">Por dia</button>
           <button type="button" class="btn btn-speed" id="gantt-mode-lot" onclick="setGanttViewMode('lot')">Lote contínuo</button>
@@ -474,6 +476,7 @@
         <div class="legend-item"><div class="color-box" style="background:#a855f7;"></div> Manutenção</div>
         <div class="legend-item"><div class="color-box" style="background:rgba(148,163,184,0.45); border:1px dashed #cbd5e1;"></div> Almoço 12:00–13:00</div>
       </div>
+      <div class="legend gantt-legend gantt-sku-legend" id="gantt-sku-legend" hidden></div>
       <div id="gantt-chart" class="gantt-chart">
         <div class="gantt-empty">Gere a simulação para montar o Gantt.</div>
       </div>
@@ -485,20 +488,39 @@
 
       <div class="analytics-kpis" id="analytics-kpi-panel">
         <div class="analytics-kpi">
-          <div class="kpi-title">Makespan Total</div>
+          <div class="kpi-title" id="kpi-makespan-title">Makespan Total</div>
           <div class="kpi-value" id="kpi-makespan">—</div>
           <div class="kpi-hint" id="kpi-makespan-hint">Tempo até a conclusão do lote/caixas</div>
         </div>
         <div class="analytics-kpi">
-          <div class="kpi-title">Índice de Eficiência Global</div>
+          <div class="kpi-title" id="kpi-efficiency-title">Índice de Eficiência Global</div>
           <div class="kpi-value" id="kpi-efficiency">—</div>
           <div class="kpi-hint" id="kpi-efficiency-hint">Produtivo / Ocupado (Produção + Setup) × 100</div>
         </div>
         <div class="analytics-kpi analytics-kpi-bottleneck">
-          <div class="kpi-title">Gargalo Identificado</div>
+          <div class="kpi-title" id="kpi-bottleneck-title">Gargalo Identificado</div>
           <div class="kpi-value" id="kpi-bottleneck">—</div>
           <div class="kpi-hint" id="kpi-bottleneck-hint">Posto com maior ocupação (e fila)</div>
         </div>
+      </div>
+
+      <div class="operator-hours-wrap" id="plan-completion-wrap" hidden>
+        <h3>Conclusão calculada por projeto do plano</h3>
+        <table class="floor-table operator-hours-table">
+          <thead>
+            <tr>
+              <th>Ordem</th>
+              <th>SKU / Projeto</th>
+              <th>Caixas</th>
+              <th>Gatilho</th>
+              <th>Início previsto</th>
+              <th>Término previsto</th>
+            </tr>
+          </thead>
+          <tbody id="plan-completion-body">
+            <tr><td colspan="6" style="color:#64748b;">Gere a simulação do plano para ver as datas de conclusão.</td></tr>
+          </tbody>
+        </table>
       </div>
 
       <div class="legend" id="efficiency-legend">
@@ -532,7 +554,100 @@
     </div>
   </div>
 
-  <!-- TELA 4: TESTER -->
+  <!-- TELA 4: PLANO DE PRODUÇÃO -->
+  <div id="screen-plan" class="screen">
+    <div class="config-topbar">
+      <div>
+        <h1 style="color:#38bdf8;">Plano de Produção Multiprojeto</h1>
+        <p class="plan-subtitle">Monte a fila de SKUs, defina o disparo do Projeto A e encadeie o mix por liberação de posto ou horário forçado.</p>
+      </div>
+      <div class="config-save-row">
+        <button type="button" class="btn btn-secondary" onclick="navigateTo('screen-config')">Engenharia</button>
+        <button type="button" class="btn btn-secondary" onclick="navigateTo('screen-sim')">Simulação</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Painel Geral do Plano</h2>
+      <div class="form-row">
+        <div class="form-group project-name-field">
+          <label for="plan-name-input">Nome / SKU do Plano</label>
+          <input type="text" id="plan-name-input" placeholder="Ex: Mix Semana 12 — DAE + Caixa Comando" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="plan-start-date">Data Inicial do Plano (Projeto A)</label>
+          <input type="date" id="plan-start-date">
+        </div>
+        <div class="form-group">
+          <label for="plan-start-time">Hora de Início do Plano</label>
+          <input type="time" id="plan-start-time" value="07:30" min="07:30" max="17:18" step="60" list="shift-start-presets">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <label for="saved-plans-select">Planos salvos</label>
+          <select id="saved-plans-select">
+            <option value="">— Selecione um plano salvo —</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1; display:flex; align-items:flex-end; gap:10px;">
+          <button type="button" class="btn btn-success" onclick="loadSelectedProductionPlan()">Carregar</button>
+          <button type="button" class="btn btn-danger" onclick="deleteSelectedProductionPlan()">Excluir</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Adicionar Projeto ao Plano</h2>
+      <p class="plan-hint">Deixe a data/hora específica em branco para <strong>Encadeamento Automático (Continuação de Linha)</strong>: o projeto seguinte inicia em cada posto assim que o anterior liberar a máquina/operador.</p>
+      <div class="form-row plan-add-row">
+        <div class="form-group" style="flex:2;">
+          <label for="plan-project-select">Projeto / SKU (tb_projetos_pecas)</label>
+          <select id="plan-project-select">
+            <option value="">— Selecione um projeto salvo —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="plan-item-boxes">Caixas / lote</label>
+          <input type="number" id="plan-item-boxes" value="1" min="1" max="999" step="1">
+        </div>
+        <div class="form-group" style="flex:1.4;">
+          <label for="plan-item-datetime">Data/Hora de Início Específica (opcional)</label>
+          <input type="datetime-local" id="plan-item-datetime" step="60">
+        </div>
+        <div class="form-group" style="flex:1; display:flex; align-items:flex-end;">
+          <button type="button" class="btn btn-success" style="width:100%;" onclick="addProjectToProductionPlan()">+ Adicionar ao Plano</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Fila de Sequenciamento Mix</h2>
+      <div class="plan-queue-wrap">
+        <table class="floor-table plan-queue-table">
+          <thead>
+            <tr>
+              <th>Ordem</th>
+              <th>SKU / Projeto</th>
+              <th>Caixas</th>
+              <th>Gatilho de Início</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="plan-queue-body">
+            <tr><td colspan="5" style="color:#64748b;">Nenhum projeto na fila. Adicione SKUs acima.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="plan-actions">
+        <button type="button" class="btn btn-success" onclick="saveProductionPlanPrompt()">Salvar Plano de Produção</button>
+        <button type="button" class="btn btn-lg btn-success" onclick="startPlanSimulation()">Simular Plano de Produção Multiprojeto</button>
+        <button type="button" class="btn btn-secondary" onclick="exportPlanPDFReport()">Exportar Relatório do Plano (PDF)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA 5: TESTER -->
   <div id="screen-tester" class="screen">
     <div class="config-topbar">
       <div>
@@ -594,19 +709,23 @@
     </div>
   </div>
 
-  <aside id="tester-fab" class="tester-fab" hidden>
+  <aside id="tester-fab" class="tester-fab" hidden onclick="onTesterFabClick(event)" aria-expanded="true">
     <header class="tester-fab-header">
-      <strong>TESTER</strong>
+      <strong class="tester-fab-title">TESTER</strong>
       <span id="tester-fab-percent">0%</span>
+      <span id="tester-fab-status" class="tester-fab-status">—</span>
+      <button type="button" class="btn btn-secondary tester-fab-min" id="btn-tester-fab-min" onclick="minimizeTesterFab(event)" aria-label="Minimizar TESTER" title="Minimizar">[ - ]</button>
     </header>
-    <div class="tester-progress-bar tester-fab-bar" aria-hidden="true"><div id="tester-fab-fill"></div></div>
-    <p id="tester-fab-iter" class="tester-fab-line">0/0</p>
-    <p id="tester-fab-eta" class="tester-fab-line">ETA —</p>
-    <p id="tester-fab-score" class="tester-fab-line">Melhor score: —</p>
-    <div class="tester-fab-actions">
-      <button type="button" class="btn btn-secondary js-tester-pause" id="btn-tester-fab-pause" onclick="pauseTesterOptimization()" disabled>Pausar</button>
-      <button type="button" class="btn btn-secondary js-tester-resume" id="btn-tester-fab-resume" onclick="resumeTesterOptimization()" disabled>Retomar</button>
-      <button type="button" class="btn btn-success" id="btn-tester-fab-open" onclick="openTesterScreen()">Abrir TESTER</button>
+    <div class="tester-fab-body">
+      <div class="tester-progress-bar tester-fab-bar" aria-hidden="true"><div id="tester-fab-fill"></div></div>
+      <p id="tester-fab-iter" class="tester-fab-line">0/0</p>
+      <p id="tester-fab-eta" class="tester-fab-line">ETA —</p>
+      <p id="tester-fab-score" class="tester-fab-line">Melhor score: —</p>
+      <div class="tester-fab-actions">
+        <button type="button" class="btn btn-secondary js-tester-pause" id="btn-tester-fab-pause" onclick="pauseTesterOptimization()" disabled>Pausar</button>
+        <button type="button" class="btn btn-secondary js-tester-resume" id="btn-tester-fab-resume" onclick="resumeTesterOptimization()" disabled>Retomar</button>
+        <button type="button" class="btn btn-success" id="btn-tester-fab-open" onclick="openTesterScreen()">Abrir TESTER</button>
+      </div>
     </div>
   </aside>
 
@@ -632,15 +751,27 @@
     </div>
   </div>
 
-  <script src="js/simulation.js?v=1.6.4-s10b2"></script>
-  <script src="js/database.js?v=1.6.4-s10b2"></script>
-  <script src="js/ui.js?v=1.6.4-s10b2"></script>
-  <script src="js/tester-worker.js?v=1.6.4-s10b2"></script>
-  <script src="js/tester.js?v=1.6.4-s10b2"></script>
-  <script src="js/app.js?v=1.6.4-s10b2"></script>
+  <div id="overwrite-plan-modal" class="modal-overlay" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="overwrite-plan-title">
+      <h3 id="overwrite-plan-title">Plano já existe</h3>
+      <p id="overwrite-plan-message">O plano já existe na base de dados. Deseja sobrescrever?</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-success" onclick="confirmOverwriteProductionPlan()">Confirmar</button>
+        <button type="button" class="btn btn-secondary" onclick="closeOverwriteProductionPlanModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/simulation.js?v=1.8.0-s11b2"></script>
+  <script src="js/database.js?v=1.8.0-s11b2"></script>
+  <script src="js/ui.js?v=1.8.0-s11-ui3"></script>
+  <script src="js/tester-worker.js?v=1.8.0-s11b1"></script>
+  <script src="js/tester.js?v=1.8.0-s11-ui"></script>
+  <script src="js/plan.js?v=1.8.0-s11b2"></script>
+  <script src="js/app.js?v=1.8.0-s11b2"></script>
   <footer class="app-footer">
     <span class="db-status-text">Banco ativo: v2.0</span>
-    <span>PCPMaster v1.6.4</span>
+    <span>PCPMaster v1.8.0</span>
   </footer>
 </body>
 </html>

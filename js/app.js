@@ -1,10 +1,29 @@
-/* PCPMaster v1.6.4 — Inicialização, playback e integração dos módulos */
+/* PCPMaster v1.8.0 — Inicialização, playback e integração dos módulos */
 
     function syncSimHeaderFields() {
       const simBoxes = document.getElementById('sim-boxes-qty');
       const simDate = document.getElementById('sim-start-date');
-      if (simBoxes) simBoxes.value = boxesQty;
       if (simDate) simDate.value = startDateStr;
+      if (typeof isPlanSimulationMode === 'function' && isPlanSimulationMode()) {
+        const totalBoxes = (typeof currentPlanQueueMeta !== 'undefined' && currentPlanQueueMeta || [])
+          .reduce((n, item) => n + (Number(item.boxesQty) || 0), 0) || 1;
+        if (simBoxes) {
+          simBoxes.value = totalBoxes;
+          simBoxes.disabled = true;
+        }
+        const simTime = document.getElementById('sim-start-time');
+        if (simTime) {
+          simTime.value = startTimeStr || DEFAULT_START_TIME;
+          simTime.disabled = true;
+        }
+        return;
+      }
+      if (simBoxes) {
+        simBoxes.value = boxesQty;
+        simBoxes.disabled = false;
+      }
+      const simTime = document.getElementById('sim-start-time');
+      if (simTime) simTime.disabled = false;
       syncStartTimeInputs(startTimeStr || DEFAULT_START_TIME);
     }
 
@@ -21,14 +40,34 @@
     }
 
     function startSimulation() {
+      if (typeof restoreEngineeringSessionIfNeeded === 'function') restoreEngineeringSessionIfNeeded();
+      if (typeof clearPlanSimulationMode === 'function') clearPlanSimulationMode();
+      if (machines.length === 0 || parts.length === 0) {
+        alert('Cadastre máquinas e peças nas etapas de engenharia.');
+        return;
+      }
+      launchSimulationPlayback();
+    }
+
+    function launchSimulationPlayback() {
       if (machines.length === 0 || parts.length === 0) {
         alert('Cadastre máquinas e peças nas etapas de engenharia.');
         return;
       }
       selectedDayIndex = 0;
-      getStartTimeFromInput();
+      if (!isPlanSimulationMode()) getStartTimeFromInput();
       calculateSimulationHistory();
       syncSimHeaderFields();
+      if (isPlanSimulationMode()) {
+        const totalBoxes = (currentPlanQueueMeta || []).reduce((n, item) => n + (Number(item.boxesQty) || 0), 0) || 1;
+        const simBoxes = document.getElementById('sim-boxes-qty');
+        if (simBoxes) {
+          simBoxes.value = totalBoxes;
+          simBoxes.disabled = true;
+        }
+        const simTime = document.getElementById('sim-start-time');
+        if (simTime) simTime.disabled = true;
+      }
       if (typeof syncProjectNameUI === 'function') syncProjectNameUI();
       renderCharts();
       navigateTo('screen-sim');
@@ -49,6 +88,7 @@
 
     function recalculateSimulationLive(options) {
       if (!isSimScreenActive()) return;
+      if (typeof isPlanSimulationMode === 'function' && isPlanSimulationMode()) return;
       if (machines.length === 0 || parts.length === 0) return;
       isPlaying = false;
       updatePlayButtonUI();
@@ -171,12 +211,13 @@ window.onload = () => {
   startDateStr = document.getElementById('start-date').value;
   applyStartTimeToState(document.getElementById('start-time') && document.getElementById('start-time').value);
   document.title = APP_NAME + ' v' + APP_VERSION;
-  console.info(APP_NAME + ' v' + APP_VERSION + ' — Sprint 10 Batch 2 (TESTER dashboard / widget flutuante)');
+  console.info(APP_NAME + ' v' + APP_VERSION + ' — Sprint 11 Batch 1 (Plano de Produção Multiprojeto)');
   renderConfigUI();
   collapseEngineeringAccordions();
   updatePlayButtonUI();
   updateSpeedButtonsUI();
   if (typeof updateDbStatusIndicator === 'function') updateDbStatusIndicator();
   if (typeof setTesterSearchMode === 'function') setTesterSearchMode('quick');
+  if (typeof renderProductionPlanUI === 'function') renderProductionPlanUI();
   if (typeof syncAppNav === 'function') syncAppNav('screen-welcome');
 };

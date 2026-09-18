@@ -205,12 +205,6 @@ SPRINT 7 - ANALYTICS (CONCLUÍDO)
 2. GERAR NO RELATÓRIO O GARFICO DE GANTT DO PROJETO
 7. AO GERAR RELATÓRIO PDF SAIR COM NOME DO PROJETO E QTDE DE CAIXAS
 
-========================================
- PRÓXIMAS SPRINTS (A FAZER)
-========================================
-[Sua Cabeça] ──> [Bloco de Notas] ──> [Trello: Backlog] ──> [Trello: Sprint A Fazer] ──> [Cursor + Git]
- (Ideia Solta)     (Rascunho Rápido)   (Ideias Organizadas)    (Prompt Formatado)        (Código Rodando)
-
 SPRINT 8 - REFATORAÇÃO GLOBAL DE MARCA
 Estamos iniciando a **Sprint 8 - BATCH 1** da aplicação. O projeto foi renomeado oficialmente de "SimulaFab" para **PCPMaster** (versão base v1.6.4). 
 
@@ -399,7 +393,85 @@ Os botões da aplicação perderam a estilização do design system e estão apa
    - Garanta que o fundo transparente/escuro do tema não corte os cantos arredondados.
 
 SPRINT 11 - PLANO DE PRODUCAO
-1. UM MÓDULO QUE A PARTIR DOS PROJETOS JÁ CRIADOS PODEMOS ESCOLHER A DATA E HORA DE INÍCIO E A ORDEM E QUANTIDADE DOS PROJETOS QUE VÃO SER EXECUTADOS NA ORDEM PARA VERIFICAR O COMPORTAMENTO DAS MOVIMENTAÇÕES DE PEÇAS E FUNCIONÁRIOS NAS MÁQUINAS E DAR UMA PREVISÃO DE SAÍDA, tem casos que eu quero ver se entrar um projeto DAE JUNDIAI agora na linha de produção, com a caixa comando já iniciada, como será o andamento e a quando será a finalização dos produtos
+Estamos iniciando a **Sprint 11 - BATCH 1** da aplicação **PCPMaster** para implementar o **Módulo Plano de Produção Multiprojeto (v1.8.0)**.
+
+---
+
+### 1. ATUALIZAÇÃO GLOBAL DE VERSÃO (v1.8.0):
+- Atualize a versão oficial da aplicação para **v1.8.0** em todas as constantes (`APP_VERSION = "v1.8.0"`), cabeçalhos, rodapés e metadados de relatórios.
+
+---
+
+### 2. OBJETIVOS DO BATCH 1 (Módulo Plano de Produção & Fila Inteligente):
+
+1. **Acesso e Navegação:**
+   - Adicione o botão **`[Plano de Produção]`** na barra de navegação superior (junto a Engenharia, Simulação e Otimizador TESTER).
+
+2. **Interface do Plano de Produção (Grid de Sequenciamento Mix):**
+   - **Painel Geral:** Data Inicial e Hora de Início do PLANO (Data/Hora de disparo do Projeto A).
+   - **Adição de Projetos ao Plano:**
+     - Dropdown `<select>` conectado à `tb_projetos_pecas`.
+     - Campo de quantidade de caixas/lote.
+     - Campo **"Data/Hora de Início Específica" (OPCIONAL)**:
+       - **Se preenchido:** O projeto é forçado a iniciar na data/hora informada.
+       - **Se deixado EM BRANCO (Padrão):** O sistema aplica o **Encadeamento Automático Continuação de Linha**. Exemplo: O Projeto B inicia em cada posto de trabalho assim que o Projeto A liberar a máquina/operador (ex: assim que o Victor Medina terminar o último corte do Projeto A, já inicia a primeira peça do Projeto B no Corte Laser).
+     - Botão **`[+ Adicionar ao Plano]`**.
+
+3. **Gerenciamento da Fila e Ações:**
+   - Grid dinâmico da fila exibindo: `Ordem`, `SKU / Projeto`, `Caixas`, `Gatilho de Início` ("Automático por Liberação" ou "Agendado para DD/MM HH:mm"), com botões para reordenar `[Subir]`, `[Descer]` e `[Remover]`.
+   - Botão **`[Salvar Plano de Produção]`**: Grava a sequência atual na nova coleção `tb_planos_producao` no `localStorage` (Schema v2.0) com nome/SKU do Plano para reutilização futura.
+   - Botão CTA Principal: **`[Simular Plano de Produção Multiprojeto]`**.
+   - Botão **`[Exportar Relatório do Plano (PDF)]`**: Gera o PDF consolidado do plano com os KPIs combinados de todos os projetos na fila, nomeado como `Relatorio_Plano_PCPMaster_[NomeDoPlano]_v1.8.0.pdf`.
+
+---
+
+### REQUISITOS TÉCNICOS:
+- O cálculo da fila sem data deve considerar a disponibilidade real do primeiro posto de trabalho de cada peça do projeto subsequente.
+- Mantenha $100\%$ funcionais a Engenharia, Simulação Monoproduto, Módulo TESTER e o Design System dos botões (40px de altura, cantos arredondados).
+
+Estamos iniciando a **Sprint 11 - BATCH 2** do **PCPMaster v1.8.0 (Plano de Produção Multiprojeto)**.
+O objetivo deste lote é conectar a fila do Plano de Produção ao motor de simulação para gerar a cronoanálise multiprojeto, o Gráfico de Gantt Unificado e a exportação em PDF.
+
+---
+
+### OBJETIVOS DO BATCH 2 (Engine Multiprojeto, Gantt Unificado & PDF):
+
+1. **Motor de Simulação Multiprojeto (`js/simulation.js` & `js/plan.js`):**
+   - Execute a simulação unificada lendo os projetos em ordem da fila.
+   - **Regra de Alocação de Recursos (Disputa de Postos e Operadores):**
+     - Máquinas e operadores são recursos compartilhados. Se a máquina `CORTE LASER` estiver ocupada cortando a peça do Projeto A, a peça do Projeto B aguarda em fila de espera.
+     - **Gatilho por Liberação (Data/Hora Vazia):** O Projeto B entra no fluxo fabril na exata fração de minuto em que o seu primeiro posto de trabalho estiver livre.
+     - **Gatilho Agendado (Data/Hora Preenchida):** O Projeto aguarda até a data/hora exata do relógio para iniciar no primeiro posto.
+
+2. **Gráfico de Gantt Unificado (Diferenciação Visual de SKUs):**
+   - Renderize o Gantt de postos de trabalho no mesmo gráfico visual.
+   - Atribua **Cores Distintas por Projeto** (ex: Projeto A em Azul, Projeto B em Verde, Projeto C em Laranja) com uma legenda indicando `[Cor] -> SKU do Projeto`.
+   - As barras de ocupação das máquinas devem indicar visualmente qual projeto está sendo trabalhado em cada bloco de tempo.
+
+3. **Dashboard de KPIs Combinados do Plano:**
+   - Exiba os indicadores globais do Mix:
+     - **Makespan Total do Plano:** Tempo total do disparo do Projeto A até a entrega da última caixa do último projeto.
+     - **Índice de Eficiência Global do Plano (OEE Mix).**
+     - **Gargalo Crítico do Plano:** Máquina/Posto com maior fila acumulada considerando a concorrência dos projetos.
+
+4. **Exportação de Relatório PDF Consolidado:**
+   - Ao clicar em **`[Exportar Relatório do Plano (PDF)]`**, gere o PDF do Plano com:
+     - Resumo executivo com os KPIs do Mix completo.
+     - Tabela dos projetos do plano e datas calculadas de conclusão de cada um.
+     - Gantt Unificado do Plano impresso no documento.
+     - Nomeação automática: `Relatorio_Plano_PCPMaster_[NomeDoPlano]_v1.8.0.pdf`.
+
+---
+
+### REQUISITOS TÉCNICOS:
+- O motor monoproduto atual da aba **Simulação** e o **Módulo TESTER** devem continuar $100\%$ funcionais e independentes.
+- Garanta que as pausas de almoço (12:00-13:00) e os limites de turno (07:30-17:18) sejam aplicados rigorosamente ao longo de todos os dias da simulação do plano.
+
+========================================
+ PRÓXIMAS SPRINTS (A FAZER)
+========================================
+[Sua Cabeça] ──> [Bloco de Notas] ──> [Trello: Backlog] ──> [Trello: Sprint A Fazer] ──> [Cursor + Git]
+ (Ideia Solta)     (Rascunho Rápido)   (Ideias Organizadas)    (Prompt Formatado)        (Código Rodando)
 
 SPRINT 12 - ESTUFA
 1. A MÁQUINA/TAREFA ESTUFA TEM UMA CAPACIDADE DE 2,00 x 1,75 x 3,85 metros (altura x largura x profundidade), o ideal é quando o pedido é muito grande a estufa receba a quantidade de peças que cabem nela, feche pelo período de 1h (30 min de queima + 30 de esfriamento) para descarregar as peças e poder enchê-la novamente e caso não de uma estufa cheia ou fecha ela com a capacidade que tiver, ou será preciso acrescentar um outro pedido ou pedaço de outro pedido que está vindo na sequência para também dar uma outra estufada

@@ -1,4 +1,4 @@
-/* PCPMaster v1.6.4 — Sprint 10 Batch 2: ponte TESTER + dashboard + widget flutuante */
+/* PCPMaster v1.8.0 — Sprint 10 Batch 2: ponte TESTER + dashboard + widget flutuante */
 
     const TESTER_QUICK_ITERS = 20;
     const TESTER_DEEP_ITERS = 200;
@@ -12,6 +12,7 @@
     let testerLastProgress = null;
     let testerPendingApplyIndex = 0;
     let testerApplyBannerTimer = null;
+    let testerFabMinimized = false;
 
     function cloneTesterData(value, fallback) {
       if (typeof cloneJson === 'function') return cloneJson(value, fallback);
@@ -301,6 +302,46 @@
       syncTesterFloatingWidget();
     }
 
+    function testerFabStatusLabel() {
+      if (testerUiStatus === 'paused') return 'Pausado';
+      if (testerUiStatus === 'done') return 'Concluído';
+      if (testerUiStatus === 'error') return 'Erro';
+      if (testerUiStatus === 'running') return 'Rodando';
+      return '—';
+    }
+
+    function applyTesterFabChrome() {
+      const fab = document.getElementById('tester-fab');
+      if (!fab) return;
+      fab.classList.toggle('is-minimized', !!testerFabMinimized);
+      fab.setAttribute('aria-expanded', testerFabMinimized ? 'false' : 'true');
+      const pctEl = document.getElementById('tester-fab-percent');
+      const statusText = testerFabStatusLabel();
+      const pctText = pctEl ? pctEl.textContent : '';
+      fab.title = testerFabMinimized
+        ? ('TESTER ' + pctText + ' · ' + statusText + ' — clique para expandir')
+        : '';
+      fab.setAttribute('aria-label', testerFabMinimized
+        ? ('TESTER minimizado, ' + pctText + ', ' + statusText + '. Clique para expandir.')
+        : 'Widget TESTER');
+    }
+
+    function minimizeTesterFab(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      testerFabMinimized = true;
+      applyTesterFabChrome();
+    }
+
+    function onTesterFabClick(event) {
+      if (!testerFabMinimized) return;
+      if (event && event.target && event.target.closest && event.target.closest('button')) return;
+      testerFabMinimized = false;
+      applyTesterFabChrome();
+    }
+
     function syncTesterFloatingWidget() {
       const fab = document.getElementById('tester-fab');
       if (!fab) return;
@@ -312,11 +353,13 @@
       const prog = testerProgressParts(msg);
       const fill = document.getElementById('tester-fab-fill');
       const pctEl = document.getElementById('tester-fab-percent');
+      const statusEl = document.getElementById('tester-fab-status');
       const iterEl = document.getElementById('tester-fab-iter');
       const etaEl = document.getElementById('tester-fab-eta');
       const scoreEl = document.getElementById('tester-fab-score');
       if (fill) fill.style.width = prog.pct + '%';
       if (pctEl) pctEl.textContent = prog.pct + '%';
+      if (statusEl) statusEl.textContent = testerFabStatusLabel();
       if (iterEl) iterEl.textContent = prog.iteration + '/' + prog.total;
       if (etaEl) {
         if (testerUiStatus === 'paused') etaEl.textContent = 'Pausado';
@@ -324,6 +367,7 @@
         else etaEl.textContent = 'ETA ' + formatTesterEta(msg.etaSeconds);
       }
       if (scoreEl) scoreEl.textContent = 'Melhor score: ' + formatTesterScore(msg.bestScore);
+      applyTesterFabChrome();
     }
 
     function persistTesterResult(msg) {
@@ -515,7 +559,7 @@
     function syncAppNav(screenId) {
       const nav = document.getElementById('app-nav');
       if (!nav) return;
-      const show = screenId === 'screen-config' || screenId === 'screen-sim' || screenId === 'screen-tester';
+      const show = screenId === 'screen-config' || screenId === 'screen-sim' || screenId === 'screen-tester' || screenId === 'screen-plan';
       nav.hidden = !show;
       nav.querySelectorAll('[data-nav]').forEach(btn => {
         btn.classList.toggle('is-active', btn.getAttribute('data-nav') === screenId);

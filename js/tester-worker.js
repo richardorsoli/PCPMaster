@@ -1,4 +1,4 @@
-/* PCPMaster v1.6.4 — Sprint 10 Batch 1: TESTER worker (simulador headless + busca) */
+/* PCPMaster v1.8.0 — Sprint 10 Batch 1: TESTER worker (simulador headless + busca) */
 /* Isolado: zero DOM/UI. Carregado como Worker e também como script clássico (fallback file://). */
 
 function pcpmasterTesterWorkerBootstrap() {

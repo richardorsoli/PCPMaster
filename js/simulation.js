@@ -1,7 +1,7 @@
-/* PCPMaster v1.6.4 — Motor de simulação, calendário, manutenção, analytics e Gantt */
+/* PCPMaster v1.8.0 — Motor de simulação, calendário, manutenção, analytics e Gantt */
 
 const APP_NAME = 'PCPMaster';
-const APP_VERSION = '1.6.4';
+const APP_VERSION = '1.8.0';
 const SCHEMA_VERSION = 'v2.0';
 
 // --- PARÂMETROS DO TURNO ---
@@ -254,6 +254,47 @@ const DEFAULT_START_TIME = '07:30';
       return Math.max(0, Number(startTimeOffsetMin) || 0);
     }
 
+    function workDayIndexBetween(originIso, targetIso) {
+      const origin = nextWorkDay(originIso || todayISODate());
+      let target = String(targetIso || '').trim();
+      if (!target) return 0;
+      target = nextWorkDay(target);
+      if (target <= origin) return 0;
+      let idx = 0;
+      let cur = origin;
+      for (let i = 0; i < 400; i++) {
+        if (cur === target) return idx;
+        cur = addDays(cur, 1);
+        if (isWorkDay(cur)) idx++;
+      }
+      return idx;
+    }
+
+    /** Converte data+hora de turno em minutos absolutos a partir da origem do plano/simulação. */
+    function dateTimeToAbsMin(dateIso, timeStr, originDateIso, originTimeStr) {
+      const originOff = normalizeStartTimeClock(originTimeStr || DEFAULT_START_TIME).offset;
+      const idx = workDayIndexBetween(originDateIso || startDateStr || todayISODate(), dateIso);
+      const off = normalizeStartTimeClock(timeStr || DEFAULT_START_TIME).offset;
+      let abs = idx * MINUTES_PER_DAY + off;
+      if (abs < originOff) abs = originOff;
+      return abs;
+    }
+
+    function copyPlanRuntimeFields(from) {
+      const src = from || {};
+      return {
+        planOrder: Number(src.planOrder) >= 0 ? Number(src.planOrder) : 0,
+        notBeforeAbsMin: Number(src.notBeforeAbsMin) > 0 ? Number(src.notBeforeAbsMin) : 0,
+        planChainMode: String(src.planChainMode || ''),
+        planProjectName: String(src.planProjectName || ''),
+        planItemId: String(src.planItemId || '')
+      };
+    }
+
+    function isPlanSimulationMode() {
+      return typeof simulationMode !== 'undefined' && simulationMode === 'plan';
+    }
+
     /**
      * Ponto visual/playback do dia: Dia 1 no horário configurado;
      * Dia 2+ às 07:30 (início do turno).
@@ -485,7 +526,7 @@ const DEFAULT_START_TIME = '07:30';
       const requer = requerRaw.map(n => String(n || '').toUpperCase()).filter(Boolean);
       const machineId = rule.machineId || (rule.juncao && rule.juncao.maquina) || '';
       const resultName = String(rule.resultName || '').toUpperCase();
-      return {
+      return Object.assign(copyPlanRuntimeFields(rule), {
         machineId,
         resultName,
         requiredPartNames: requer,
@@ -494,7 +535,7 @@ const DEFAULT_START_TIME = '07:30';
         prodUnit: Number(rule.prodUnit) > 0 ? Number(rule.prodUnit) : 0,
         qty: Number(rule.qty) > 0 ? Number(rule.qty) : 1,
         route: Array.isArray(rule.route) ? rule.route.map(normalizeRouteStep) : []
-      };
+      });
     }
 
     function normalizeAllAssemblyRules() {
@@ -506,7 +547,66 @@ const DEFAULT_START_TIME = '07:30';
     }
 
     function findSimPart(name, list) {
-      return (list || getSimParts()).find(p => p.name === name) || null;
+      const target = String(name || '');
+      const targetU = target.toUpperCase();
+      return (list || getSimParts()).find(p => p.name === name || String(p.name || '').toUpperCase() === targetU) || null;
+    }
+
+    const PLAN_SKU_PALETTE = [
+      { prod: '#3b82f6', setup: '#93c5fd', rgbProd: [59, 130, 246], rgbSetup: [147, 197, 253], label: 'Azul' },
+      { prod: '#22c55e', setup: '#86efac', rgbProd: [34, 197, 94], rgbSetup: [134, 239, 172], label: 'Verde' },
+      { prod: '#f97316', setup: '#fdba74', rgbProd: [249, 115, 22], rgbSetup: [253, 186, 116], label: 'Laranja' },
+      { prod: '#a855f7', setup: '#d8b4fe', rgbProd: [168, 85, 247], rgbSetup: [216, 180, 254], label: 'Violeta' },
+      { prod: '#06b6d4', setup: '#67e8f9', rgbProd: [6, 182, 212], rgbSetup: [103, 232, 249], label: 'Ciano' },
+      { prod: '#ec4899', setup: '#f9a8d4', rgbProd: [236, 72, 153], rgbSetup: [249, 168, 212], label: 'Rosa' },
+      { prod: '#eab308', setup: '#fde047', rgbProd: [234, 179, 8], rgbSetup: [253, 224, 71], label: 'Âmbar' },
+      { prod: '#6366f1', setup: '#a5b4fc', rgbProd: [99, 102, 241], rgbSetup: [165, 180, 252], label: 'Índigo' }
+    ];
+
+    function getPlanSkuLegendItems() {
+      const queue = (typeof currentPlanQueueMeta !== 'undefined' && Array.isArray(currentPlanQueueMeta))
+        ? currentPlanQueueMeta
+        : [];
+      return queue.map((item, i) => Object.assign({
+        id: item.id,
+        name: item.projectName,
+        order: i,
+        boxesQty: item.boxesQty
+      }, PLAN_SKU_PALETTE[i % PLAN_SKU_PALETTE.length]));
+    }
+
+    function getPlanSkuPaletteFor(blockOrEvent) {
+      if (!blockOrEvent) return null;
+      const items = getPlanSkuLegendItems();
+      if (!items.length) return null;
+      const id = String(blockOrEvent.planItemId || '');
+      const name = String(blockOrEvent.planProjectName || '');
+      const byId = id && items.find(it => it.id === id);
+      if (byId) return byId;
+      const byName = name && items.find(it => it.name === name);
+      if (byName) return byName;
+      const order = Number(blockOrEvent.planOrder);
+      if (!isNaN(order) && order >= 0 && items[order]) return items[order];
+      return null;
+    }
+
+    function ganttBlockFill(block) {
+      if (block && block.kind === 'wait') {
+        return { css: '#64748b', rgb: [100, 116, 139] };
+      }
+      if (block && block.kind === 'maint') {
+        return { css: '#a855f7', rgb: [168, 85, 247] };
+      }
+      if (isPlanSimulationMode()) {
+        const pal = getPlanSkuPaletteFor(block);
+        if (pal) {
+          if (block.kind === 'setup') return { css: pal.setup, rgb: pal.rgbSetup };
+          return { css: pal.prod, rgb: pal.rgbProd };
+        }
+      }
+      if (block && block.kind === 'setup') return { css: '#f97316', rgb: [249, 115, 22] };
+      if (block && block.kind === 'prod') return { css: '#22c55e', rgb: [34, 197, 94] };
+      return { css: '#64748b', rgb: [100, 116, 139] };
     }
 
     function joinRequerOf(stepOrRule) {
@@ -693,13 +793,13 @@ const DEFAULT_START_TIME = '07:30';
           }
         }
         route = ensureIndividualRouteAfterLastOp(p, route, claimedJoinMachines);
-        return {
+        return Object.assign({
           name: p.name,
           thickness: p.thickness,
           qty: p.qty,
           route,
           isVirtual: false
-        };
+        }, copyPlanRuntimeFields(p));
       });
 
       const virtual = expandedRules.map(rule => {
@@ -712,13 +812,13 @@ const DEFAULT_START_TIME = '07:30';
             maquina: rule.machineId
           }
         };
-        return {
+        return Object.assign({
           name: rule.resultName,
           thickness: 0,
           qty: rule.qty || 1,
           route: [joinStep].concat(rule.route || []),
           isVirtual: true
-        };
+        }, copyPlanRuntimeFields(rule));
       });
 
       bomRuntimeParts = physical.concat(virtual);
@@ -727,8 +827,10 @@ const DEFAULT_START_TIME = '07:30';
 
     function entityRouteDone(name, nextStepIndex, list) {
       const ent = findSimPart(name, list);
-      const len = ent && Array.isArray(ent.route) ? ent.route.length : 0;
-      return (nextStepIndex[name] || 0) >= len;
+      if (!ent) return false;
+      const len = Array.isArray(ent.route) ? ent.route.length : 0;
+      if (len === 0) return true;
+      return (nextStepIndex[ent.name] || nextStepIndex[name] || 0) >= len;
     }
 
     function joinInputsCompleted(requer, nextStepIndex, list) {
@@ -988,16 +1090,34 @@ const DEFAULT_START_TIME = '07:30';
 
       let bottleneck = null;
       let bottleneckScore = -1;
+      const planMix = isPlanSimulationMode();
       perMachine.forEach(pm => {
-        const score = pm.occupied + pm.wait;
+        const score = planMix ? pm.wait : (pm.occupied + pm.wait);
         if (score > bottleneckScore) {
           bottleneck = pm;
           bottleneckScore = score;
-        } else if (score === bottleneckScore && bottleneck && pm.wait > bottleneck.wait) {
-          bottleneck = pm;
+        } else if (score === bottleneckScore && bottleneck) {
+          if (planMix ? pm.occupied > bottleneck.occupied : pm.wait > bottleneck.wait) {
+            bottleneck = pm;
+          }
         }
       });
-      if (bottleneck && bottleneckScore <= 0) bottleneck = null;
+      if (bottleneck && bottleneckScore <= 0) {
+        if (planMix) {
+          let occScore = -1;
+          let occBn = null;
+          perMachine.forEach(pm => {
+            const score = pm.occupied + pm.wait;
+            if (score > occScore) {
+              occBn = pm;
+              occScore = score;
+            }
+          });
+          bottleneck = occScore > 0 ? occBn : null;
+        } else {
+          bottleneck = null;
+        }
+      }
 
       const makespanElapsed = Math.max(0, histEnd - histStart);
       const makespanNet = productiveMinutesBetween(histStart, histEnd);
@@ -1056,17 +1176,32 @@ const DEFAULT_START_TIME = '07:30';
       const issued = new Date();
       const issuedStr = issued.toLocaleDateString('pt-BR') + ' ' +
         issued.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      const projectName = (currentProjectName || '').trim() || getFinalSkuName() || 'Projeto sem nome';
+      const planName = (typeof currentPlanName === 'string' ? currentPlanName : '').trim();
+      const isPlan = isPlanSimulationMode() && planName;
+      const projectName = isPlan
+        ? planName
+        : ((currentProjectName || '').trim() || getFinalSkuName() || 'Projeto sem nome');
+      const queue = (typeof currentPlanQueueMeta !== 'undefined' && Array.isArray(currentPlanQueueMeta))
+        ? currentPlanQueueMeta
+        : [];
+      const totalBoxes = isPlan
+        ? queue.reduce((n, item) => n + (Number(item.boxesQty) || 0), 0) || boxesQty
+        : boxesQty;
+      const filename = isPlan
+        ? 'Relatorio_Plano_' + APP_NAME + '_' + sanitizePdfFilenamePart(projectName) + '_v' + APP_VERSION + '.pdf'
+        : 'Relatorio_' + APP_NAME + '_' + sanitizePdfFilenamePart(projectName) + '_' + boxesQty + 'cx_v' + APP_VERSION + '.pdf';
       return {
         version: 'v' + APP_VERSION,
         projectName,
-        sku: getFinalSkuName() || '—',
-        label: getReportProjectLabel(),
-        boxes: boxesQty,
+        sku: isPlan ? (queue.map(i => i.projectName).filter(Boolean).join(', ') || 'Mix') : (getFinalSkuName() || '—'),
+        label: isPlan ? ('Plano: ' + projectName) : getReportProjectLabel(),
+        boxes: totalBoxes,
         startTime: startTimeStr || DEFAULT_START_TIME,
         startDate: formatDisplayDate(workDays[0] || startDateStr),
         issuedStr,
-        filename: 'Relatorio_' + APP_NAME + '_' + sanitizePdfFilenamePart(projectName) + '_' + boxesQty + 'cx_v' + APP_VERSION + '.pdf'
+        filename,
+        isPlan: !!isPlan,
+        planSkuCount: queue.length
       };
     }
 
@@ -1136,11 +1271,20 @@ const DEFAULT_START_TIME = '07:30';
       return { start: startAbs, end: histEnd, mode: 'lot', dayIndex: -1 };
     }
 
-    function pushGanttBlocks(blocks, kind, start, end, rangeStart, rangeEnd, partName) {
+    function pushGanttBlocks(blocks, kind, start, end, rangeStart, rangeEnd, partName, extra) {
       const clipped = clipAbsInterval(start, end, rangeStart, rangeEnd);
       if (!clipped) return;
+      extra = extra || {};
       excludeLunchFromInterval(clipped.start, clipped.end).forEach(seg => {
-        blocks.push({ kind, start: seg.start, end: seg.end, partName: partName || '' });
+        blocks.push({
+          kind,
+          start: seg.start,
+          end: seg.end,
+          partName: partName || '',
+          planProjectName: extra.planProjectName || '',
+          planItemId: extra.planItemId || '',
+          planOrder: Number(extra.planOrder) || 0
+        });
       });
     }
 
@@ -1182,6 +1326,9 @@ const DEFAULT_START_TIME = '07:30';
         const t1 = uniq[i + 1];
         let bestRank = 0;
         let bestKind = '';
+        let bestPlanProjectName = '';
+        let bestPlanItemId = '';
+        let bestPlanOrder = 0;
         const names = [];
         src.forEach(b => {
           if (b.start >= t1 || b.end <= t0) return;
@@ -1189,6 +1336,9 @@ const DEFAULT_START_TIME = '07:30';
           if (rank > bestRank) {
             bestRank = rank;
             bestKind = b.kind;
+            bestPlanProjectName = b.planProjectName || '';
+            bestPlanItemId = b.planItemId || '';
+            bestPlanOrder = Number(b.planOrder) || 0;
             names.length = 0;
             if (b.partName) names.push(b.partName);
           } else if (rank === bestRank && b.partName && names.indexOf(b.partName) < 0) {
@@ -1198,7 +1348,10 @@ const DEFAULT_START_TIME = '07:30';
         if (!bestKind) continue;
         const partName = names.join(' + ');
         const last = resolved[resolved.length - 1];
-        if (last && last.kind === bestKind && last.end === t0) {
+        const sameSku = last
+          && (last.planItemId || '') === bestPlanItemId
+          && (last.planProjectName || '') === bestPlanProjectName;
+        if (last && last.kind === bestKind && last.end === t0 && sameSku) {
           last.end = t1;
           const existing = last.partName ? last.partName.split(' + ') : [];
           names.forEach(n => {
@@ -1206,7 +1359,15 @@ const DEFAULT_START_TIME = '07:30';
           });
           last.partName = existing.join(' + ');
         } else {
-          resolved.push({ kind: bestKind, start: t0, end: t1, partName });
+          resolved.push({
+            kind: bestKind,
+            start: t0,
+            end: t1,
+            partName,
+            planProjectName: bestPlanProjectName,
+            planItemId: bestPlanItemId,
+            planOrder: bestPlanOrder
+          });
         }
       }
       return resolved;
@@ -1217,9 +1378,14 @@ const DEFAULT_START_TIME = '07:30';
       return machinesList.map(m => {
         const blocks = [];
         (rawEvents || []).filter(e => e.machineId === m.id).forEach(evt => {
-          pushGanttBlocks(blocks, 'wait', evt.arrivalTime, evt.setupStart, rangeStart, rangeEnd, evt.partName);
-          pushGanttBlocks(blocks, 'setup', evt.setupStart, eventSetupEnd(evt), rangeStart, rangeEnd, evt.partName);
-          pushGanttBlocks(blocks, 'prod', evt.prodStart, evt.end, rangeStart, rangeEnd, evt.partName);
+          const meta = {
+            planProjectName: evt.planProjectName || '',
+            planItemId: evt.planItemId || '',
+            planOrder: Number(evt.planOrder) || 0
+          };
+          pushGanttBlocks(blocks, 'wait', evt.arrivalTime, evt.setupStart, rangeStart, rangeEnd, evt.partName, meta);
+          pushGanttBlocks(blocks, 'setup', evt.setupStart, eventSetupEnd(evt), rangeStart, rangeEnd, evt.partName, meta);
+          pushGanttBlocks(blocks, 'prod', evt.prodStart, evt.end, rangeStart, rangeEnd, evt.partName, meta);
         });
         (maintenanceEvents || []).filter(e => e.machineId === m.id).forEach(me => {
           pushGanttBlocks(blocks, 'maint', me.start, me.end, rangeStart, rangeEnd, 'Manutenção');
@@ -1283,6 +1449,9 @@ const DEFAULT_START_TIME = '07:30';
 
 // --- MOTOR DE SIMULAÇÃO ---
     function getBoxesQtyFromInput() {
+      if (isPlanSimulationMode()) {
+        return 1;
+      }
       const simEl = document.getElementById('sim-boxes-qty');
       const cfgEl = document.getElementById('boxes-qty');
       const simScreen = document.getElementById('screen-sim');
@@ -1396,7 +1565,10 @@ const DEFAULT_START_TIME = '07:30';
         grouped: !!fields.grouped,
         isJoin: !!fields.isJoin,
         skuName: fields.skuName || part.name,
-        requer: fields.requer || []
+        requer: fields.requer || [],
+        planProjectName: part.planProjectName || '',
+        planItemId: part.planItemId || '',
+        planOrder: Number(part.planOrder) || 0
       };
     }
 
@@ -1676,7 +1848,8 @@ const DEFAULT_START_TIME = '07:30';
       const partReady = {};
       const nextStepIndex = {};
       simParts.forEach(p => {
-        partReady[p.name] = t0;
+        const notBefore = Number(p.notBeforeAbsMin) > 0 ? Number(p.notBeforeAbsMin) : t0;
+        partReady[p.name] = Math.max(t0, notBefore);
         nextStepIndex[p.name] = 0;
       });
 
@@ -1698,6 +1871,7 @@ const DEFAULT_START_TIME = '07:30';
         ignoreAssembly = false;
         candidates.sort((a, b) =>
           (a.setupStart - b.setupStart) ||
+          ((Number(a.part && a.part.planOrder) || 0) - (Number(b.part && b.part.planOrder) || 0)) ||
           (a.readyForMachine - b.readyForMachine) ||
           (a.partIdx - b.partIdx)
         );

@@ -1,6 +1,6 @@
-# PCPMaster v1.6.4 — Regras do Projeto
+# PCPMaster v1.8.0 — Regras do Projeto
 
-App web de simulação PPCP / chão de fábrica (HTML + JS vanilla + CSS). UI em português (pt-BR). Tema escuro industrial. Entry point: `index.html`. Marca: **PCPMaster** (`APP_NAME`), versão **v1.6.4**.
+App web de simulação PPCP / chão de fábrica (HTML + JS vanilla + CSS). UI em português (pt-BR). Tema escuro industrial. Entry point: `index.html`. Marca: **PCPMaster** (`APP_NAME`), versão **v1.8.0**.
 
 ## Arquitetura modular
 
@@ -12,13 +12,15 @@ PCPMaster/
 │   ├── simulation.js   # Estado global, calendário, motor, manutenção, velocidade
 │   ├── database.js     # localStorage schema v2.0 + backup/restauração
 │   ├── ui.js           # DOM, CRUD config, chão, timeline, relógio, PDF
+│   ├── tester-worker.js / tester.js  # Otimizador TESTER
+│   ├── plan.js         # Plano de Produção Multiprojeto (fila, merge, persistência da tela)
 │   └── app.js          # Init, Play/Pause/Stop, speed, scrubbing timeline
 ├── banco_dados.json    # Backup/export de referência (não é source of truth em runtime)
 └── antigos/            # Monólitos HTML legados — NÃO editar salvo pedido explícito
 ```
 
 ### Ordem obrigatória dos scripts
-`simulation.js` → `database.js` → `ui.js` → `app.js`
+`simulation.js` → `database.js` → `ui.js` → `tester-worker.js` → `tester.js` → `plan.js` → `app.js`
 
 Scripts clássicos no escopo global (não ES modules), para `onclick` e abertura via `file://` funcionarem.
 
@@ -27,18 +29,21 @@ Scripts clássicos no escopo global (não ES modules), para `onclick` e abertura
 | Arquivo | Contém | Não colocar aqui |
 |---------|--------|------------------|
 | `simulation.js` | Constantes de turno, estado, `calculateSimulationHistory`, calendário multi-dia, manutenção preventiva, helpers de data/tempo/velocidade, `computeEfficiencyAnalytics`, `buildGanttRows` | Persistência, PDF, markup |
-| `database.js` | `DB_STORAGE_KEY` (`pcpmaster_db_v2`), `migrateToSchemaV2`, backup/restauração, 5 tabelas | Motor de simulação, render de tela |
+| `database.js` | `DB_STORAGE_KEY` (`pcpmaster_db_v2`), `migrateToSchemaV2`, backup/restauração, tabelas v2.0 (incl. `tb_planos_producao`) | Motor de simulação, render de tela |
 | `ui.js` | CRUD (funcionários, máquinas, peças, regras), `renderConfigUI`, chão, charts, `generatePDFReport` | Persistência bruta, loop de playback |
-| `app.js` | `startSimulation`, `runLoop`, play/stop/step/speed, `onTimelineChange` | Cálculo de eventos, schema DB |
-| `index.html` | Telas welcome / config / sim | Lógica JS |
+| `plan.js` | Fila mix, merge de SKUs, `tb_planos_producao` UI, simulação/PDF do plano | Playback, schema bruto |
+| `app.js` | `startSimulation`, `launchSimulationPlayback`, play/stop/step/speed, `onTimelineChange` | Cálculo de eventos, schema DB |
+| `index.html` | Telas welcome / config / sim / plan / tester | Lógica JS |
 
 Antes de mudar regra de negócio, localizar o módulo certo. Preferir editar os arquivos em `/js` e `index.html`/`css/` — não recriar monólito.
 
 ## Telas
 
 1. **welcome** — exemplo, projeto novo, carregar projeto, painel **Backup e Restauração**
-2. **config** — engenharia: funcionários (setor/posto) → máquinas → peças/roteiros (drag-and-drop) → agrupamento → união → feriados → qtd. caixas + data/hora inicial
+2. **config** — engenharia: funcionários (setor/posto) → máquinas → peças/roteiros (drag-and-drop) → agrupamento → união → feriados → qtd. de caixas + data/hora inicial
 3. **sim** — play/pause/stop, ±1 min, velocidade 1x/5x/10x, recálculo ao vivo da qtd. de caixas, hora de início flexível, relógio `DD/MM/AA - HH:MM:SS`, tabela do chão, timeline, Gantt, analytics, PDF
+4. **plan** — Plano de Produção Multiprojeto: data/hora do plano, fila de SKUs (`tb_projetos_pecas`), gatilho automático por liberação de posto ou horário forçado, salvar em `tb_planos_producao`, simular mix e PDF consolidado
+5. **tester** — Otimizador TESTER (busca heurística/genética em Web Worker)
 
 Rodapé global: `Banco ativo: v2.0 — Atualizado em DD/MM/YYYY HH:mm`.
 
@@ -79,23 +84,33 @@ Rodapé global: `Banco ativo: v2.0 — Atualizado em DD/MM/YYYY HH:mm`.
 - Cálculos derivados de `simulationHistory` / eventos do motor na janela início configurado → término do último evento (respeita caixas, hora inicial e almoço).
 - Legenda dos gráficos: somatório do lote em `N min (XhYYm)` por estado (Produção, Setup, Espera/Fila, Manutenção, Almoço, Ocioso).
 - Painel: **Makespan Total**, **Índice de Eficiência Global (%)** = `(Tempo Produtivo / Tempo Ocupado) * 100` com ocupado = produção + setup, **Gargalo** = posto com maior ocupação+fila.
+- Plano mix: **Makespan Total do Plano**, **OEE Mix**, **Gargalo Crítico** (maior fila acumulada na concorrência).
 - Tabela de horas por operador: Produção, Setup, Inativo/Aguardando, Total trabalhado (produção + setup); posto principal = máquina com maior ocupação.
 
 ### PDF (landscape, jsPDF 2.5.1 + autotable 3.5.28)
-Cabeçalho parametrizado em todas as páginas: **Projeto / SKU Final**, **Qtd. Caixas**, **Data de emissão**, **Hora inicial**, **Versão v1.6.4**.  
-Arquivo: `Relatorio_PCPMaster_[NomeDoProjeto]_[QtdCaixas]cx_v1.6.4.pdf`.  
-Conteúdo: KPIs (Makespan, Eficiência, Gargalo), horas por operador, BOM/JOIN, Gantt por dia (e lote contínuo se multi-dia), cronoanálise.  
+Cabeçalho parametrizado em todas as páginas: **Projeto / SKU Final**, **Qtd. Caixas**, **Data de emissão**, **Hora inicial**, **Versão v1.8.0**.  
+Arquivo: `Relatorio_PCPMaster_[NomeDoProjeto]_[QtdCaixas]cx_v1.8.0.pdf`.  
+Plano mix: `Relatorio_Plano_PCPMaster_[NomeDoPlano]_v1.8.0.pdf` (KPIs do mix, datas de conclusão por SKU, Gantt Unificado colorido por projeto).  
+Conteúdo: KPIs (Makespan, Eficiência, Gargalo), horas por operador, BOM/JOIN, Gantt por dia (e lote contínuo se multi-dia; no plano sempre o Gantt Unificado), cronoanálise.  
 Tabelas usam `rowPageBreak: 'avoid'`. Colunas da cronoanálise em branco para preenchimento manual / premiação.
 
-### Gantt (v1.6.4)
+### Gantt (v1.6.4 / v1.8.0 mix)
 - UI na simulação: linhas por máquina; Setup laranja, Produção verde, Espera/Fila cinza, almoço 12:00–13:00 em faixa; modos **Por dia** (segue o dropdown) e **Lote contínuo**.
 - Prioridade de cor na máquina: **Produção > Setup > Manutenção > Espera/Fila** (`resolveGanttMachineBlocks`). Peças na fila não pintam de cinza um intervalo em que a máquina já produz/setup. Tela e PDF usam a mesma ocupação.
-- PDF: um Gantt por dia útil do lote; se multi-dia, Gantt contínuo adicional.
+- Plano mix: **Gantt Unificado** com cor distinta por SKU (produção na cor do projeto, setup mais claro); espera cinza e manutenção roxa permanecem; legenda `[Cor] → SKU`. Blocos adjacentes de SKUs diferentes não se fundem.
+- PDF: um Gantt por dia útil do lote; se multi-dia, Gantt contínuo adicional; no plano sempre imprime o Gantt Unificado.
 
 ### Playback
 - Play/Pause (verde ativo / verde opaco pausado); Stop → Dia 1, 07:30:00.
 - Velocidade **1x / 5x / 10x** (`simulationSpeed`, `getTickIntervalMs`, `getSecondsPerTick`).
 - Timeline full-width no `floor-card`; scrubbing pausa e atualiza estado imediatamente.
+
+### Plano de Produção Multiprojeto (v1.8.0)
+- Fila de SKUs salvos; Data/Hora do plano dispara o primeiro item.
+- Máquinas são recurso compartilhado: se o posto está ocupado pelo Projeto A, o Projeto B espera em fila.
+- Sem data específica (`planChainMode: 'auto'`): o projeto entra no fluxo no instante em que o primeiro posto está fisicamente livre (`machineFreeUntil` + `planOrder` no empate).
+- Com data/hora específica: `notBeforeAbsMin` segura até o relógio; se o posto ainda estiver ocupado, espera a liberação.
+- Caixas do mix são embutidas em `qty`; simulação do plano não altera o recálculo live monoproduto nem o TESTER.
 
 ## Banco de dados
 
@@ -104,20 +119,22 @@ Tabelas usam `rowPageBreak: 'avoid'`. Colunas da cronoanálise em branco para pr
 - Legado: `simulafab_projects_v4` — migrado automaticamente por `migrateToSchemaV2()` sem perda.
 - Backup: `PCPMaster_DB_Backup_YYYY-MM-DD_HHmm.json` (botão **Exportar Backup**).
 
-### Schema v2.0 (5 tabelas)
+### Schema v2.0 (7 tabelas)
 
 ```json
 {
   "app": "PCPMaster",
-  "versao_app": "v1.6.4",
+  "versao_app": "v1.8.0",
   "versao_schema": "v2.0",
   "data_exportacao": "<ISO>",
-  "metadados": { "data_exportacao": "<ISO>", "versao_app": "v1.6.4", "versao_schema": "v2.0" },
+  "metadados": { "data_exportacao": "<ISO>", "versao_app": "v1.8.0", "versao_schema": "v2.0" },
   "tb_maquinas": [/* catálogo global normalizeMachine */],
   "tb_funcionarios": [{ "id", "name", "matricula", "setor", "postoId" }],
   "tb_projetos_pecas": { "<nome>": { "name", "machines", "parts", "employees", "groupingRules", "assemblyRules", "startDate", "startTime", "boxesQty" } },
   "tb_feriados": ["YYYY-MM-DD"],
-  "tb_turnos": [{ "id": "turno_padrao", "nome": "Turno diurno", "inicio": "07:30", "fim": "17:18", "almocoInicio": "12:00", "almocoFim": "13:00", "minutosDia": 588, "ativo": true }]
+  "tb_turnos": [{ "id": "turno_padrao", "nome": "Turno diurno", "inicio": "07:30", "fim": "17:18", "almocoInicio": "12:00", "almocoFim": "13:00", "minutosDia": 588, "ativo": true }],
+  "tb_historico_otimizacao": [/* Top 3 TESTER por SKU */],
+  "tb_planos_producao": [{ "id", "name", "startDate", "startTime", "updatedAt", "queue": [{ "id", "projectName", "boxesQty", "startDate", "startTime" }] }]
 }
 ```
 
@@ -159,4 +176,4 @@ Import aceita envelope legado (`app: SimulaFab`, `projects`/`holidays`/`employee
 
 ## Versão
 
-Documento alinhado à **PCPMaster v1.6.4** (Sprint 8 Batch 1: rebrand, schema relacional v2.0 em 5 tabelas, migração automática, backup com metadados). Motor, Gantt, analytics e PDF da Sprint 7 permanecem intactos.
+Documento alinhado à **PCPMaster v1.8.0** (Sprint 11 Batch 2: motor mix, Gantt Unificado por SKU, KPIs do plano e PDF consolidado). Schema relacional v2.0. Motor monoproduto, TESTER e Engenharia permanecem independentes.

@@ -1,4 +1,4 @@
-/* PCPMaster v1.6.4 — Manipulação de DOM, timeline, relógio, tabelas, Gantt, analytics e PDF */
+/* PCPMaster v1.8.0 — Manipulação de DOM, timeline, relógio, tabelas, Gantt, analytics e PDF */
 
     // --- EXEMPLO ---
     function loadExampleAndNavigate() {
@@ -142,6 +142,7 @@
     }
 
     function resetToNewProjectSession() {
+      if (typeof clearPlanSimulationMode === 'function') clearPlanSimulationMode();
       clearSimulationRuntime();
       resetProductionPlanState();
       employees = [];
@@ -189,12 +190,20 @@
       if (el) el.textContent = name || 'Não salvo (sem nome)';
       const simTitle = document.getElementById('sim-project-title');
       if (simTitle) {
-        simTitle.textContent = name
-          ? (APP_NAME + ' v' + APP_VERSION + ' — ' + name)
-          : (APP_NAME + ' v' + APP_VERSION + ' - Controle de Chão de Fábrica');
+        if (typeof isPlanSimulationMode === 'function' && isPlanSimulationMode() && (typeof currentPlanName === 'string') && currentPlanName.trim()) {
+          simTitle.textContent = APP_NAME + ' v' + APP_VERSION + ' — Plano: ' + currentPlanName.trim();
+        } else {
+          simTitle.textContent = name
+            ? (APP_NAME + ' v' + APP_VERSION + ' — ' + name)
+            : (APP_NAME + ' v' + APP_VERSION + ' - Controle de Chão de Fábrica');
+        }
       }
       const analyticsName = document.getElementById('analytics-project-name');
-      if (analyticsName) analyticsName.textContent = name || 'Projeto sem nome';
+      if (analyticsName) {
+        analyticsName.textContent = (typeof isPlanSimulationMode === 'function' && isPlanSimulationMode() && currentPlanName)
+          ? ('Plano: ' + currentPlanName)
+          : (name || 'Projeto sem nome');
+      }
       if (typeof refreshTesterSkuBanner === 'function') refreshTesterSkuBanner();
     }
 
@@ -1372,7 +1381,22 @@
       el.textContent = `${title}: ${formatMinutesWithHours(minutes)}`;
     }
 
+    function applyAnalyticsKpiTitles(isPlan) {
+      const plan = !!isPlan;
+      const ms = document.getElementById('kpi-makespan-title');
+      const ef = document.getElementById('kpi-efficiency-title');
+      const bn = document.getElementById('kpi-bottleneck-title');
+      const ganttTitle = document.getElementById('gantt-chart-title');
+      const pdfBtn = document.getElementById('btn-export-pdf');
+      if (ms) ms.textContent = plan ? 'Makespan Total do Plano' : 'Makespan Total';
+      if (ef) ef.textContent = plan ? 'Índice de Eficiência Global do Plano (OEE Mix)' : 'Índice de Eficiência Global';
+      if (bn) bn.textContent = plan ? 'Gargalo Crítico do Plano' : 'Gargalo Identificado';
+      if (ganttTitle) ganttTitle.textContent = plan ? 'Gráfico de Gantt Unificado do Plano' : 'Gráfico de Gantt do Projeto';
+      if (pdfBtn) pdfBtn.textContent = plan ? '📄 Exportar Relatório do Plano (PDF)' : '📄 Gerar Relatório PDF';
+    }
+
     function resetAnalyticsView() {
+      applyAnalyticsKpiTitles(typeof isPlanSimulationMode === 'function' && isPlanSimulationMode());
       setLegendLabel('legend-working', 'Produção');
       setLegendLabel('legend-setup', 'Setup');
       setLegendLabel('legend-waiting', 'Espera/Fila');
@@ -1397,9 +1421,13 @@
       if (tbody) {
         tbody.innerHTML = '<tr><td colspan="6" style="color:#64748b;">Gere a simulação para ver o relatório por operador.</td></tr>';
       }
+      renderPlanCompletionTable([]);
+      renderGanttSkuLegend([]);
     }
 
     function renderAnalyticsKpis(analytics) {
+      const planMode = typeof isPlanSimulationMode === 'function' && isPlanSimulationMode();
+      applyAnalyticsKpiTitles(planMode);
       const makespanEl = document.getElementById('kpi-makespan');
       const makespanHint = document.getElementById('kpi-makespan-hint');
       const efficiencyEl = document.getElementById('kpi-efficiency');
@@ -1408,12 +1436,18 @@
 
       if (!analytics || analytics.makespanElapsed <= 0) {
         if (makespanEl) makespanEl.textContent = '—';
-        if (makespanHint) makespanHint.textContent = 'Sem eventos no lote';
+        if (makespanHint) makespanHint.textContent = planMode
+          ? 'Sem eventos no mix do plano'
+          : 'Sem eventos no lote';
         if (efficiencyEl) efficiencyEl.textContent = '—';
         const efficiencyHintEmpty = document.getElementById('kpi-efficiency-hint');
-        if (efficiencyHintEmpty) efficiencyHintEmpty.textContent = 'Produtivo / Ocupado (Produção + Setup) × 100';
+        if (efficiencyHintEmpty) efficiencyHintEmpty.textContent = planMode
+          ? 'OEE Mix: Produtivo / Ocupado (Produção + Setup) × 100'
+          : 'Produtivo / Ocupado (Produção + Setup) × 100';
         if (bottleneckEl) bottleneckEl.textContent = '—';
-        if (bottleneckHint) bottleneckHint.textContent = 'Posto com maior ocupação (e fila)';
+        if (bottleneckHint) bottleneckHint.textContent = planMode
+          ? 'Posto com maior fila acumulada na concorrência dos projetos'
+          : 'Posto com maior ocupação (e fila)';
         return;
       }
 
@@ -1426,7 +1460,9 @@
         const days = Math.max(1, lastDay - firstDay + 1);
         const dayTxt = days > 1 ? `${days} dias úteis` : '1 dia útil';
         const doneLabel = absMinuteToTimeLabel(doneAbs);
-        makespanHint.textContent = `Conclusão: ${doneLabel} · ${dayTxt} · líquido (sem almoço): ${formatMinutesWithHours(analytics.makespanNet)}`;
+        makespanHint.textContent = planMode
+          ? `Do disparo do 1º SKU até a última caixa: ${doneLabel} · ${dayTxt} · líquido (sem almoço): ${formatMinutesWithHours(analytics.makespanNet)}`
+          : `Conclusão: ${doneLabel} · ${dayTxt} · líquido (sem almoço): ${formatMinutesWithHours(analytics.makespanNet)}`;
       }
 
       if (efficiencyEl) {
@@ -1438,19 +1474,52 @@
       if (efficiencyHint) {
         efficiencyHint.textContent = analytics.occupied > 0
           ? `${formatMinutesWithHours(analytics.productive)} produtivo / ${formatMinutesWithHours(analytics.occupied)} ocupado`
-          : 'Produtivo / Ocupado (Produção + Setup) × 100';
+          : (planMode
+            ? 'OEE Mix: Produtivo / Ocupado (Produção + Setup) × 100'
+            : 'Produtivo / Ocupado (Produção + Setup) × 100');
       }
 
       if (analytics.bottleneck) {
         const bn = analytics.bottleneck;
         if (bottleneckEl) bottleneckEl.textContent = bn.name;
         if (bottleneckHint) {
-          bottleneckHint.textContent = `Ocupação: ${formatMinutesWithHours(bn.occupied)} · Fila: ${formatMinutesWithHours(bn.wait)}`;
+          bottleneckHint.textContent = planMode
+            ? `Fila acumulada: ${formatMinutesWithHours(bn.wait)} · Ocupação: ${formatMinutesWithHours(bn.occupied)}`
+            : `Ocupação: ${formatMinutesWithHours(bn.occupied)} · Fila: ${formatMinutesWithHours(bn.wait)}`;
         }
       } else {
         if (bottleneckEl) bottleneckEl.textContent = 'Nenhum gargalo';
-        if (bottleneckHint) bottleneckHint.textContent = 'Sem ocupação relevante no lote';
+        if (bottleneckHint) bottleneckHint.textContent = planMode
+          ? 'Sem fila relevante na concorrência do mix'
+          : 'Sem ocupação relevante no lote';
       }
+    }
+
+    function renderPlanCompletionTable(rows) {
+      const wrap = document.getElementById('plan-completion-wrap');
+      const body = document.getElementById('plan-completion-body');
+      if (!wrap || !body) return;
+      const planMode = typeof isPlanSimulationMode === 'function' && isPlanSimulationMode();
+      if (!planMode) {
+        wrap.hidden = true;
+        body.innerHTML = '';
+        return;
+      }
+      wrap.hidden = false;
+      const list = Array.isArray(rows) ? rows : (typeof computePlanItemSummaries === 'function' ? computePlanItemSummaries() : []);
+      if (!list.length) {
+        body.innerHTML = '<tr><td colspan="6" style="color:#64748b;">Gere a simulação do plano para ver as datas de conclusão.</td></tr>';
+        return;
+      }
+      body.innerHTML = list.map(r => `
+        <tr>
+          <td>${r.order}</td>
+          <td><strong>${escapeHtml(r.projectName)}</strong></td>
+          <td>${r.boxesQty}</td>
+          <td>${escapeHtml(r.trigger)}</td>
+          <td>${r.startAbs != null ? absMinuteToTimeLabel(r.startAbs) : '—'}</td>
+          <td>${r.endAbs != null ? absMinuteToTimeLabel(r.endAbs) : '—'}</td>
+        </tr>`).join('');
     }
 
     function renderOperatorHoursTable(rows) {
@@ -1481,6 +1550,24 @@
       }[ch]));
     }
 
+    function renderGanttSkuLegend(items) {
+      const host = document.getElementById('gantt-sku-legend');
+      if (!host) return;
+      const planMode = typeof isPlanSimulationMode === 'function' && isPlanSimulationMode();
+      const list = Array.isArray(items)
+        ? items
+        : (planMode && typeof getPlanSkuLegendItems === 'function' ? getPlanSkuLegendItems() : []);
+      if (!planMode || !list.length) {
+        host.hidden = true;
+        host.innerHTML = '';
+        return;
+      }
+      host.hidden = false;
+      host.innerHTML = list.map(it =>
+        `<div class="legend-item"><div class="color-box" style="background:${escapeHtml(it.prod)};"></div> ${escapeHtml(it.label)} → ${escapeHtml(it.name)}</div>`
+      ).join('');
+    }
+
     function ganttKindClass(kind) {
       if (kind === 'setup') return 'gantt-block-setup';
       if (kind === 'prod') return 'gantt-block-prod';
@@ -1505,21 +1592,52 @@
     function ganttAxisTicks(range) {
       const ticks = [];
       if (range.mode === 'day') {
-        const marks = [0, 30, 90, 150, 210, 270, 330, 390, 450, 510, 570];
+        const marks = [0, 90, 210, 270, 330, 450, 570];
         marks.forEach(m => {
-          ticks.push({ abs: range.start + m, label: minuteInDayToTimeStr(m) });
+          ticks.push({ abs: range.start + m, label: minuteInDayToTimeStr(m), kind: 'hour' });
         });
         return ticks;
       }
-      const span = range.end - range.start;
-      const step = span > MINUTES_PER_DAY * 2 ? 120 : 60;
-      for (let t = range.start; t <= range.end; t += step) {
-        ticks.push({ abs: t, label: absMinuteToTimeLabel(t).split(' ').pop() });
+      const span = Math.max(1, range.end - range.start);
+      const dayMarks = dayBoundaryAbsMins(range.start, range.end);
+      let step = 90;
+      if (span > MINUTES_PER_DAY) step = 120;
+      if (span > MINUTES_PER_DAY * 2) step = 180;
+      if (span > MINUTES_PER_DAY * 4) step = 240;
+      const minGap = Math.max(step * 0.55, span * 0.09);
+      const startDay = Math.floor(range.start / MINUTES_PER_DAY);
+      const endDay = Math.floor(Math.max(range.start, range.end - 1) / MINUTES_PER_DAY);
+      for (let d = startDay; d <= endDay; d++) {
+        const dayStart = d * MINUTES_PER_DAY;
+        for (let off = 0; off < MINUTES_PER_DAY; off += step) {
+          const t = dayStart + off;
+          if (t < range.start || t > range.end) continue;
+          if (off === 0 && (d > startDay || dayMarks.indexOf(t) >= 0)) continue;
+          const nearDay = dayMarks.some(bd => Math.abs(bd - t) < minGap);
+          if (nearDay) continue;
+          ticks.push({ abs: t, label: minuteInDayToTimeStr(t % MINUTES_PER_DAY), kind: 'hour' });
+        }
       }
-      dayBoundaryAbsMins(range.start, range.end).forEach(t => {
-        ticks.push({ abs: t, label: formatDisplayDate((absMinuteToParts(t).dateIso)) });
+      dayMarks.forEach(t => {
+        const iso = absMinuteToParts(t).dateIso;
+        ticks.push({
+          abs: t,
+          label: formatDisplayDate(iso),
+          sub: '07:30',
+          kind: 'day'
+        });
       });
-      return ticks;
+      ticks.sort((a, b) => a.abs - b.abs);
+      const thinned = [];
+      ticks.forEach(tk => {
+        const last = thinned[thinned.length - 1];
+        if (last && Math.abs(tk.abs - last.abs) < minGap) {
+          if (tk.kind === 'day' && last.kind !== 'day') thinned[thinned.length - 1] = tk;
+          return;
+        }
+        thinned.push(tk);
+      });
+      return thinned;
     }
 
     function updateGanttModeButtons() {
@@ -1543,6 +1661,8 @@
       if (host) host.innerHTML = '<div class="gantt-empty">Gere a simulação para montar o Gantt.</div>';
       const label = document.getElementById('gantt-range-label');
       if (label) label.textContent = 'Gere a simulação para ver o cronograma por posto.';
+      applyAnalyticsKpiTitles(typeof isPlanSimulationMode === 'function' && isPlanSimulationMode());
+      renderGanttSkuLegend([]);
       updateGanttModeButtons();
     }
 
@@ -1592,14 +1712,25 @@
           const iso = workDays[range.dayIndex] || startDateStr;
           label.textContent = 'Dia ' + (range.dayIndex + 1) + ' (' + formatDisplayDate(iso) + ') · turno 07:30–17:18 · almoço 12:00–13:00';
         } else {
-          label.textContent = 'Lote contínuo: ' + absMinuteToTimeLabel(range.start) + ' → ' + absMinuteToTimeLabel(Math.max(range.start, range.end - 1));
+          const mix = typeof isPlanSimulationMode === 'function' && isPlanSimulationMode();
+          label.textContent = (mix ? 'Gantt unificado do plano: ' : 'Lote contínuo: ') +
+            absMinuteToTimeLabel(range.start) + ' → ' + absMinuteToTimeLabel(Math.max(range.start, range.end - 1));
         }
       }
+
+      renderGanttSkuLegend();
 
       const axisHtml = ticks.map(tk => {
         const left = pctInRange(tk.abs, range);
         if (left < -1 || left > 101) return '';
-        return `<span class="gantt-tick" style="left:${left.toFixed(2)}%">${escapeHtml(tk.label)}</span>`;
+        if (tk.kind !== 'day' && left > 96) return '';
+        if (tk.kind === 'day') {
+          return `<span class="gantt-tick gantt-tick-day" style="left:${left.toFixed(2)}%">` +
+            `<span class="gantt-tick-date">${escapeHtml(tk.label)}</span>` +
+            `<span class="gantt-tick-time">${escapeHtml(tk.sub || '07:30')}</span>` +
+            `</span>`;
+        }
+        return `<span class="gantt-tick gantt-tick-hour" style="left:${left.toFixed(2)}%">${escapeHtml(tk.label)}</span>`;
       }).join('');
 
       const lunchHtml = lunches.map(b => {
@@ -1612,6 +1743,10 @@
         const left = pctInRange(t, range);
         return `<div class="gantt-day-mark" style="left:${left.toFixed(2)}%"></div>`;
       }).join('');
+      const axisMarksHtml = dayMarks.map(t => {
+        const left = pctInRange(t, range);
+        return `<div class="gantt-day-mark gantt-day-mark-axis" style="left:${left.toFixed(2)}%"></div>`;
+      }).join('');
 
       const nowPct = pctInRange(getCurrentAbsMinute(), range);
       const nowVisible = nowPct >= 0 && nowPct <= 100;
@@ -1623,8 +1758,11 @@
         const blocks = row.blocks.map(b => {
           const left = pctInRange(b.start, range);
           const width = Math.max(0.35, ((b.end - b.start) / span) * 100);
-          const title = `${row.name} · ${b.partName} · ${ganttKindLabel(b.kind)} ${minuteInDayToTimeStr(b.start % MINUTES_PER_DAY)}–${minuteInDayToTimeStr((b.end - 1) % MINUTES_PER_DAY)}`;
-          return `<div class="gantt-block ${ganttKindClass(b.kind)}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%" title="${escapeHtml(title)}"></div>`;
+          const sku = b.planProjectName ? (b.planProjectName + ' · ') : '';
+          const title = `${row.name} · ${sku}${b.partName} · ${ganttKindLabel(b.kind)} ${minuteInDayToTimeStr(b.start % MINUTES_PER_DAY)}–${minuteInDayToTimeStr((b.end - 1) % MINUTES_PER_DAY)}`;
+          const fill = typeof ganttBlockFill === 'function' ? ganttBlockFill(b) : null;
+          const bg = fill && fill.css ? `background:${fill.css};` : '';
+          return `<div class="gantt-block ${ganttKindClass(b.kind)}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;${bg}" title="${escapeHtml(title)}"></div>`;
         }).join('');
         return `<div class="gantt-row">
           <div class="gantt-label">${escapeHtml(row.name)}</div>
@@ -1637,7 +1775,7 @@
         return;
       }
 
-      host.innerHTML = `<div class="gantt-axis">${axisHtml}</div>${rowsHtml}`;
+      host.innerHTML = `<div class="gantt-axis${range.mode === 'lot' ? ' is-lot' : ''}">${axisMarksHtml}${axisHtml}</div>${rowsHtml}`;
     }
 
     function renderCharts() {
@@ -1661,6 +1799,7 @@
       setLegendLabel('legend-idle', 'Ocioso', t.idle);
       renderAnalyticsKpis(analytics);
       renderOperatorHoursTable(analytics.operatorRows);
+      renderPlanCompletionTable();
       renderGanttChart();
 
       const windowLen = Math.max(1, analytics.histEnd - analytics.histStart);
@@ -1698,13 +1837,17 @@
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(13);
       doc.setTextColor(2, 132, 199);
-      doc.text('Relatório de Produção — ' + APP_NAME + ' v' + APP_VERSION, 14, 9);
+      doc.text((meta.isPlan ? 'Relatório do Plano de Produção — ' : 'Relatório de Produção — ') + APP_NAME + ' v' + APP_VERSION, 14, 9);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(30);
       doc.text('Projeto / SKU Final: ' + meta.label, 14, 15);
-      doc.text('Quantidade de Caixas: ' + meta.boxes, 14, 20);
+      if (meta.isPlan) {
+        doc.text('Quantidade de Caixas (mix): ' + meta.boxes + '    |    SKUs na fila: ' + (meta.planSkuCount || '—'), 14, 20);
+      } else {
+        doc.text('Quantidade de Caixas: ' + meta.boxes, 14, 20);
+      }
       doc.text('Data de emissão: ' + meta.issuedStr + '    |    Hora inicial da simulação: ' + meta.startTime, 14, 25);
       doc.setFont('helvetica', 'bold');
       doc.text('Versão da aplicação: v' + APP_VERSION, pageW - 14, 9, { align: 'right' });
@@ -1737,27 +1880,28 @@
       const gap = 6;
       const boxW = (pageW - 28 - gap * 2) / 3;
       const boxH = 22;
+      const planMode = typeof isPlanSimulationMode === 'function' && isPlanSimulationMode();
       const items = [
         {
-          title: 'Makespan Total',
+          title: planMode ? 'Makespan Total do Plano' : 'Makespan Total',
           value: analytics && analytics.makespanElapsed > 0 ? formatMinutesWithHours(analytics.makespanElapsed) : '—',
           hint: analytics && analytics.makespanElapsed > 0
             ? ('Conclusão ' + absMinuteToTimeLabel(analytics.completionAbs) + ' · líquido ' + formatMinutesWithHours(analytics.makespanNet))
             : 'Sem eventos'
         },
         {
-          title: 'Eficiência Global',
+          title: planMode ? 'OEE Mix (Eficiência Global do Plano)' : 'Eficiência Global',
           value: analytics && analytics.occupied > 0 ? analytics.efficiencyPct.toFixed(1) + '%' : '—',
           hint: analytics && analytics.occupied > 0
             ? (formatMinutesWithHours(analytics.productive) + ' prod / ' + formatMinutesWithHours(analytics.occupied) + ' ocup.')
             : 'Produtivo / Ocupado'
         },
         {
-          title: 'Gargalo Identificado',
+          title: planMode ? 'Gargalo Crítico do Plano' : 'Gargalo Identificado',
           value: analytics && analytics.bottleneck ? analytics.bottleneck.name : 'Nenhum gargalo',
           hint: analytics && analytics.bottleneck
-            ? ('Ocupação ' + formatMinutesWithHours(analytics.bottleneck.occupied) + ' · Fila ' + formatMinutesWithHours(analytics.bottleneck.wait))
-            : 'Maior ocupação + fila'
+            ? ('Fila ' + formatMinutesWithHours(analytics.bottleneck.wait) + ' · Ocupação ' + formatMinutesWithHours(analytics.bottleneck.occupied))
+            : (planMode ? 'Maior fila na concorrência do mix' : 'Maior ocupação + fila')
         }
       ];
       items.forEach((item, i) => {
@@ -1810,10 +1954,21 @@
           doc.text(minuteInDayToTimeStr(m), x, chartTop, { align: 'center' });
         });
       } else {
-        const step = span > MINUTES_PER_DAY * 2 ? 180 : 90;
+        const dayMarksPdf = dayBoundaryAbsMins(range.start, range.end);
+        const step = span > MINUTES_PER_DAY * 2 ? 180 : 120;
+        const minGap = Math.max(step * 0.4, span * 0.08);
         for (let t = range.start; t <= range.end; t += step) {
+          if (dayMarksPdf.some(d => Math.abs(d - t) < minGap)) continue;
           doc.text(minuteInDayToTimeStr(t % MINUTES_PER_DAY), xOf(t), chartTop, { align: 'center' });
         }
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(2, 132, 199);
+        dayMarksPdf.forEach(t => {
+          const iso = absMinuteToParts(t).dateIso;
+          doc.text(formatDisplayDate(iso), xOf(t), chartTop, { align: 'center' });
+        });
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(90);
       }
 
       const trackTop = chartTop + axisH;
@@ -1859,21 +2014,49 @@
         sortGanttBlocksForPaint(row.blocks).forEach(b => {
           const x = xOf(b.start);
           const w = Math.max(0.6, xOf(b.end) - x);
-          const rgb = colors[b.kind] || [100, 116, 139];
+          const fill = typeof ganttBlockFill === 'function' ? ganttBlockFill(b) : null;
+          const rgb = (fill && fill.rgb) || colors[b.kind] || [100, 116, 139];
           doc.setFillColor(rgb[0], rgb[1], rgb[2]);
           doc.rect(x, ry + 1.4, w, rowH - 2.8, 'F');
         });
       });
 
+      if (range.mode === 'lot') {
+        dayBoundaryAbsMins(range.start, range.end).forEach(t => {
+          const x = xOf(t);
+          doc.setDrawColor(2, 132, 199);
+          doc.setLineWidth(0.7);
+          doc.line(x, chartTop, x, trackTop + rows.length * rowH);
+        });
+        doc.setLineWidth(0.2);
+      }
+
       doc.setFontSize(6.5);
       doc.setTextColor(80);
-      const legendY = chartBottom + 4;
+      let legendY = chartBottom + 4;
       const legend = [
         { c: [249, 115, 22], t: 'Setup' },
         { c: [34, 197, 94], t: 'Produção' },
         { c: [100, 116, 139], t: 'Espera/Fila' },
         { c: [148, 163, 184], t: 'Almoço 12:00–13:00' }
       ];
+      const skuItems = (typeof isPlanSimulationMode === 'function' && isPlanSimulationMode() && typeof getPlanSkuLegendItems === 'function')
+        ? getPlanSkuLegendItems()
+        : [];
+      if (skuItems.length) {
+        let lxSku = margin;
+        skuItems.forEach((item, i) => {
+          if (lxSku > pageW - 70) {
+            legendY += 5;
+            lxSku = margin;
+          }
+          doc.setFillColor(item.rgbProd[0], item.rgbProd[1], item.rgbProd[2]);
+          doc.rect(lxSku, legendY - 2.2, 3.5, 3.5, 'F');
+          doc.text(item.label + ' → ' + item.name, lxSku + 5, legendY + 0.6);
+          lxSku += Math.min(72, 18 + String(item.name || '').length * 1.6);
+          if (i === skuItems.length - 1) legendY += 6;
+        });
+      }
       let lx = margin;
       legend.forEach(item => {
         doc.setFillColor(item.c[0], item.c[1], item.c[2]);
@@ -1901,8 +2084,35 @@
       const tableMargin = { top: 34, left: 14, right: 14, bottom: 12 };
 
       let y = drawPdfReportHeader(doc);
-      y = drawPdfSectionTitle(doc, y, 'Resumo Executivo de KPIs');
+      y = drawPdfSectionTitle(doc, y, meta.isPlan ? 'Resumo Executivo de KPIs do Mix' : 'Resumo Executivo de KPIs');
       y = drawPdfKpiBoxes(doc, y, analytics);
+
+      if (meta.isPlan && typeof computePlanItemSummaries === 'function') {
+        y = drawPdfSectionTitle(doc, y, 'Projetos do Plano e Datas de Conclusão');
+        const planRows = computePlanItemSummaries().map(r => [
+          String(r.order),
+          r.projectName,
+          String(r.boxesQty),
+          r.trigger,
+          r.startAbs != null ? absMinuteToTimeLabel(r.startAbs) : '—',
+          r.endAbs != null ? absMinuteToTimeLabel(r.endAbs) : '—'
+        ]);
+        doc.autoTable({
+          startY: y,
+          head: [['Ordem', 'SKU / Projeto', 'Caixas', 'Gatilho de Início', 'Início previsto', 'Término previsto']],
+          body: planRows.length ? planRows : [['—', '—', '—', '—', '—', '—']],
+          theme: 'striped',
+          margin: tableMargin,
+          rowPageBreak: 'avoid',
+          showHead: 'everyPage',
+          headStyles: { fillColor: [2, 132, 199], fontSize: 7, textColor: 255 },
+          styles: { fontSize: 7, cellPadding: 1.6, minCellHeight: 7, overflow: 'linebreak' },
+          didDrawPage: (data) => {
+            if (data.pageNumber > 1) drawPdfReportHeader(doc);
+          }
+        });
+        y = (doc.lastAutoTable && doc.lastAutoTable.finalY ? doc.lastAutoTable.finalY : y) + 8;
+      }
 
       y = drawPdfSectionTitle(doc, y, 'Horas Trabalhadas por Operador');
       const opRows = (analytics.operatorRows || []).map(r => [
@@ -1976,10 +2186,15 @@
         y = drawPdfGantt(doc, y, range, dayTitle);
       }
 
-      if (usedDays > 1) {
+      if (usedDays > 1 || meta.isPlan) {
         doc.addPage();
         y = drawPdfReportHeader(doc);
-        y = drawPdfGantt(doc, y, getGanttRangeForLot(), 'Gráfico de Gantt — Lote contínuo');
+        y = drawPdfGantt(
+          doc,
+          y,
+          getGanttRangeForLot(),
+          meta.isPlan ? 'Gantt Unificado do Plano' : 'Gráfico de Gantt — Lote contínuo'
+        );
       }
 
       doc.addPage();
@@ -2096,6 +2311,11 @@
     }
 
 function navigateTo(screenId) {
+  if (screenId === 'screen-sim') {
+    if (typeof activatePlanRuntimeIfNeeded === 'function') activatePlanRuntimeIfNeeded();
+  } else if (typeof restoreEngineeringSessionIfNeeded === 'function') {
+    restoreEngineeringSessionIfNeeded();
+  }
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const target = document.getElementById(screenId);
   if (target) target.classList.add('active');
@@ -2108,6 +2328,14 @@ function navigateTo(screenId) {
   if (screenId === 'screen-tester') {
     if (typeof refreshTesterSkuBanner === 'function') refreshTesterSkuBanner();
     if (typeof setTesterSearchMode === 'function') setTesterSearchMode(typeof testerSearchMode === 'string' ? testerSearchMode : 'quick');
+  }
+  if (screenId === 'screen-plan' && typeof renderProductionPlanUI === 'function') {
+    renderProductionPlanUI();
+  }
+  if (screenId === 'screen-sim' && simulationHistory.length && typeof renderAbsMinute === 'function') {
+    lastRenderedMinute = -1;
+    renderAbsMinute(getCurrentAbsMinute(), true);
+    if (typeof renderCharts === 'function') renderCharts();
   }
   if (typeof syncTesterFloatingWidget === 'function') syncTesterFloatingWidget();
 }

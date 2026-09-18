@@ -1,4 +1,4 @@
-/* PCPMaster v1.6.4 — Persistência localStorage (schema v2.0) e backup/restauração */
+/* PCPMaster v1.8.0 — Persistência localStorage (schema v2.0) e backup/restauração */
 
 const LEGACY_DB_STORAGE_KEY = 'simulafab_projects_v4';
 const DB_STORAGE_KEY = 'pcpmaster_db_v2';
@@ -11,6 +11,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         projects: {},
         turnos: defaultShiftRows(),
         historicoOtimizacao: [],
+        planosProducao: [],
         metadados: buildDbMetadata()
       };
     }
@@ -52,6 +53,44 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
           top3: top3
         };
       }).filter(row => row && (row.sku || row.projectName));
+    }
+
+    function normalizePlanQueueItem(item, idx) {
+      if (!item || typeof item !== 'object') return null;
+      const projectName = String(item.projectName || item.sku || '').trim();
+      if (!projectName) return null;
+      const boxes = Number(item.boxesQty);
+      const startDate = String(item.startDate || '').trim();
+      const startTime = String(item.startTime || '').trim();
+      return {
+        id: item.id || ('q_' + idx + '_' + Date.now()),
+        projectName,
+        boxesQty: isNaN(boxes) || boxes < 1 ? 1 : Math.min(999, Math.round(boxes)),
+        startDate: startDate,
+        startTime: startTime
+      };
+    }
+
+    function normalizePlanoProducao(row, idx) {
+      if (!row || typeof row !== 'object') return null;
+      const name = String(row.name || row.sku || '').trim();
+      if (!name) return null;
+      const queue = (Array.isArray(row.queue) ? row.queue : [])
+        .map((item, i) => normalizePlanQueueItem(item, i))
+        .filter(Boolean);
+      return {
+        id: row.id || ('plan_' + idx + '_' + Date.now()),
+        name,
+        startDate: String(row.startDate || '').trim(),
+        startTime: String(row.startTime || '').trim() || DEFAULT_START_TIME,
+        updatedAt: String(row.updatedAt || ''),
+        queue
+      };
+    }
+
+    function normalizePlanosProducao(list) {
+      if (!Array.isArray(list)) return [];
+      return list.map((row, i) => normalizePlanoProducao(row, i)).filter(Boolean);
     }
 
     function buildDbMetadata(exportedAt) {
@@ -121,6 +160,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
           : {},
         turnos: turnosSrc.map(normalizeShiftRow),
         historicoOtimizacao: normalizeHistoricoOtimizacao(raw && raw.tb_historico_otimizacao),
+        planosProducao: normalizePlanosProducao(raw && raw.tb_planos_producao),
         metadados: meta
       };
     }
@@ -133,6 +173,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
       let projects = {};
       let turnos = defaultShiftRows();
       let historicoOtimizacao = [];
+      let planosProducao = [];
       let exportedAt = source.exportedAt || source.data_exportacao ||
         (source.metadados && source.metadados.data_exportacao) || '';
 
@@ -144,6 +185,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         projects = wrap.projects;
         turnos = wrap.turnos;
         historicoOtimizacao = wrap.historicoOtimizacao || [];
+        planosProducao = wrap.planosProducao || [];
         exportedAt = (wrap.metadados && wrap.metadados.data_exportacao) || exportedAt;
       } else if (source.projects && typeof source.projects === 'object' && !Array.isArray(source.projects)) {
         projects = source.projects;
@@ -179,13 +221,14 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         tb_projetos_pecas: projects || {},
         tb_feriados: normalizeHolidayList(holidays),
         tb_turnos: (turnos && turnos.length ? turnos : defaultShiftRows()).map(normalizeShiftRow),
-        tb_historico_otimizacao: normalizeHistoricoOtimizacao(historicoOtimizacao)
+        tb_historico_otimizacao: normalizeHistoricoOtimizacao(historicoOtimizacao),
+        tb_planos_producao: normalizePlanosProducao(planosProducao)
       };
     }
 
     /**
      * Converte o localStorage legado (simulafab_projects_v4 / envelope v1)
-     * para o schema relacional v2.0 (6 tabelas) sem perda de dados.
+     * para o schema relacional v2.0 (7 tabelas) sem perda de dados.
      */
     function migrateToSchemaV2() {
       const current = readRawStorage(DB_STORAGE_KEY);
@@ -354,6 +397,11 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
           options && Array.isArray(options.historicoOtimizacao)
             ? options.historicoOtimizacao
             : wrap.historicoOtimizacao
+        ),
+        tb_planos_producao: normalizePlanosProducao(
+          options && Array.isArray(options.planosProducao)
+            ? options.planosProducao
+            : wrap.planosProducao
         )
       };
     }
@@ -492,7 +540,8 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
       setProjectsDatabase(wrap.projects || {}, catalogSnapshotForPersist(), {
         holidays: wrap.holidays,
         turnos: wrap.turnos,
-        historicoOtimizacao: normalizeHistoricoOtimizacao(list)
+        historicoOtimizacao: normalizeHistoricoOtimizacao(list),
+        planosProducao: wrap.planosProducao
       });
     }
 
@@ -553,6 +602,47 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         });
       });
       return seeds.slice(0, 9);
+    }
+
+    function getProductionPlans() {
+      const wrap = getDatabaseWrapper();
+      return normalizePlanosProducao(wrap.planosProducao);
+    }
+
+    function persistProductionPlans(list) {
+      const wrap = getDatabaseWrapper();
+      setProjectsDatabase(wrap.projects || {}, catalogSnapshotForPersist(), {
+        holidays: wrap.holidays,
+        turnos: wrap.turnos,
+        historicoOtimizacao: wrap.historicoOtimizacao,
+        planosProducao: normalizePlanosProducao(list)
+      });
+    }
+
+    function upsertProductionPlan(entry) {
+      const row = normalizePlanoProducao(Object.assign({}, entry, {
+        updatedAt: (entry && entry.updatedAt) || new Date().toISOString()
+      }), 0);
+      if (!row) return null;
+      const list = getProductionPlans();
+      const key = String(row.name || '').trim().toUpperCase();
+      const idx = list.findIndex(p => String(p.name || '').trim().toUpperCase() === key);
+      if (idx >= 0) {
+        row.id = list[idx].id || row.id;
+        list[idx] = row;
+      } else {
+        list.push(row);
+      }
+      persistProductionPlans(list);
+      return row;
+    }
+
+    function deleteProductionPlanById(id) {
+      const target = String(id || '');
+      if (!target) return false;
+      const list = getProductionPlans().filter(p => p.id !== target);
+      persistProductionPlans(list);
+      return true;
     }
 
     function setProjectsDatabase(projects, catalog, options) {
@@ -623,6 +713,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
       setProjectsDatabase(saved, catalogSnapshotForPersist());
       if (typeof syncProjectNameUI === 'function') syncProjectNameUI({ syncInput: true });
       if (typeof refreshSavedProjectsUI === 'function') refreshSavedProjectsUI();
+      if (typeof renderProductionPlanUI === 'function') renderProductionPlanUI();
       return true;
     }
 
@@ -733,6 +824,8 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         alert('Projeto não encontrado.');
         return;
       }
+      if (typeof restoreEngineeringSessionIfNeeded === 'function') restoreEngineeringSessionIfNeeded();
+      if (typeof clearPlanSimulationMode === 'function') clearPlanSimulationMode();
       applyProjectToState(name, proj);
       renderConfigUI();
       navigateTo('screen-config');
@@ -876,7 +969,8 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         employees: wrap.employees,
         machines: wrap.machines,
         turnos: wrap.turnos,
-        historicoOtimizacao: wrap.historicoOtimizacao || []
+        historicoOtimizacao: wrap.historicoOtimizacao || [],
+        planosProducao: wrap.planosProducao || []
       };
     }
 
@@ -895,7 +989,8 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
             employees: importedEmployees,
             machines: importedMachines,
             turnos: importedTurnos,
-            historicoOtimizacao: importedHistorico
+            historicoOtimizacao: importedHistorico,
+            planosProducao: importedPlanos
           } = normalizeImportedDatabase(parsed);
           const count = Object.keys(projects).length;
           const current = getProjectsDatabase();
@@ -922,7 +1017,13 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
           setProjectsDatabase(projects, {
             employees: importedEmployees || [],
             machines: importedMachines
-          }, { replaceCatalog: true, holidays, turnos: importedTurnos, historicoOtimizacao: importedHistorico || [] });
+          }, {
+            replaceCatalog: true,
+            holidays,
+            turnos: importedTurnos,
+            historicoOtimizacao: importedHistorico || [],
+            planosProducao: importedPlanos || []
+          });
           if (currentProjectName && projects[currentProjectName]) {
             applyProjectToState(currentProjectName, projects[currentProjectName]);
           } else {
@@ -930,6 +1031,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
           }
           if (typeof syncProjectNameUI === 'function') syncProjectNameUI({ syncInput: true });
           if (typeof refreshSavedProjectsUI === 'function') refreshSavedProjectsUI();
+          if (typeof renderProductionPlanUI === 'function') renderProductionPlanUI();
           if (typeof renderConfigUI === 'function') renderConfigUI();
           renderHolidaysList();
           updateDbStatusIndicator();

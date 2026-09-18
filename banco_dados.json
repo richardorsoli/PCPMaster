@@ -1,11 +1,11 @@
 {
   "app": "PCPMaster",
-  "versao_app": "v1.6.4",
+  "versao_app": "v1.8.0",
   "versao_schema": "v2.0",
-  "data_exportacao": "2026-09-15T19:00:52.609Z",
+  "data_exportacao": "2026-09-18T14:00:00.000Z",
   "metadados": {
-    "data_exportacao": "2026-09-15T19:00:52.609Z",
-    "versao_app": "v1.6.4",
+    "data_exportacao": "2026-09-18T14:00:00.000Z",
+    "versao_app": "v1.8.0",
     "versao_schema": "v2.0"
   },
   "tb_maquinas": [
@@ -1244,5 +1244,7 @@
       "minutosDia": 588,
       "ativo": true
     }
-  ]
+  ],
+  "tb_historico_otimizacao": [],
+  "tb_planos_producao": []
 }
