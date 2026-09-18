@@ -1,4 +1,4 @@
-/* SimulaFab v1.6.4 — Inicialização, playback e integração dos módulos */
+/* PCPMaster v1.6.4 — Inicialização, playback e integração dos módulos */
 
     function syncSimHeaderFields() {
       const simBoxes = document.getElementById('sim-boxes-qty');
@@ -29,6 +29,7 @@
       getStartTimeFromInput();
       calculateSimulationHistory();
       syncSimHeaderFields();
+      if (typeof syncProjectNameUI === 'function') syncProjectNameUI();
       renderCharts();
       navigateTo('screen-sim');
       const absMin = seekPlaybackToDayStart(0);
@@ -162,15 +163,18 @@
     }
 
 window.onload = () => {
+  migrateToSchemaV2();
   loadPersistedHolidays();
   if (!document.getElementById('start-date').value) {
     document.getElementById('start-date').value = todayISODate();
   }
   startDateStr = document.getElementById('start-date').value;
   applyStartTimeToState(document.getElementById('start-time') && document.getElementById('start-time').value);
-  document.title = 'SimulaFab v' + APP_VERSION;
-  console.info('SimulaFab v' + APP_VERSION + ' — Sprint 7 Batch 4 (Gantt & Relatório PDF)');
+  document.title = APP_NAME + ' v' + APP_VERSION;
+  console.info(APP_NAME + ' v' + APP_VERSION + ' — Sprint 8 Batch 3 (accordion engenharia e data/hora inteligente)');
   renderConfigUI();
+  collapseEngineeringAccordions();
   updatePlayButtonUI();
   updateSpeedButtonsUI();
+  if (typeof updateDbStatusIndicator === 'function') updateDbStatusIndicator();
 };

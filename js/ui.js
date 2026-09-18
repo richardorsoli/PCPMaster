@@ -1,4 +1,4 @@
-/* SimulaFab v1.6.4 — Manipulação de DOM, timeline, relógio, tabelas, Gantt, analytics e PDF */
+/* PCPMaster v1.6.4 — Manipulação de DOM, timeline, relógio, tabelas, Gantt, analytics e PDF */
 
     // --- EXEMPLO ---
     function loadExampleAndNavigate() {
@@ -85,12 +85,10 @@
       if (!holidays.includes('2026-11-02')) holidays.push('2026-11-02');
       const catalogBefore = getBaseCatalogFromDatabase();
       setProjectsDatabase(getProjectsDatabase(), {
-        employees: mergeEntitiesById(employees, catalogBefore.employees, item => ({
-          id: item.id, name: item.name, matricula: item.matricula
-        })),
+        employees: mergeEntitiesById(employees, catalogBefore.employees, normalizeEmployee),
         machines: machines
       });
-
+      if (typeof syncProjectNameUI === 'function') syncProjectNameUI({ syncInput: true });
       renderConfigUI();
       navigateTo('screen-config');
     }
@@ -146,14 +144,13 @@
     function resetToNewProjectSession() {
       clearSimulationRuntime();
       resetProductionPlanState();
-      loadEmployeesFromCatalog();
+      employees = [];
       machines = [];
       persistBaseCatalog();
       const boxesEl = document.getElementById('boxes-qty');
-      const dateEl = document.getElementById('start-date');
       if (boxesEl) boxesEl.value = 1;
-      if (dateEl) dateEl.value = startDateStr;
-      applyStartTimeToState(DEFAULT_START_TIME);
+      applySmartStartDateTime();
+      collapseEngineeringAccordions();
       resetPartForm();
       const asmName = document.getElementById('assembly-result-name');
       if (asmName) asmName.value = '';
@@ -168,6 +165,8 @@
       if (btnMach) btnMach.innerText = 'Adicionar Máquina';
       document.getElementById('new-employee-name').value = '';
       document.getElementById('new-employee-matricula').value = '';
+      const postoSel = document.getElementById('new-employee-posto');
+      if (postoSel) postoSel.value = '';
       document.getElementById('new-machine-name').value = '';
       document.getElementById('new-machine-pop').value = '';
       document.getElementById('new-machine-maint-interval').value = '0';
@@ -175,14 +174,59 @@
       document.getElementById('new-machine-last-maint').value = '';
       document.getElementById('new-machine-next-maint').value = '';
       resetSimulationView();
+      if (typeof syncProjectNameUI === 'function') syncProjectNameUI({ syncInput: true });
       renderConfigUI();
       navigateTo('screen-config');
     }
 
-    function updateCurrentProjectLabel() {
+    function syncProjectNameUI(options) {
+      const name = (currentProjectName || '').trim();
+      const input = document.getElementById('project-name-input');
+      if (input && (options && options.syncInput || document.activeElement !== input)) {
+        if (options && options.syncInput) input.value = name;
+      }
       const el = document.getElementById('current-project-label');
-      if (!el) return;
-      el.textContent = currentProjectName ? currentProjectName : 'Não salvo (sem nome)';
+      if (el) el.textContent = name || 'Não salvo (sem nome)';
+      const simTitle = document.getElementById('sim-project-title');
+      if (simTitle) {
+        simTitle.textContent = name
+          ? (APP_NAME + ' v' + APP_VERSION + ' — ' + name)
+          : (APP_NAME + ' v' + APP_VERSION + ' - Controle de Chão de Fábrica');
+      }
+      const analyticsName = document.getElementById('analytics-project-name');
+      if (analyticsName) analyticsName.textContent = name || 'Projeto sem nome';
+    }
+
+    function updateCurrentProjectLabel() {
+      syncProjectNameUI();
+    }
+
+    const ACCORDION_LABELS = {
+      employees: { open: '[-] Recolher Funcionários', closed: '[+] Expandir Funcionários' },
+      machines: { open: '[-] Recolher Máquinas', closed: '[+] Expandir Máquinas' }
+    };
+
+    function setEngineeringAccordion(kind, expanded) {
+      const card = document.getElementById(kind + '-accordion');
+      const btn = document.getElementById('btn-toggle-' + kind);
+      if (!card) return;
+      card.classList.toggle('is-collapsed', !expanded);
+      if (btn) {
+        const labels = ACCORDION_LABELS[kind];
+        btn.textContent = expanded ? labels.open : labels.closed;
+        btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      }
+    }
+
+    function toggleEngineeringAccordion(kind) {
+      const card = document.getElementById(kind + '-accordion');
+      const willExpand = !!(card && card.classList.contains('is-collapsed'));
+      setEngineeringAccordion(kind, willExpand);
+    }
+
+    function collapseEngineeringAccordions() {
+      setEngineeringAccordion('employees', false);
+      setEngineeringAccordion('machines', false);
     }
 
     function renderSavedProjectsList() {
@@ -245,6 +289,33 @@
       updateCurrentProjectLabel();
     }
 
+    function fillEmployeePostoSelect(selectedId) {
+      const sel = document.getElementById('new-employee-posto');
+      if (!sel) return;
+      const prev = selectedId != null ? selectedId : sel.value;
+      const catalog = typeof getCatalogMachines === 'function' ? getCatalogMachines() : (machines || []);
+      const seen = {};
+      sel.innerHTML = '<option value="">— Sem setor —</option>';
+      catalog.forEach(m => {
+        if (!m || !m.id || seen[m.id]) return;
+        seen[m.id] = true;
+        sel.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+      });
+      if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+    }
+
+    function employeePostoFromForm() {
+      const sel = document.getElementById('new-employee-posto');
+      const postoId = sel ? sel.value : '';
+      let setor = '';
+      if (postoId) {
+        const catalog = typeof getCatalogMachines === 'function' ? getCatalogMachines() : (machines || []);
+        const m = lookupMachine(postoId) || catalog.find(x => x && x.id === postoId);
+        setor = m ? m.name : '';
+      }
+      return { postoId, setor };
+    }
+
     // --- FUNCIONÁRIOS ---
     function addEmployee() {
       const name = document.getElementById('new-employee-name').value.trim();
@@ -252,16 +323,21 @@
       if (!name) { alert('Informe o nome do funcionário.'); return; }
       if (!matricula) { alert('Informe a matrícula.'); return; }
 
-      const duplicate = employees.some((e, i) =>
-        e.matricula.toLowerCase() === matricula.toLowerCase() && i !== editingEmployeeIndex
+      const catalogEmps = typeof getCatalogEmployees === 'function' ? getCatalogEmployees() : (employees || []);
+      const editingId = editingEmployeeIndex >= 0 ? employees[editingEmployeeIndex].id : '';
+      const duplicate = catalogEmps.some(e =>
+        e.matricula && e.matricula.toLowerCase() === matricula.toLowerCase() && e.id !== editingId
       );
-      if (duplicate) { alert('Já existe um funcionário com esta matrícula.'); return; }
+      if (duplicate) { alert('Já existe um funcionário com esta matrícula no Catálogo Global.'); return; }
 
-      const data = {
+      const posto = employeePostoFromForm();
+      const data = normalizeEmployee({
         id: editingEmployeeIndex >= 0 ? employees[editingEmployeeIndex].id : ('e' + Date.now()),
         name,
-        matricula
-      };
+        matricula,
+        setor: posto.setor,
+        postoId: posto.postoId
+      });
 
       if (editingEmployeeIndex >= 0) {
         employees[editingEmployeeIndex] = data;
@@ -273,6 +349,8 @@
 
       document.getElementById('new-employee-name').value = '';
       document.getElementById('new-employee-matricula').value = '';
+      const postoSel = document.getElementById('new-employee-posto');
+      if (postoSel) postoSel.value = '';
       persistBaseCatalog();
       renderConfigUI();
     }
@@ -282,11 +360,17 @@
       editingEmployeeIndex = idx;
       document.getElementById('new-employee-name').value = e.name;
       document.getElementById('new-employee-matricula').value = e.matricula;
+      fillEmployeePostoSelect(e.postoId || '');
       document.getElementById('btn-save-employee').innerText = 'Salvar Alterações';
     }
 
     function removeEmployee(idx) {
-      const removedId = employees[idx].id;
+      const target = employees[idx];
+      if (!target) return;
+      if (!confirm(`Remover "${target.name}" deste projeto?\n\nO cadastro permanece no Catálogo Global e poderá ser incluído novamente.`)) {
+        return;
+      }
+      const removedId = target.id;
       employees.splice(idx, 1);
       machines.forEach(m => {
         if (m.defaultOperatorId === removedId) m.defaultOperatorId = '';
@@ -296,23 +380,79 @@
         document.getElementById('btn-save-employee').innerText = 'Adicionar Funcionário';
         document.getElementById('new-employee-name').value = '';
         document.getElementById('new-employee-matricula').value = '';
+        const postoSel = document.getElementById('new-employee-posto');
+        if (postoSel) postoSel.value = '';
       } else if (editingEmployeeIndex > idx) {
         editingEmployeeIndex--;
       }
-      persistBaseCatalog();
       renderConfigUI();
     }
 
     function fillMachineOperatorSelect(selectedId) {
       const sel = document.getElementById('new-machine-operator');
       if (!sel) return;
+      const catalog = typeof getCatalogEmployees === 'function' ? getCatalogEmployees() : (employees || []);
       sel.innerHTML = '<option value="">— Sem operador —</option>';
-      employees.forEach(e => {
+      catalog.forEach(e => {
+        if (!e || !e.id) return;
         sel.innerHTML += `<option value="${e.id}">${e.name} (${e.matricula})</option>`;
       });
       if (selectedId && [...sel.options].some(o => o.value === selectedId)) {
         sel.value = selectedId;
       }
+    }
+
+    function fillCatalogEmployeeSelect() {
+      const sel = document.getElementById('catalog-employee-select');
+      const hint = document.getElementById('catalog-employee-hint');
+      if (!sel) return;
+      const available = typeof getCatalogEmployeesAvailableForProject === 'function'
+        ? getCatalogEmployeesAvailableForProject()
+        : [];
+      const catalogCount = typeof getCatalogEmployees === 'function' ? getCatalogEmployees().length : 0;
+      sel.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      if (available.length === 0) {
+        placeholder.textContent = catalogCount === 0
+          ? '— Catálogo vazio: cadastre um operador —'
+          : '— Todos os operadores do catálogo já estão neste projeto —';
+      } else {
+        placeholder.textContent = '— Selecione um operador do catálogo —';
+      }
+      sel.appendChild(placeholder);
+      available.forEach(e => {
+        const opt = document.createElement('option');
+        opt.value = e.id;
+        const setor = e.setor ? ` · ${e.setor}` : '';
+        opt.textContent = `${e.name} (${e.matricula})${setor}`;
+        sel.appendChild(opt);
+      });
+      if (hint) {
+        hint.textContent = `Catálogo Global: ${catalogCount} operador(es) · ${available.length} disponível(is) para este projeto.`;
+      }
+    }
+
+    function addCatalogEmployeeToProject() {
+      const sel = document.getElementById('catalog-employee-select');
+      const id = sel ? sel.value : '';
+      if (!id) {
+        alert('Selecione um operador do Catálogo Global para incluir neste projeto.');
+        return;
+      }
+      if (employees.some(e => e.id === id)) {
+        alert('Este operador já está ativo neste projeto.');
+        renderConfigUI();
+        return;
+      }
+      const found = getCatalogEmployees().find(e => e.id === id);
+      if (!found) {
+        alert('Operador não encontrado no Catálogo Global.');
+        renderConfigUI();
+        return;
+      }
+      employees.push(normalizeEmployee(cloneJson(found, found)));
+      renderConfigUI();
     }
 
     // --- MÁQUINAS ---
@@ -898,22 +1038,25 @@
       normalizeAllMachines();
       refreshSavedProjectsUI();
 
+      fillEmployeePostoSelect(editingEmployeeIndex >= 0 ? (employees[editingEmployeeIndex].postoId || '') : '');
+      fillCatalogEmployeeSelect();
       const eList = document.getElementById('employees-list');
       if (eList) {
         eList.innerHTML = '';
         if (employees.length === 0) {
-          eList.innerHTML = '<li style="color:#64748b;">Nenhum funcionário cadastrado.</li>';
+          eList.innerHTML = '<li style="color:#64748b;">Nenhum funcionário neste projeto. Cadastre um novo ou use o dropdown do Catálogo Global.</li>';
         } else {
           employees.forEach((e, idx) => {
+            const setorTxt = e.setor ? ` · Setor: ${e.setor}` : '';
             eList.innerHTML += `
               <li>
                 <div>
                   <strong>${e.name}</strong>
-                  <div style="font-size:0.8rem; color:#94a3b8;">Matrícula: ${e.matricula}</div>
+                  <div style="font-size:0.8rem; color:#94a3b8;">Matrícula: ${e.matricula}${setorTxt}</div>
                 </div>
                 <div>
                   <button class="btn btn-warning" onclick="editEmployee(${idx})">Editar</button>
-                  <button class="btn btn-danger" onclick="removeEmployee(${idx})">Excluir</button>
+                  <button class="btn btn-danger" onclick="removeEmployee(${idx})">Remover</button>
                 </div>
               </li>`;
           });
@@ -1111,6 +1254,7 @@
       }
       const startTimeEl = document.getElementById('start-time');
       if (startTimeEl && !startTimeEl.value) startTimeEl.value = startTimeStr || DEFAULT_START_TIME;
+      if (typeof updateDbStatusIndicator === 'function') updateDbStatusIndicator();
     }
 
     function populateDaySelect() {
@@ -1553,7 +1697,7 @@
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(13);
       doc.setTextColor(2, 132, 199);
-      doc.text('Relatório de Produção — SimulaFab v' + APP_VERSION, 14, 9);
+      doc.text('Relatório de Produção — ' + APP_NAME + ' v' + APP_VERSION, 14, 9);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);

@@ -1,6 +1,8 @@
-/* SimulaFab v1.6.4 — Motor de simulação, calendário, manutenção, analytics e Gantt */
+/* PCPMaster v1.6.4 — Motor de simulação, calendário, manutenção, analytics e Gantt */
 
+const APP_NAME = 'PCPMaster';
 const APP_VERSION = '1.6.4';
+const SCHEMA_VERSION = 'v2.0';
 
 // --- PARÂMETROS DO TURNO ---
 const SHIFT_START_MINUTES = 7 * 60 + 30;
@@ -143,6 +145,53 @@ const DEFAULT_START_TIME = '07:30';
         cur = addDays(cur, 1);
       }
       return iso;
+    }
+
+    const LUNCH_CLOCK_START = 12 * 60;
+    const LUNCH_CLOCK_END = 13 * 60;
+
+    function clockMinutesOf(dateObj) {
+      return dateObj.getHours() * 60 + dateObj.getMinutes();
+    }
+
+    /**
+     * Data/hora sugerida para projeto novo, a partir do relógio local.
+     * Após 17:18 → próximo dia útil 07:30. Almoço 12:00–12:59 → 13:00.
+     * Fim de semana/feriado → próximo dia útil (07:30 se o relógio não estiver no turno).
+     */
+    function suggestSmartStartDateTime(now) {
+      const d = now instanceof Date ? now : new Date();
+      let dateIso = toISODate(d);
+      const clock = clockMinutesOf(d);
+      let timeStr = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+
+      if (clock >= SHIFT_END_MINUTES) {
+        dateIso = nextWorkDay(addDays(dateIso, 1));
+        timeStr = DEFAULT_START_TIME;
+      } else if (clock >= LUNCH_CLOCK_START && clock < LUNCH_CLOCK_END) {
+        timeStr = '13:00';
+        dateIso = isWorkDay(dateIso) ? dateIso : nextWorkDay(dateIso);
+      } else if (clock < SHIFT_START_MINUTES) {
+        timeStr = DEFAULT_START_TIME;
+        dateIso = isWorkDay(dateIso) ? dateIso : nextWorkDay(dateIso);
+      } else if (!isWorkDay(dateIso)) {
+        dateIso = nextWorkDay(dateIso);
+        timeStr = DEFAULT_START_TIME;
+      }
+
+      const norm = normalizeStartTimeClock(timeStr);
+      return { dateIso, timeStr: norm.clockStr };
+    }
+
+    function applySmartStartDateTime(now) {
+      const sug = suggestSmartStartDateTime(now);
+      startDateStr = sug.dateIso;
+      const dateEl = document.getElementById('start-date');
+      if (dateEl) dateEl.value = sug.dateIso;
+      applyStartTimeToState(sug.timeStr);
+      const simDate = document.getElementById('sim-start-date');
+      if (simDate) simDate.value = sug.dateIso;
+      return sug;
     }
 
     function buildWorkDaysCalendar(startIso, neededDays) {
@@ -346,6 +395,60 @@ const DEFAULT_START_TIME = '07:30';
         defaultOperatorId: m.defaultOperatorId || '',
         lastMaintenanceDate: m.lastMaintenanceDate || '',
         nextMaintenanceDate: m.nextMaintenanceDate || ''
+      };
+    }
+
+    function normalizeEmployee(e) {
+      if (!e || typeof e !== 'object') {
+        return { id: '', name: '', matricula: '', setor: '', postoId: '' };
+      }
+      return {
+        id: e.id || '',
+        name: e.name || '',
+        matricula: e.matricula || '',
+        setor: e.setor || e.setorNome || '',
+        postoId: e.postoId || e.defaultMachineId || e.machineId || ''
+      };
+    }
+
+    function defaultShiftRows() {
+      return [{
+        id: 'turno_padrao',
+        nome: 'Turno diurno',
+        inicio: '07:30',
+        fim: '17:18',
+        almocoInicio: '12:00',
+        almocoFim: '13:00',
+        minutosDia: MINUTES_PER_DAY,
+        ativo: true
+      }];
+    }
+
+    function normalizeShiftRow(row) {
+      const base = defaultShiftRows()[0];
+      if (!row || typeof row !== 'object') return cloneShiftDefaults(base);
+      return {
+        id: row.id || base.id,
+        nome: row.nome || base.nome,
+        inicio: row.inicio || base.inicio,
+        fim: row.fim || base.fim,
+        almocoInicio: row.almocoInicio || base.almocoInicio,
+        almocoFim: row.almocoFim || base.almocoFim,
+        minutosDia: Number(row.minutosDia) > 0 ? Number(row.minutosDia) : base.minutosDia,
+        ativo: row.ativo !== false
+      };
+    }
+
+    function cloneShiftDefaults(base) {
+      return {
+        id: base.id,
+        nome: base.nome,
+        inicio: base.inicio,
+        fim: base.fim,
+        almocoInicio: base.almocoInicio,
+        almocoFim: base.almocoFim,
+        minutosDia: base.minutosDia,
+        ativo: base.ativo
       };
     }
 
@@ -737,7 +840,12 @@ const DEFAULT_START_TIME = '07:30';
 
     function getEmployeeById(id) {
       if (!id) return null;
-      return employees.find(e => e.id === id) || null;
+      const inProject = (employees || []).find(e => e.id === id);
+      if (inProject) return inProject;
+      if (typeof getCatalogEmployees === 'function') {
+        return getCatalogEmployees().find(e => e.id === id) || null;
+      }
+      return null;
     }
 
     function formatEmployeeLabel(emp) {
@@ -958,7 +1066,7 @@ const DEFAULT_START_TIME = '07:30';
         startTime: startTimeStr || DEFAULT_START_TIME,
         startDate: formatDisplayDate(workDays[0] || startDateStr),
         issuedStr,
-        filename: 'Relatorio_SimulaFab_' + sanitizePdfFilenamePart(projectName) + '_' + boxesQty + 'cx_v' + APP_VERSION + '.pdf'
+        filename: 'Relatorio_' + APP_NAME + '_' + sanitizePdfFilenamePart(projectName) + '_' + boxesQty + 'cx_v' + APP_VERSION + '.pdf'
       };
     }
 

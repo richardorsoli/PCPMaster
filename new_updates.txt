@@ -1,5 +1,5 @@
 ==================================================
- PROJETO: SimulaFab
+ PROJETO: PCPMaster
  VERSÃO ATUAL: v1.6.4 (Sprint 7 Batch 4 — Gantt & Relatório PDF)
  REGRA DE VERSIONAMENTO: 
    - v1.5.x: Correções de bugs (Patch)
@@ -211,24 +211,110 @@ SPRINT 7 - ANALYTICS (CONCLUÍDO)
 [Sua Cabeça] ──> [Bloco de Notas] ──> [Trello: Backlog] ──> [Trello: Sprint A Fazer] ──> [Cursor + Git]
  (Ideia Solta)     (Rascunho Rápido)   (Ideias Organizadas)    (Prompt Formatado)        (Código Rodando)
 
-SPRINT 4 - TESTER
+SPRINT 8 - REFATORAÇÃO GLOBAL DE MARCA
+Estamos iniciando a **Sprint 8 - BATCH 1** da aplicação. O projeto foi renomeado oficialmente de "SimulaFab" para **PCPMaster** (versão base v1.6.4). 
+
+Neste lote, faremos a refatoração de marca e reestruturaremos a arquitetura do banco de dados local mantendo 100% de compatibilidade com os motores de simulação, Gantt e Analytics existentes.
+
+---
+
+### 1. REFATORAÇÃO GLOBAL DE MARCA (PCPMaster v1.6.4):
+- Substitua todas as menções a "SimulaFab" por **PCPMaster** em títulos (`<title>`), cabeçalhos, rodapés, logs do sistema e arquivos de configuração.
+- Atualize a constante da aplicação para `APP_NAME = "PCPMaster"` e mantenha a versão em `v1.6.4`.
+- O padrão de PDF exportado deve ser ajustado para: `Relatorio_PCPMaster_[NomeDoProjeto]_[QtdCaixas]cx_v1.6.4.pdf`.
+
+---
+
+### 2. OBJETIVOS DO BATCH 1 (SGBD Relacional & Backup Controlado):
+
+1. **Estrutura Relacional de Dados em 5 Tabelas (`localStorage`):**
+   - Organize a chave mestre de armazenamento interno em 5 tabelas/coleções distintas com schemas bem definidos:
+     1. `tb_maquinas`: Catálogo global das 18 máquinas/postos.
+     2. `tb_funcionarios`: Lista global de operadores e seus respectivos setores/postos.
+     3. `tb_projetos_pecas`: Estrutura de produtos, peças primárias, roteiros e nós de BOM/JOIN.
+     4. `tb_feriados`: Lista de datas de feriados e bloqueios do calendário fabril.
+     5. `tb_turnos`: Configurações de jornada (ex: 07:30 - 17:18, almoço 12:00-13:00).
+
+2. **Módulo Central de Backup & Controle de Versão:**
+   - Transforme a área de gestão de dados em um painel exclusivo de **Backup e Restauração**.
+   - **Exportar Backup:** Ao baixar o arquivo JSON, o nome do arquivo deve ser gerado automaticamente com carimbo de data/hora no padrão: `PCPMaster_DB_Backup_YYYY-MM-DD_HHmm.json`.
+   - **Metadados do Banco:** Adicione dentro da estrutura do JSON um nó de metadados contendo: `data_exportacao`, `versao_app` ("v1.6.4") e `versao_schema` ("v2.0").
+   - **Indicador na Interface:** Na barra superior ou no rodapé do sistema, exiba em qual versão do banco de dados o sistema está rodando (ex: `Banco ativo: v2.0 - Atualizado em DD/MM/YYYY HH:mm`).
+
+---
+
+### REQUISITOS TÉCNICOS:
+- Escreva uma função de migração automática (`migrateToSchemaV2()`) para converter os dados existentes no `localStorage` antigo para a nova estrutura de 5 tabelas sem perda de dados do usuário.
+- Preserve 100% intactos o motor de simulação, restrições de árvore BOM/JOIN, interatividade de Drag-and-Drop, gráfico de Gantt e relatório em PDF.
+
+Estamos iniciando a **Sprint 8 - BATCH 2** da aplicação **PCPMaster v1.6.4**.
+
+### OBJETIVOS DO BATCH 2:
+
+1. **Limpeza da Área de Engenharia e Roteiro:**
+   - Remova completamente os botões soltos de "Atualizar" e "Carregar JSON" que ficavam na tela de Engenharia de Processo / Roteiros para eliminar duplicidades com o novo Painel Central de Backup.
+
+2. **Novo Fluxo de Salvar Projetos na `tb_projetos_pecas` com Validação de Nome:**
+   - No topo da tela de Engenharia, adicione um campo de entrada de texto: **"Nome do Projeto / SKU"** ao lado do botão **"Salvar Projeto"**.
+   - **Lógica de Verificação de Duplicidade:**
+     - Ao clicar em "Salvar Projeto", verifique se o nome digitado já existe na coleção `tb_projetos_pecas`.
+     - Se o projeto já existir, abra uma **modal customizada** (estilo escuro da aplicação):
+       - *Mensagem:* "O projeto '[Nome]' já existe na base de dados. Deseja sobrescrever?"
+       - **Botão Confirmar:** Sobrescreve os dados do projeto mantendo o mesmo ID.
+       - **Botão Cancelar:** Fecha a modal e mantém o usuário na tela de Engenharia, permitindo que ele altere o nome (ex: adicionar sufixo `_v2` ou `_35cx`) para salvar como uma nova variação do projeto.
+   - **Reflexo Instantâneo:** O nome salvo deve atualizar imediatamente o cabeçalho da simulação, os relatórios de Analytics e o nome do arquivo PDF exportado.
+
+3. **Inclusão Dinâmica de Funcionários pelo Catálogo Mestre (`tb_funcionarios`):**
+   - Na tela de Engenharia, ajuste a seleção de Operador/Funcionário para funcionar identicamente ao catálogo de Máquinas.
+   - O campo deve ser um `<select>` populado dinamicamente com os operadores cadastrados na coleção `tb_funcionarios` do Schema v2.0.
+
+---
+
+### REQUISITOS TÉCNICOS:
+- Não utilize o `confirm()` nativo do navegador para o aviso de duplicidade; construa uma modal HTML/CSS coerente com a UI do PCPMaster.
+- Mantenha 100% funcionais todos os recursos de Drag-and-Drop das peças primárias, badges de roteiro e sub-roteiros de JOIN (Campo 5).
+
+Estamos iniciando a **Sprint 8 - BATCH 3** para finalizar os ajustes visuais e de UX do **PCPMaster v1.6.4**.
+
+### OBJETIVOS DO BATCH 3:
+
+1. **Menus Retráteis (Accordion) para Máquinas e Funcionários:**
+   - Configure os painéis de cadastro e listagem de **Máquinas** e **Funcionários/Operadores** na tela de Engenharia para inicializarem **sempre recolhidos (fechados)** por padrão ao carregar a aplicação.
+   - Adicione botões/toggles claros (ex: `[+] Expandir Máquinas` / `[-] Recolher Máquinas` e `[+] Expandir Funcionários` / `[-] Recolher Funcionários`) com transição visual suave em CSS.
+   - O estado do menu não deve afetar a população dos elementos `<select>` no restante da aplicação.
+
+2. **Inicializador Inteligente de Data e Hora Atual:**
+   - Ao clicar em **"Novo Projeto"** ou criar uma simulação do zero, preencha automaticamente os campos:
+     - **Data Inicial**
+     - **Hora de Início**
+   - **Regra do Relógio:**
+     - Capture a **data e hora exatas do computador do usuário** no formato `YYYY-MM-DD` e `HH:mm`.
+     - **Regra de Turno:** Se a hora atual for posterior ao fim do expediente fabril (17:18), sugira automaticamente a data do **próximo dia útil às 07:30**. Se for no intervalo de almoço (12:00-13:00), sugira **13:00**.
+
+---
+
+### REQUISITOS TÉCNICOS:
+- Mantenha 100% preservados os comportamentos do Schema v2.0, modais de duplicidade, motor de simulação, Gantt, Drag-and-Drop e exportação do PDF.
+
+SPRINT 10 - TESTER
  - Um testador de trajetos de qual é a melhor ordem de start de peças para gerar menos tempo ocioso, porque eu penso em achar a melhor disposição de peças de cada projeto para depois colocar dois ou mais projetos para testar o andamento e comportamento na linha de produção (sprint 10).
 
-SPRINT 10 - PLANO DE PRODUCAO
+SPRINT 11 - PLANO DE PRODUCAO
 1. UM MÓDULO QUE A PARTIR DOS PROJETOS JÁ CRIADOS PODEMOS ESCOLHER A DATA E HORA DE INÍCIO E A ORDEM E QUANTIDADE DOS PROJETOS QUE VÃO SER EXECUTADOS NA ORDEM PARA VERIFICAR O COMPORTAMENTO DAS MOVIMENTAÇÕES DE PEÇAS E FUNCIONÁRIOS NAS MÁQUINAS E DAR UMA PREVISÃO DE SAÍDA, tem casos que eu quero ver se entrar um projeto DAE JUNDIAI agora na linha de produção, com a caixa comando já iniciada, como será o andamento e a quando será a finalização dos produtos
 
-SPRINT 11 - ESTUFA
+SPRINT 12 - ESTUFA
 1. A MÁQUINA/TAREFA ESTUFA TEM UMA CAPACIDADE DE 2,00 x 1,75 x 3,85 metros (altura x largura x profundidade), o ideal é quando o pedido é muito grande a estufa receba a quantidade de peças que cabem nela, feche pelo período de 1h (30 min de queima + 30 de esfriamento) para descarregar as peças e poder enchê-la novamente e caso não de uma estufa cheia ou fecha ela com a capacidade que tiver, ou será preciso acrescentar um outro pedido ou pedaço de outro pedido que está vindo na sequência para também dar uma outra estufada
 2. quero que conte a quantidade de estufadas.
 3. pelo visto ao criar as peças que passem pela estufa preciso acrescentar altura x largura x profundidade da peça e o espaçamento ou quantas vão por fardo para ele programar a carga.
 
-SPRINT 12 - JUST IN TIME
+SPRINT 13 - JUST IN TIME
 1. POR EXISTIR PEÇAS QUE VÃO DIRETO DO CORTE OU DA DOBRA PARA MONTAGEM, ESCOLHER UM MOMENTO MAIS "CASADO" QUE ELA SÓ INICIA QUANDO ESTIVER PERTO DE OUTRAS PEÇAS CHEGAREM NO SETOR. EXEMPLO A GUILHOTINA SÓ INICIA QUANDO O TEMPO NECESSÁRIO DELA ATÉ ENCERRAR FOR CASAR COM O ENCERRAMENTO DA MONTAGEM.
 
-SPRINT 13 - ULTIMATE DESIGN
+SPRINT 14 - ULTIMATE DESIGN
 1. REMOVER OU ACRESCENTAR BOTÕES E FUNCIONALIDADES
-A. RECOLHER MENUS DE FUNCIONARIOS E MAQUINAS
-B. SEPARAR O BANCO DE DADOS EM TABELAS? 1.MAQUINAS/ 2.FUNCIONARIOS /3.PROJETOS/PEÇAS / 4.FERIADOS /5.TURNOS
+A. HOME
+2. Simulação parar quando finalizar a expedição (última)
+3. Ordens dinâmicas, de acordo com as entradas anteriores e atuais.
 
 ========================================
       INICIAR NOVO CHAT NO CURSOR

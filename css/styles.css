@@ -1,5 +1,19 @@
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background-color: #0f172a; color: #f8fafc; display: flex; flex-direction: column; min-height: 100vh; }
+    .app-footer {
+      margin-top: auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 10px 20px;
+      border-top: 1px solid #334155;
+      background: #0b1220;
+      color: #94a3b8;
+      font-size: 0.78rem;
+    }
+    .app-footer .db-status-text { color: #38bdf8; font-weight: 600; }
 
     .screen { display: none; padding: 20px; max-width: 1280px; margin: 0 auto; width: 100%; }
     .screen.active { display: block; }
@@ -7,6 +21,48 @@
     .card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 20px; }
     .card h2 { color: #38bdf8; font-size: 1.2rem; margin-bottom: 15px; border-bottom: 1px solid #334155; padding-bottom: 8px; }
     .step-number { background: #0284c7; color: white; border-radius: 50%; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; margin-right: 8px; }
+    .accordion-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 8px;
+    }
+    .accordion-card .accordion-header h2 {
+      margin-bottom: 0;
+      border-bottom: none;
+      padding-bottom: 0;
+      flex: 1;
+      min-width: 220px;
+    }
+    .accordion-toggle {
+      white-space: nowrap;
+      font-size: 0.85rem;
+      padding: 8px 12px;
+    }
+    .accordion-body {
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height 0.4s ease, opacity 0.25s ease;
+    }
+    .accordion-card.is-collapsed .accordion-body {
+      max-height: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .accordion-card:not(.is-collapsed) .accordion-body {
+      max-height: 5000px;
+      opacity: 1;
+    }
+    .accordion-body-inner {
+      overflow: hidden;
+    }
+    .accordion-card:not(.is-collapsed) .accordion-body-inner {
+      padding-top: 12px;
+    }
 
     .form-group { margin-bottom: 12px; }
     .form-group label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px; }
@@ -56,6 +112,49 @@
       color: #64748b;
       margin-top: 2px;
     }
+    .config-topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 20px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .config-topbar h1 { margin: 0; }
+    .config-save-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: flex-end;
+    }
+    .project-name-field { margin-bottom: 0; min-width: 240px; }
+    .analytics-project-name { font-size: 0.85rem; color: #94a3b8; margin: 0 0 12px; }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.72);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 80;
+      padding: 16px;
+    }
+    .modal-overlay.is-open,
+    .modal-overlay:not([hidden]) { display: flex; }
+    .modal-overlay[hidden] { display: none !important; }
+    .modal-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 22px 24px;
+      max-width: 460px;
+      width: 100%;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.45);
+    }
+    .modal-card h3 { color: #38bdf8; font-size: 1.1rem; margin-bottom: 10px; }
+    .modal-card p { color: #cbd5e1; font-size: 0.95rem; line-height: 1.5; margin-bottom: 18px; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 
     .item-list { list-style: none; margin-top: 10px; }
     .item-list li { background: #0f172a; border: 1px solid #334155; padding: 12px 15px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }

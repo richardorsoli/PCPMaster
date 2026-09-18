@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SimulaFab v1.6.4</title>
+  <title>PCPMaster v1.6.4</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=1.6.4-s8b3b">
 </head>
 <body>
 
   <!-- TELA 1: INICIAL -->
   <div id="screen-welcome" class="screen active">
     <div style="background: #1e293b; padding: 40px; border-radius: 12px; border: 1px solid #334155; text-align: center; max-width: 780px; margin: 40px auto;">
-      <h1 style="color: #38bdf8; font-size: 2.3rem; margin-bottom: 15px;">SimulaFab v1.6.4</h1>
+      <h1 style="color: #38bdf8; font-size: 2.3rem; margin-bottom: 15px;">PCPMaster v1.6.4</h1>
       <p style="color: #94a3b8; font-size: 1.05rem; line-height: 1.6; margin-bottom: 30px;">
         Simulação multi-dia com Gantt, relatórios PDF, indicadores de eficiência, hora de início flexível, recálculo por caixas e manutenção preventiva.
       </p>
@@ -34,28 +34,30 @@
       </div>
 
       <div style="border-top: 1px solid #334155; padding-top: 20px; margin-top: 20px; text-align: left;">
-        <label style="font-size: 0.85rem; color: #94a3b8;">Banco de Dados (arquivo .json):</label>
+        <label style="font-size: 0.85rem; color: #94a3b8;">Backup e Restauração do Banco Local</label>
         <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap;">
-          <button class="btn btn-success" onclick="updateDatabaseJSONFromStorage()">⬇ Atualizar banco_dados.json</button>
-          <button class="btn btn-secondary" onclick="document.getElementById('import-db-file').click()">⬆ Carregar banco_dados.json</button>
+          <button class="btn btn-success" onclick="exportDatabaseBackup()">⬇ Exportar Backup</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('import-db-file').click()">⬆ Restaurar Backup</button>
           <input type="file" id="import-db-file" accept=".json,application/json" style="display:none;" onchange="importDatabaseJSON(event)">
         </div>
         <p style="font-size: 0.78rem; color: #64748b; margin-top: 8px;">
-          Exporta o estado do localStorage (máquinas, peças, regras e feriados) como banco_dados.json, ou importa um arquivo.
+          O backup inclui as 5 tabelas do schema v2.0 (máquinas, funcionários, projetos/peças, feriados e turnos) com metadados de versão. O arquivo é gerado como <code>PCPMaster_DB_Backup_YYYY-MM-DD_HHmm.json</code>.
         </p>
+        <p class="db-status-text" style="font-size: 0.78rem; color: #38bdf8; margin-top: 8px;">Banco ativo: v2.0</p>
       </div>
     </div>
   </div>
 
   <!-- TELA 2: CONFIGURAÇÃO -->
   <div id="screen-config" class="screen">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; flex-wrap: wrap;">
+    <div class="config-topbar">
       <h1 style="color: #38bdf8;">Engenharia de Processo e Roteiro</h1>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+      <div class="config-save-row">
+        <div class="form-group project-name-field">
+          <label for="project-name-input">Nome do Projeto / SKU</label>
+          <input type="text" id="project-name-input" placeholder="Ex: Caixa Completa _35cx" autocomplete="off">
+        </div>
         <button class="btn btn-success" onclick="saveProjectPrompt()">💾 Salvar Projeto</button>
-        <button class="btn" onclick="updateDatabaseJSONFromStorage()">⬇ Atualizar banco_dados.json</button>
-        <button class="btn btn-secondary" onclick="document.getElementById('import-db-file-config').click()">⬆ Carregar JSON</button>
-        <input type="file" id="import-db-file-config" accept=".json,application/json" style="display:none;" onchange="importDatabaseJSON(event)">
         <button class="btn btn-secondary" onclick="navigateTo('screen-welcome')">Voltar</button>
       </div>
     </div>
@@ -63,13 +65,19 @@
     <div class="card">
       <h2>Projetos Salvos</h2>
       <p class="current-project-banner">Projeto em edição: <strong id="current-project-label">Não salvo (sem nome)</strong></p>
-      <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:8px;">Salvar pergunta se já existe uma versão com o mesmo nome. Excluir remove apenas o registro salvo no banco local.</p>
+      <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:8px;">Informe o nome no topo e clique em Salvar. Se o nome já existir, o sistema pede confirmação para sobrescrever ou permite gravar uma variação (ex.: sufixo _v2 ou _35cx).</p>
       <ul id="saved-projects-list" class="item-list saved-projects-list"></ul>
     </div>
 
     <!-- ETAPA 1: FUNCIONÁRIOS -->
-    <div class="card">
-      <h2><span class="step-number">1</span> Cadastro de Funcionários / Operadores</h2>
+    <div class="card accordion-card is-collapsed" id="employees-accordion">
+      <div class="accordion-header">
+        <h2><span class="step-number">1</span> Cadastro de Funcionários / Operadores</h2>
+        <button type="button" class="btn btn-secondary accordion-toggle" id="btn-toggle-employees" aria-expanded="false" aria-controls="employees-accordion-body" onclick="toggleEngineeringAccordion('employees')">[+] Expandir Funcionários</button>
+      </div>
+      <div class="accordion-body" id="employees-accordion-body">
+        <div class="accordion-body-inner">
+      <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:10px;">O Catálogo Global de operadores é a fonte da verdade. Este projeto lista só os funcionários vinculados. Remover da lista não apaga o cadastro mestre.</p>
       <div class="form-row">
         <div class="form-group" style="flex:2;">
           <label>Nome do Funcionário</label>
@@ -79,16 +87,44 @@
           <label>Matrícula</label>
           <input type="text" id="new-employee-matricula" placeholder="Ex: 00123">
         </div>
+        <div class="form-group" style="flex:1.4;">
+          <label>Setor / Posto</label>
+          <select id="new-employee-posto">
+            <option value="">— Sem setor —</option>
+          </select>
+        </div>
         <div class="form-group" style="flex:1; display:flex; align-items:flex-end;">
           <button class="btn" style="width:100%;" id="btn-save-employee" onclick="addEmployee()">Adicionar Funcionário</button>
         </div>
       </div>
+      <div class="catalog-picker">
+        <p class="catalog-picker-title">Incluir operador já cadastrado no Catálogo Global</p>
+        <div class="form-row">
+          <div class="form-group" style="flex:2;">
+            <label>Operadores do catálogo ainda não ativos neste projeto</label>
+            <select id="catalog-employee-select">
+              <option value="">— Selecione um operador do catálogo —</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1; display:flex; align-items:flex-end;">
+            <button class="btn btn-success" style="width:100%;" type="button" onclick="addCatalogEmployeeToProject()">Adicionar ao Projeto</button>
+          </div>
+        </div>
+        <p id="catalog-employee-hint" class="catalog-picker-hint"></p>
+      </div>
       <ul id="employees-list" class="item-list"></ul>
+        </div>
+      </div>
     </div>
 
     <!-- ETAPA 2: MÁQUINAS -->
-    <div class="card">
-      <h2><span class="step-number">2</span> Cadastro das Máquinas / Postos de Trabalho</h2>
+    <div class="card accordion-card is-collapsed" id="machines-accordion">
+      <div class="accordion-header">
+        <h2><span class="step-number">2</span> Cadastro das Máquinas / Postos de Trabalho</h2>
+        <button type="button" class="btn btn-secondary accordion-toggle" id="btn-toggle-machines" aria-expanded="false" aria-controls="machines-accordion-body" onclick="toggleEngineeringAccordion('machines')">[+] Expandir Máquinas</button>
+      </div>
+      <div class="accordion-body" id="machines-accordion-body">
+        <div class="accordion-body-inner">
       <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:10px;">O Catálogo Global é a fonte da verdade (sem limite de máquinas). Este projeto lista só as máquinas vinculadas. Remover da lista não apaga o cadastro mestre.</p>
       <div class="form-row">
         <div class="form-group" style="flex:2;">
@@ -141,6 +177,8 @@
         <p id="catalog-machine-hint" class="catalog-picker-hint"></p>
       </div>
       <ul id="machines-list" class="item-list"></ul>
+        </div>
+      </div>
     </div>
 
     <!-- ETAPA 3: PEÇAS -->
@@ -326,7 +364,7 @@
     <div class="dashboard">
       <div>
         <div class="sim-header-row">
-          <div style="color:#f8fafc; font-size:1.15rem; font-weight:700;">SimulaFab v1.6.4 - Controle de Chão de Fábrica</div>
+          <div id="sim-project-title" style="color:#f8fafc; font-size:1.15rem; font-weight:700;">PCPMaster v1.6.4 - Controle de Chão de Fábrica</div>
           <button type="button" class="btn btn-secondary" id="btn-new-project-sim" onclick="startNewProject(true)">Novo Projeto</button>
         </div>
         <div class="sim-controls">
@@ -429,7 +467,8 @@
     </div>
 
     <div class="chart-card">
-      <h2 style="color: #38bdf8; font-size: 1.2rem; margin-bottom: 10px;">Análise de Eficiência dos Postos de Trabalho</h2>
+      <h2 style="color: #38bdf8; font-size: 1.2rem; margin-bottom: 6px;">Análise de Eficiência dos Postos de Trabalho</h2>
+      <p id="analytics-project-name" class="analytics-project-name">Projeto sem nome</p>
 
       <div class="analytics-kpis" id="analytics-kpi-panel">
         <div class="analytics-kpi">
@@ -480,9 +519,24 @@
     </div>
   </div>
 
-  <script src="js/simulation.js"></script>
-  <script src="js/database.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/app.js"></script>
+  <div id="overwrite-project-modal" class="modal-overlay" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="overwrite-project-title">
+      <h3 id="overwrite-project-title">Projeto já existe</h3>
+      <p id="overwrite-project-message">O projeto já existe na base de dados. Deseja sobrescrever?</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-success" onclick="confirmOverwriteProject()">Confirmar</button>
+        <button type="button" class="btn btn-secondary" onclick="closeOverwriteProjectModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/simulation.js?v=1.6.4-s8b3b"></script>
+  <script src="js/database.js?v=1.6.4-s8b3b"></script>
+  <script src="js/ui.js?v=1.6.4-s8b3b"></script>
+  <script src="js/app.js?v=1.6.4-s8b3b"></script>
+  <footer class="app-footer">
+    <span class="db-status-text">Banco ativo: v2.0</span>
+    <span>PCPMaster v1.6.4</span>
+  </footer>
 </body>
 </html>

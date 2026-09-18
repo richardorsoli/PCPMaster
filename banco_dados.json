@@ -1,65 +1,14 @@
 {
-  "app": "SimulaFab",
-  "version": "1.6.4",
-  "exportedAt": "2026-09-15T19:00:52.609Z",
-  "holidays": [
-    "2026-10-12",
-    "2026-11-02",
-    "2026-11-20"
-  ],
-  "employees": [
-    {
-      "id": "e1789484369450",
-      "name": "Silvio Rodrigues",
-      "matricula": "001"
-    },
-    {
-      "id": "e1789484379998",
-      "name": "Victor Medina",
-      "matricula": "002"
-    },
-    {
-      "id": "e1789484388430",
-      "name": "Wesley Rufino",
-      "matricula": "003"
-    },
-    {
-      "id": "e1789484402381",
-      "name": "Fernando Oliveira",
-      "matricula": "004"
-    },
-    {
-      "id": "e1789484414738",
-      "name": "Sansão dos Santos",
-      "matricula": "005"
-    },
-    {
-      "id": "e1789484506415",
-      "name": "Ivan Pereira",
-      "matricula": "006"
-    },
-    {
-      "id": "e1789484537303",
-      "name": "José Medina",
-      "matricula": "007"
-    },
-    {
-      "id": "e1789484578079",
-      "name": "José Guilherme",
-      "matricula": "008"
-    },
-    {
-      "id": "e1789484589641",
-      "name": "Sabrina Blanc",
-      "matricula": "009"
-    },
-    {
-      "id": "e1789484617258",
-      "name": "Oegena",
-      "matricula": "010"
-    }
-  ],
-  "machines": [
+  "app": "PCPMaster",
+  "versao_app": "v1.6.4",
+  "versao_schema": "v2.0",
+  "data_exportacao": "2026-09-15T19:00:52.609Z",
+  "metadados": {
+    "data_exportacao": "2026-09-15T19:00:52.609Z",
+    "versao_app": "v1.6.4",
+    "versao_schema": "v2.0"
+  },
+  "tb_maquinas": [
     {
       "id": "m1789391560191",
       "name": "CORTE LASER",
@@ -243,7 +192,79 @@
       "nextMaintenanceDate": ""
     }
   ],
-  "projects": {
+  "tb_funcionarios": [
+    {
+      "id": "e1789484369450",
+      "name": "Silvio Rodrigues",
+      "matricula": "001",
+      "setor": "",
+      "postoId": ""
+    },
+    {
+      "id": "e1789484379998",
+      "name": "Victor Medina",
+      "matricula": "002",
+      "setor": "CORTE LASER",
+      "postoId": "m1789391560191"
+    },
+    {
+      "id": "e1789484388430",
+      "name": "Wesley Rufino",
+      "matricula": "003",
+      "setor": "MURATA",
+      "postoId": "m1789391570242"
+    },
+    {
+      "id": "e1789484402381",
+      "name": "Fernando Oliveira",
+      "matricula": "004",
+      "setor": "DOBRA NUCLEO",
+      "postoId": "m1789391593505"
+    },
+    {
+      "id": "e1789484414738",
+      "name": "Sansão dos Santos",
+      "matricula": "005",
+      "setor": "IMAG",
+      "postoId": "m1789391576850"
+    },
+    {
+      "id": "e1789484506415",
+      "name": "Ivan Pereira",
+      "matricula": "006",
+      "setor": "CABINE",
+      "postoId": "m1789391670237"
+    },
+    {
+      "id": "e1789484537303",
+      "name": "José Medina",
+      "matricula": "007",
+      "setor": "DOBRA DOBRADIÇA",
+      "postoId": "m1789391598762"
+    },
+    {
+      "id": "e1789484578079",
+      "name": "José Guilherme",
+      "matricula": "008",
+      "setor": "SOLDA PONTO C30",
+      "postoId": "m1789391638329"
+    },
+    {
+      "id": "e1789484589641",
+      "name": "Sabrina Blanc",
+      "matricula": "009",
+      "setor": "",
+      "postoId": ""
+    },
+    {
+      "id": "e1789484617258",
+      "name": "Oegena",
+      "matricula": "010",
+      "setor": "BANHO",
+      "postoId": "m1789391662071"
+    }
+  ],
+  "tb_projetos_pecas": {
     "COMANDO MODELO 1": {
       "name": "COMANDO MODELO 1",
       "machines": [
@@ -650,52 +671,72 @@
         {
           "id": "e1789484369450",
           "name": "Silvio Rodrigues",
-          "matricula": "001"
+          "matricula": "001",
+          "setor": "",
+          "postoId": ""
         },
         {
           "id": "e1789484379998",
           "name": "Victor Medina",
-          "matricula": "002"
+          "matricula": "002",
+          "setor": "CORTE LASER",
+          "postoId": "m1789391560191"
         },
         {
           "id": "e1789484388430",
           "name": "Wesley Rufino",
-          "matricula": "003"
+          "matricula": "003",
+          "setor": "MURATA",
+          "postoId": "m1789391570242"
         },
         {
           "id": "e1789484402381",
           "name": "Fernando Oliveira",
-          "matricula": "004"
+          "matricula": "004",
+          "setor": "DOBRA NUCLEO",
+          "postoId": "m1789391593505"
         },
         {
           "id": "e1789484414738",
           "name": "Sansão dos Santos",
-          "matricula": "005"
+          "matricula": "005",
+          "setor": "IMAG",
+          "postoId": "m1789391576850"
         },
         {
           "id": "e1789484506415",
           "name": "Ivan Pereira",
-          "matricula": "006"
+          "matricula": "006",
+          "setor": "CABINE",
+          "postoId": "m1789391670237"
         },
         {
           "id": "e1789484537303",
           "name": "José Medina",
-          "matricula": "007"
+          "matricula": "007",
+          "setor": "DOBRA DOBRADIÇA",
+          "postoId": "m1789391598762"
         },
         {
           "id": "e1789484578079",
           "name": "José Guilherme",
-          "matricula": "008"
+          "matricula": "008",
+          "setor": "SOLDA PONTO C30",
+          "postoId": "m1789391638329"
         },
         {
           "id": "e1789484589641",
           "name": "Sabrina Blanc",
-          "matricula": "009"
+          "matricula": "009",
+          "setor": "",
+          "postoId": ""
         },
         {
           "id": "e1789484617258",
           "name": "Oegena",
-          "matricula": "010"
+          "matricula": "010",
+          "setor": "BANHO",
+          "postoId": "m1789391662071"
         }
       ],
       "groupingRules": [
@@ -999,52 +1040,72 @@
         {
           "id": "e1789484369450",
           "name": "Silvio Rodrigues",
-          "matricula": "001"
+          "matricula": "001",
+          "setor": "",
+          "postoId": ""
         },
         {
           "id": "e1789484379998",
           "name": "Victor Medina",
-          "matricula": "002"
+          "matricula": "002",
+          "setor": "CORTE LASER",
+          "postoId": "m1789391560191"
         },
         {
           "id": "e1789484388430",
           "name": "Wesley Rufino",
-          "matricula": "003"
+          "matricula": "003",
+          "setor": "MURATA",
+          "postoId": "m1789391570242"
         },
         {
           "id": "e1789484402381",
           "name": "Fernando Oliveira",
-          "matricula": "004"
+          "matricula": "004",
+          "setor": "DOBRA NUCLEO",
+          "postoId": "m1789391593505"
         },
         {
           "id": "e1789484414738",
           "name": "Sansão dos Santos",
-          "matricula": "005"
+          "matricula": "005",
+          "setor": "IMAG",
+          "postoId": "m1789391576850"
         },
         {
           "id": "e1789484506415",
           "name": "Ivan Pereira",
-          "matricula": "006"
+          "matricula": "006",
+          "setor": "CABINE",
+          "postoId": "m1789391670237"
         },
         {
           "id": "e1789484537303",
           "name": "José Medina",
-          "matricula": "007"
+          "matricula": "007",
+          "setor": "DOBRA DOBRADIÇA",
+          "postoId": "m1789391598762"
         },
         {
           "id": "e1789484578079",
           "name": "José Guilherme",
-          "matricula": "008"
+          "matricula": "008",
+          "setor": "SOLDA PONTO C30",
+          "postoId": "m1789391638329"
         },
         {
           "id": "e1789484589641",
           "name": "Sabrina Blanc",
-          "matricula": "009"
+          "matricula": "009",
+          "setor": "",
+          "postoId": ""
         },
         {
           "id": "e1789484617258",
           "name": "Oegena",
-          "matricula": "010"
+          "matricula": "010",
+          "setor": "BANHO",
+          "postoId": "m1789391662071"
         }
       ],
       "groupingRules": [
@@ -1062,8 +1123,17 @@
         {
           "machineId": "m1789485676075",
           "resultName": "CORPO MARTELAMENTO",
-          "requiredPartNames": ["CORPO", "LATERAIS"],
-          "juncao": { "requer": ["CORPO", "LATERAIS"], "maquina": "m1789485676075" },
+          "requiredPartNames": [
+            "CORPO",
+            "LATERAIS"
+          ],
+          "juncao": {
+            "requer": [
+              "CORPO",
+              "LATERAIS"
+            ],
+            "maquina": "m1789485676075"
+          },
           "setup": 1,
           "prodUnit": 1,
           "qty": 1,
@@ -1072,8 +1142,17 @@
         {
           "machineId": "m1789391604678",
           "resultName": "SOLDA CORPO",
-          "requiredPartNames": ["SUPORTE", "CORPO MARTELAMENTO"],
-          "juncao": { "requer": ["SUPORTE", "CORPO MARTELAMENTO"], "maquina": "m1789391604678" },
+          "requiredPartNames": [
+            "SUPORTE",
+            "CORPO MARTELAMENTO"
+          ],
+          "juncao": {
+            "requer": [
+              "SUPORTE",
+              "CORPO MARTELAMENTO"
+            ],
+            "maquina": "m1789391604678"
+          },
           "setup": 1,
           "prodUnit": 1,
           "qty": 1,
@@ -1082,33 +1161,88 @@
         {
           "machineId": "m1789391638329",
           "resultName": "CORPO COMPLETO",
-          "requiredPartNames": ["BATEDOR", "SOLDA CORPO"],
-          "juncao": { "requer": ["BATEDOR", "SOLDA CORPO"], "maquina": "m1789391638329" },
+          "requiredPartNames": [
+            "BATEDOR",
+            "SOLDA CORPO"
+          ],
+          "juncao": {
+            "requer": [
+              "BATEDOR",
+              "SOLDA CORPO"
+            ],
+            "maquina": "m1789391638329"
+          },
           "setup": 1,
           "prodUnit": 1,
           "qty": 1,
           "route": [
-            { "machineId": "m1789391662071", "setup": 1, "prodUnit": 1 },
-            { "machineId": "m1789391670237", "setup": 1, "prodUnit": 1 },
-            { "machineId": "m1789391695129", "setup": 1, "prodUnit": 1 }
+            {
+              "machineId": "m1789391662071",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 1,
+              "prodUnit": 1
+            }
           ]
         },
         {
           "machineId": "m1789391701665",
           "resultName": "DAE JUNDIAI",
-          "requiredPartNames": ["TAMPA", "CORPO COMPLETO"],
-          "juncao": { "requer": ["TAMPA", "CORPO COMPLETO"], "maquina": "m1789391701665" },
+          "requiredPartNames": [
+            "TAMPA",
+            "CORPO COMPLETO"
+          ],
+          "juncao": {
+            "requer": [
+              "TAMPA",
+              "CORPO COMPLETO"
+            ],
+            "maquina": "m1789391701665"
+          },
           "setup": 1,
           "prodUnit": 1,
           "qty": 1,
           "route": [
-            { "machineId": "m1789391707261", "setup": 1, "prodUnit": 1 },
-            { "machineId": "m1789391725515", "setup": 1, "prodUnit": 1 }
+            {
+              "machineId": "m1789391707261",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391725515",
+              "setup": 1,
+              "prodUnit": 1
+            }
           ]
         }
       ],
       "startDate": "2026-09-15",
       "boxesQty": 280
     }
-  }
+  },
+  "tb_feriados": [
+    "2026-10-12",
+    "2026-11-02",
+    "2026-11-20"
+  ],
+  "tb_turnos": [
+    {
+      "id": "turno_padrao",
+      "nome": "Turno diurno",
+      "inicio": "07:30",
+      "fim": "17:18",
+      "almocoInicio": "12:00",
+      "almocoFim": "13:00",
+      "minutosDia": 588,
+      "ativo": true
+    }
+  ]
 }
