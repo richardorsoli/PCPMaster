@@ -7,7 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=1.8.0-s11-ui3">
+  <link rel="stylesheet" href="css/styles.css?v=1.8.0-s12c">
 </head>
 <body>
 
@@ -140,7 +140,7 @@
       <div class="form-row">
         <div class="form-group" style="flex:2;">
           <label>Nome da Máquina ou Posto</label>
-          <input type="text" id="new-machine-name" placeholder="Ex: Laser, Dobra IMAG, Solda MIG...">
+          <input type="text" id="new-machine-name" placeholder="Ex: Laser, Dobra IMAG, Solda MIG..." oninput="syncEstufaMachineForm()">
         </div>
         <div class="form-group" style="flex:2;">
           <label>Instrução de Trabalho / POP</label>
@@ -170,6 +170,29 @@
         </div>
         <div class="form-group" style="flex:1; display:flex; align-items:flex-end;">
           <button class="btn" style="width:100%;" id="btn-save-machine" onclick="addMachine()">Adicionar Máquina</button>
+        </div>
+      </div>
+      <div class="form-row estufa-machine-row" id="estufa-machine-fields">
+        <div class="form-group" style="flex:1.4; display:flex; align-items:flex-end;">
+          <label class="checkbox-item" style="margin:0;">
+            <input type="checkbox" id="new-machine-is-estufa" onchange="syncEstufaMachineForm()">
+            Estufa (batelada 3D / ciclo GLP)
+          </label>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Cabine A (m)</label>
+          <input type="number" id="new-machine-estufa-h" min="0" step="0.01" value="2.00" title="Altura útil da cabine" oninput="updateEstufaMachineVolumeHint()">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Cabine L (m)</label>
+          <input type="number" id="new-machine-estufa-w" min="0" step="0.01" value="1.75" title="Largura útil da cabine" oninput="updateEstufaMachineVolumeHint()">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Cabine P (m)</label>
+          <input type="number" id="new-machine-estufa-d" min="0" step="0.01" value="3.85" title="Profundidade útil da cabine" oninput="updateEstufaMachineVolumeHint()">
+        </div>
+        <div class="form-group" style="flex:1.4; display:flex; align-items:flex-end;">
+          <p id="estufa-machine-volume-hint" class="catalog-picker-hint" style="margin:0;">Volume: 13.475 m³ · Ciclo 60 min (30 queima + 30 resfriamento)</p>
         </div>
       </div>
       <div class="catalog-picker">
@@ -209,6 +232,27 @@
           <input type="number" id="new-part-qty" value="1" min="1">
         </div>
       </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1;">
+          <label>Altura do fardo (m)</label>
+          <input type="number" id="new-part-altura" min="0" step="0.01" value="0" oninput="updatePartVolumeHint()">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Largura do fardo (m)</label>
+          <input type="number" id="new-part-largura" min="0" step="0.01" value="0" oninput="updatePartVolumeHint()">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Comprimento do fardo (m)</label>
+          <input type="number" id="new-part-comprimento" min="0" step="0.01" value="0" oninput="updatePartVolumeHint()">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Peças por fardo</label>
+          <input type="number" id="new-part-ppf" min="1" step="1" value="1" oninput="updatePartVolumeHint()">
+        </div>
+        <div class="form-group" style="flex:1.4; display:flex; align-items:flex-end;">
+          <p id="part-volume-hint" class="catalog-picker-hint" style="margin:0;">Volume útil: — (necessário para a Estufa)</p>
+        </div>
+      </div>
 
       <div class="step-box">
         <label style="font-weight: bold; color: #38bdf8; display: block; margin-bottom: 8px;">Montar Roteiro Sequencial da Peça:</label>
@@ -219,11 +263,11 @@
           </div>
           <div class="form-group" style="flex:1;">
             <label>Setup (min)</label>
-            <input type="number" id="step-setup-time" value="1" min="0">
+            <input type="text" inputmode="decimal" id="step-setup-time" value="1" min="0" step="any" class="time-min-input" title="Aceita 0,25 ou 0.25 min">
           </div>
           <div class="form-group" style="flex:1;">
             <label>Tempo Prod/Peça (min)</label>
-            <input type="number" id="step-prod-time" value="1" min="1">
+            <input type="text" inputmode="decimal" id="step-prod-time" value="1" min="0" step="any" class="time-min-input" title="Aceita 0,25 ou 0.25 min">
           </div>
           <div class="form-group" style="flex:1.5; display:flex; align-items:flex-end;">
             <button class="btn btn-secondary" style="width:100%;" onclick="addStepToCurrentPart()">+ Adicionar Etapa</button>
@@ -277,11 +321,29 @@
         </div>
         <div class="form-group" style="flex:1;">
           <label>Setup da junção (min)</label>
-          <input type="number" id="join-setup-time" value="1" min="0">
+          <input type="text" inputmode="decimal" id="join-setup-time" value="1" min="0" step="any" class="time-min-input" title="Aceita 0,25 ou 0.25 min">
         </div>
         <div class="form-group" style="flex:1;">
           <label>Tempo Prod da junção (min)</label>
-          <input type="number" id="join-prod-time" value="1" min="1">
+          <input type="text" inputmode="decimal" id="join-prod-time" value="1" min="0" step="any" class="time-min-input" title="Aceita 0,25 ou 0.25 min">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1;">
+          <label>Altura fardo SKU (m)</label>
+          <input type="number" id="join-altura" min="0" step="0.01" value="0">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Largura fardo SKU (m)</label>
+          <input type="number" id="join-largura" min="0" step="0.01" value="0">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Comprimento fardo SKU (m)</label>
+          <input type="number" id="join-comprimento" min="0" step="0.01" value="0">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Peças por fardo (SKU)</label>
+          <input type="number" id="join-ppf" min="1" step="1" value="1">
         </div>
       </div>
       <div class="form-row">
@@ -302,11 +364,11 @@
           </div>
           <div class="form-group" style="flex:1;">
             <label>Setup (min)</label>
-            <input type="number" id="join-step-setup-time" value="1" min="0">
+            <input type="text" inputmode="decimal" id="join-step-setup-time" value="1" min="0" step="any" class="time-min-input" title="Aceita 0,25 ou 0.25 min">
           </div>
           <div class="form-group" style="flex:1;">
             <label>Tempo Prod/Peça (min)</label>
-            <input type="number" id="join-step-prod-time" value="1" min="1">
+            <input type="text" inputmode="decimal" id="join-step-prod-time" value="1" min="0" step="any" class="time-min-input" title="Aceita 0,25 ou 0.25 min">
           </div>
           <div class="form-group" style="flex:1.5; display:flex; align-items:flex-end;">
             <button class="btn btn-secondary" style="width:100%;" type="button" onclick="addStepToCurrentJoin()">+ Etapa pós-JOIN</button>
@@ -502,6 +564,11 @@
           <div class="kpi-value" id="kpi-bottleneck">—</div>
           <div class="kpi-hint" id="kpi-bottleneck-hint">Posto com maior ocupação (e fila)</div>
         </div>
+        <div class="analytics-kpi analytics-kpi-estufa">
+          <div class="kpi-title" id="kpi-estufa-title">Quantidade de Estufadas</div>
+          <div class="kpi-value" id="kpi-estufa">—</div>
+          <div class="kpi-hint" id="kpi-estufa-hint">Ciclos de 60 min (30 queima GLP + 30 resfriamento)</div>
+        </div>
       </div>
 
       <div class="operator-hours-wrap" id="plan-completion-wrap" hidden>
@@ -525,6 +592,7 @@
 
       <div class="legend" id="efficiency-legend">
         <div class="legend-item"><div class="color-box" style="background:#22c55e;"></div> <span id="legend-working">Produção</span></div>
+        <div class="legend-item"><div class="color-box" style="background:#ef4444;"></div> <span id="legend-estufa">Estufa (Queima + Resfriamento)</span></div>
         <div class="legend-item"><div class="color-box" style="background:#f97316;"></div> <span id="legend-setup">Setup</span></div>
         <div class="legend-item"><div class="color-box" style="background:#eab308;"></div> <span id="legend-waiting">Espera/Fila</span></div>
         <div class="legend-item"><div class="color-box" style="background:#a855f7;"></div> <span id="legend-maintenance">Manutenção Preventiva</span></div>
@@ -762,10 +830,10 @@
     </div>
   </div>
 
-  <script src="js/simulation.js?v=1.8.0-s11b2"></script>
-  <script src="js/database.js?v=1.8.0-s11b2"></script>
-  <script src="js/ui.js?v=1.8.0-s11-ui3"></script>
-  <script src="js/tester-worker.js?v=1.8.0-s11b1"></script>
+  <script src="js/simulation.js?v=1.8.0-s12c"></script>
+  <script src="js/database.js?v=1.8.0-s12c"></script>
+  <script src="js/ui.js?v=1.8.0-s12c"></script>
+  <script src="js/tester-worker.js?v=1.8.0-s12c"></script>
   <script src="js/tester.js?v=1.8.0-s11-ui"></script>
   <script src="js/plan.js?v=1.8.0-s11b2"></script>
   <script src="js/app.js?v=1.8.0-s11b2"></script>

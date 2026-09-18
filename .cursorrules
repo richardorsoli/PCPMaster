@@ -61,7 +61,7 @@ Rodapé global: `Banco ativo: v2.0 — Atualizado em DD/MM/YYYY HH:mm`.
 ### Produção e caixas
 - `boxesQty` (1–999) multiplica **quantidade efetiva** e **tempo de produção** (`prodUnit * qty * boxesQty`).
 - Na tela de simulação, alterar a qtd. de caixas **recalcula o motor na hora** (sem recarregar a página).
-- **Setup permanece inalterado** (exceto divisão por agrupamento: `ceil(setup / nPeças)`).
+- **Setup permanece inalterado** (exceto divisão por agrupamento: `setup / nPeças`, com fração de minuto). Tempos de setup/prod aceitam vírgula ou ponto (`0,25` = `0.25` min = 15 s); não arredondar para inteiro nem forçar mínimo 1.
 
 ### Agrupamento e união
 - Agrupamento: peças cortadas juntas no mesmo setor (setup compartilhado **no mesmo horário inicial**; todas entram em produção **no mesmo minuto** após o setup; o término segue o volume individual).
@@ -149,12 +149,26 @@ Import aceita envelope legado (`app: SimulaFab`, `projects`/`holidays`/`employee
   maintDurationHours,      // duração da parada
   defaultOperatorId,       // id de employee ou ""
   lastMaintenanceDate,     // YYYY-MM-DD ou ""
-  nextMaintenanceDate      // YYYY-MM-DD ou ""
+  nextMaintenanceDate,     // YYYY-MM-DD ou ""
+  isEstufa,                // true se nome contém ESTUFA ou flag explícita
+  estufaAlturaM,           // cabine; default 2.00
+  estufaLarguraM,          // default 1.75
+  estufaProfundidadeM      // default 3.85 → 13.475 m³
 }
 ```
 
 ### Schema peça / rota
-- Peça: `{ name, thickness, qty, route: [{ machineId, setup, prodUnit }] }`.
+- Peça: `{ name, thickness, qty, altura_m, largura_m, comprimento_m, pecas_por_fardo, route: [{ machineId, setup, prodUnit }] }`.
+- Volume do fardo = A×L×C. Nº de fardos = ceil(qty×caixas / pecas_por_fardo). Sem dimensões, 1 fardo ocupa a cabine inteira (conservador).
+- JOIN/SKU virtual também pode ter as mesmas dimensões de fardo (sub-roteiro com Estufa).
+
+### Estufa — batelada 3D e ciclo GLP (Sprint 12)
+- Identificação: `isEstufa` ou nome contendo `ESTUFA`. Não usa mais `prodUnit × qty` no posto.
+- Ciclo trava: **60 min** = 30 min Queima GLP (200–240°C) + 30 min resfriamento obrigatório. Setup 0.
+- Empacotamento First-Fit 3D (6 rotações) na cabine 2.00 × 1.75 × 3.85 m.
+- Disparo: **carga cheia** (100% ou não cabe mais no buffer pós-Cabine); **mix** (completa com o próximo SKU do Plano); **residual** (não há mais demanda de estufa).
+- KPI **Quantidade de Estufadas** = nº de ciclos (`estufaBatchId`). Gantt: um bloco vermelho agrupado com tags dos SKUs do lote.
+- TESTER (`tester-worker.js`) usa o mesmo despacho de batelada.
 
 ### Compatibilidade
 - Import deve aceitar JSON legado (sem `holidays`, `employees`, campos de manutenção/datas, sem tabelas v2).
@@ -163,7 +177,7 @@ Import aceita envelope legado (`app: SimulaFab`, `projects`/`holidays`/`employee
 
 ## Diretrizes para próximos chats
 
-1. **Não quebrar regras de negócio existentes** sem pedido explícito (turno, almoço, multi-dia, setup vs produção, feriados, BOM/JOIN, Gantt, DND).
+1. **Não quebrar regras de negócio existentes** sem pedido explícito (turno, almoço, multi-dia, setup vs produção, feriados, BOM/JOIN, Gantt, DND, Estufa em batelada).
 2. **Editar módulo correto**; manter ordem dos scripts; não converter para bundler/ESM sem solicitação (quebra `file://`).
 3. **Novos campos de entidade** → incluir em: estado (`simulation.js`), formulário/`renderConfigUI` (`ui.js` + `index.html`), `normalizeMachine`/`normalizeEmployee`/save/load (`database.js` + `simulation.js`), exemplo `loadExampleAndNavigate` se fizer sentido.
 4. **UI**: pt-BR, tema escuro existente (`css/styles.css`); Tailwind CDN já no HTML — usar com parcimônia e alinhar ao visual atual.
@@ -176,4 +190,4 @@ Import aceita envelope legado (`app: SimulaFab`, `projects`/`holidays`/`employee
 
 ## Versão
 
-Documento alinhado à **PCPMaster v1.8.0** (Sprint 11 Batch 2: motor mix, Gantt Unificado por SKU, KPIs do plano e PDF consolidado). Schema relacional v2.0. Motor monoproduto, TESTER e Engenharia permanecem independentes.
+Documento alinhado à **PCPMaster v1.8.0** (Sprint 12: Estufa por batelada 3D e ciclo GLP 60 min). Schema relacional v2.0. Motor monoproduto, TESTER e Engenharia permanecem independentes; a Estufa é recurso compartilhado no Plano mix.

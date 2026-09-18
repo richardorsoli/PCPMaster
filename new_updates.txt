@@ -1,6 +1,6 @@
 ==================================================
  PROJETO: PCPMaster
- VERSÃO ATUAL: v1.6.4 (Sprint 7 Batch 4 — Gantt & Relatório PDF)
+ VERSÃO ATUAL: v1.8.0 (Sprint 7 Batch 4 — Gantt & Relatório PDF)
  REGRA DE VERSIONAMENTO: 
    - v1.5.x: Correções de bugs (Patch)
    - v1.6.x: Sprints/Recursos (Minor)
@@ -474,9 +474,33 @@ O objetivo deste lote é conectar a fila do Plano de Produção ao motor de simu
  (Ideia Solta)     (Rascunho Rápido)   (Ideias Organizadas)    (Prompt Formatado)        (Código Rodando)
 
 SPRINT 12 - ESTUFA
-1. A MÁQUINA/TAREFA ESTUFA TEM UMA CAPACIDADE DE 2,00 x 1,75 x 3,85 metros (altura x largura x profundidade), o ideal é quando o pedido é muito grande a estufa receba a quantidade de peças que cabem nela, feche pelo período de 1h (30 min de queima + 30 de esfriamento) para descarregar as peças e poder enchê-la novamente e caso não de uma estufa cheia ou fecha ela com a capacidade que tiver, ou será preciso acrescentar um outro pedido ou pedaço de outro pedido que está vindo na sequência para também dar uma outra estufada
-2. quero que conte a quantidade de estufadas.
-3. pelo visto ao criar as peças que passem pela estufa preciso acrescentar altura x largura x profundidade da peça e o espaçamento ou quantas vão por fardo para ele programar a carga.
+Olá! Vamos dar continuidade ao desenvolvimento da aplicação **PCPMaster** (sistema APS/MRP de chão de fábrica). Por favor, leia este resumo contextual para alinhar o ambiente antes de começarmos as novas tarefas:
+
+---
+
+### 1. CONTEXTO DO PROJETO E ARQUITETURA DE DADOS
+- **Aplicação e Versão Atual**: PCPMaster v1.8.0 (Schema v2.0 no `localStorage`).
+- **Escopo**: Planejamento, simulação de capacidade (Job-Shop Scheduling) e sequenciamento de produção multiprojeto/mix com controle de operadores, máquinas, setups, pausas de almoço (12:00–13:00) e turnos (07:30–17:18).
+- **Estrutura de Coleções (Schema v2.0)**: `tb_maquinas`, `tb_funcionarios`, `tb_projetos_pecas`, `tb_feriados`, `tb_turnos`, `tb_historico_otimizacao` e `tb_planos_producao`.
+
+---
+
+### 2. RECURSOS CONCLUÍDOS E ESTÁVEIS (v1.8.0)
+- **Engine de Otimização (Módulo TESTER)**: Web Worker `headless` (`js/tester-worker.js`) rodando algoritmos genéticos e permutação estocástica em segundo plano.
+- **UI e Design System**:
+  - Padrão visual consolidado com botões de 40px de altura, `border-radius: 8px` e cores por ação (`#10b981` sucesso, `#ef4444` perigo, `#0284c7` primário, `#334155` secundário) sobrescrevendo o reset do Tailwind.
+  - Widget flutuante do TESTER minimizável em badge/pílula compacta.
+- **Sprint 11 - Plano de Produção (Multiprojeto)**:
+  - Fila de projetos dinâmicos com gatilho de início por **Data/Hora Específica** ou **Encadeamento Automático Continuação de Linha** (liberação imediata de máquinas/operadores).
+  - Gráfico de Gantt Unificado Multi-Dias com cores por SKU e **separador de turno destacado em `#0284c7`** com marcador das **07:30** para evitar sobreposição de eixos.
+  - Persistência na `tb_planos_producao` e exportação do relatório PDF consolidado do plano.
+
+---
+
+### 3. REPOSITÓRIO E CONTROLE DE VERSÃO
+- O repositório no GitHub (`main`) está atualizado até o commit da tag **`v1.8.0`**.
+
+Por favor, confirme que leu este handover e está pronto para receber as próximas orientações ou novas demandas do projeto!
 
 SPRINT 13 - JUST IN TIME
 1. POR EXISTIR PEÇAS QUE VÃO DIRETO DO CORTE OU DA DOBRA PARA MONTAGEM, ESCOLHER UM MOMENTO MAIS "CASADO" QUE ELA SÓ INICIA QUANDO ESTIVER PERTO DE OUTRAS PEÇAS CHEGAREM NO SETOR. EXEMPLO A GUILHOTINA SÓ INICIA QUANDO O TEMPO NECESSÁRIO DELA ATÉ ENCERRAR FOR CASAR COM O ENCERRAMENTO DA MONTAGEM.
@@ -486,50 +510,4 @@ SPRINT 14 - ULTIMATE DESIGN
 A. HOME
 2. Simulação parar quando finalizar a expedição (última)
 3. Ordens dinâmicas, de acordo com as entradas anteriores e atuais.
-
-========================================
-      INICIAR NOVO CHAT NO CURSOR
-========================================
-
-1. Atualizar new_updates.txt
-2. git add .
-git commit -m "feat: conclui Sprint X e atualiza documentacao"
-3. Handover Prompt: Concluímos esta etapa. Gere um texto resumido de abertura para o meu próximo chat no Cursor, citando a versão atual, os arquivos que alteramos e o que faremos na próxima Sprint."
-
-Atue no SimulaFab v1.4.3 (árvore modular; a UI e o banco_dados.json ainda estão nessa versão; o new_updates.txt registra v1.5.0 em desenvolvimento).
-
-Arquitetura: scripts clássicos na ordem simulation.js → database.js → ui.js → app.js. Source of truth em runtime: localStorage (simulafab_projects_v4). Turno 07:30–17:18 (588 min), almoço 12:00–13:00, pula sábados, domingos e feriados. Não converter para ESM/bundler.
-
-Já concluído neste ciclo
-
-Sprint 5: salvar com confirmação de sobrescrita, lista/exclusão de projetos.
-Sprint 6: botão Novo Projeto na simulação; zera peças/roteiro/sessão e mantém o cadastro base de máquinas e funcionários (catálogo no wrapper do JSON).
-Sprint 1: agrupamento de corte com setups no mesmo horário inicial + botão Atualizar banco_dados.json.
-Arquivos alterados index.html, js/simulation.js, js/database.js, js/ui.js, new_updates.txt, .cursorrules
-
-Próxima etapa — Sprint 4 (new_updates.txt)
-
-Testador de trajetos: melhor ordem de start de peças para gerar menos tempo ocioso.
-Leia o .cursorrules e os módulos em /js antes de alterar regra de negócio. Não quebrar calendário, setup vs produção nem o schema do banco.
-
-------------------------------------------------------------
-Atue no SimulaFab v1.5.0 (Ambiente: Cursor IDE + Live Server).
-O projeto está sendo atualizado de v1.4.3 para v1.5.0 no topo da UI e nos arquivos de configuração.
-
-ARQUITETURA & REGRAS CRÍTICAS:
-- Ordem de scripts: simulation.js -> database.js -> ui.js -> app.js.
-- Runtime Source of Truth: localStorage ('simulafab_projects_v4').
-- Turno base: 07:30–17:18 (588 min útil/dia), Almoço: 12:00–13:00. Pula finais de semana e feriados.
-- NUNCA converter para ESM/bundler (manter Vanilla JS modular).
-- Ler o .cursorrules e os módulos em /js antes de alterar qualquer regra de negócio.
-- Não quebrar o calendário, lógica de setup vs. produção nem o schema do banco (catálogo no wrapper + machines ativas no projeto).
-
-ESTADO ATUAL CONCLUÍDO (Working tree clean):
-1. Despacho Dinâmico (job-shop): ao zerar o tempo de uma etapa, a primeira peça entra em SETUP/EM PRODUÇÃO no minuto seguinte se a máquina estiver livre.
-2. Pausa de Almoço: congelamento rigoroso do 'Tempo Restante' na janela [12:00, 13:00).
-3. Catálogo Global Infinito: projetos armazenam e exibem apenas máquinas/funcionários ATIVOS no roteiro. O catálogo completo permanece protegido em banco_dados.json/localStorage.
-4. Sincronização: função de download/merge de banco_dados.json via Live Server 100% operacional.
-
-PRÓXIMAS TAREFAS DESTE CHAT:
-1. Atualizar visivelmente a versão do sistema de v1.4.3 para v1.5.0 na UI (index.html), no topo do app.js e no new_updates.txt.
-2. Iniciar a Sprint 4: Implementação do Testador de Trajetos (Analisador de melhor ordem de start das peças para minimizar ociosidade e setup).
+4. Fim da atividade -movimentação-

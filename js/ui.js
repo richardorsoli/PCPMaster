@@ -1,5 +1,25 @@
 /* PCPMaster v1.8.0 — Manipulação de DOM, timeline, relógio, tabelas, Gantt, analytics e PDF */
 
+    function readFlexibleNumber(id, fallback) {
+      const el = document.getElementById(id);
+      const raw = el ? el.value : '';
+      if (typeof parseFlexibleNumber === 'function') return parseFlexibleNumber(raw, fallback);
+      const n = parseFloat(String(raw).replace(',', '.'));
+      return isFinite(n) ? n : fallback;
+    }
+
+    function readTimeMinutes(id, fallback) {
+      const el = document.getElementById(id);
+      const raw = el ? el.value : '';
+      if (typeof parseTimeMinutes === 'function') return parseTimeMinutes(raw, fallback);
+      const n = parseFloat(String(raw).replace(',', '.'));
+      return (isFinite(n) && n >= 0) ? n : fallback;
+    }
+
+    function fmtStepTime(mins) {
+      return typeof formatDurationMinutes === 'function' ? formatDurationMinutes(mins) : (mins + 'm');
+    }
+
     // --- EXEMPLO ---
     function loadExampleAndNavigate() {
       employees = [
@@ -174,6 +194,7 @@
       document.getElementById('new-machine-maint-duration').value = '0';
       document.getElementById('new-machine-last-maint').value = '';
       document.getElementById('new-machine-next-maint').value = '';
+      if (typeof resetEstufaMachineForm === 'function') resetEstufaMachineForm();
       resetSimulationView();
       if (typeof syncProjectNameUI === 'function') syncProjectNameUI({ syncInput: true });
       renderConfigUI();
@@ -466,11 +487,101 @@
     }
 
     // --- MÁQUINAS ---
+    function updateEstufaMachineVolumeHint() {
+      const h = parseFloat(document.getElementById('new-machine-estufa-h') && document.getElementById('new-machine-estufa-h').value) || 0;
+      const w = parseFloat(document.getElementById('new-machine-estufa-w') && document.getElementById('new-machine-estufa-w').value) || 0;
+      const d = parseFloat(document.getElementById('new-machine-estufa-d') && document.getElementById('new-machine-estufa-d').value) || 0;
+      const hint = document.getElementById('estufa-machine-volume-hint');
+      if (!hint) return;
+      const vol = h * w * d;
+      hint.textContent = vol > 0
+        ? ('Volume: ' + vol.toFixed(3) + ' m³ · Ciclo 60 min (30 queima GLP + 30 resfriamento)')
+        : 'Volume: — · Ciclo 60 min (30 queima + 30 resfriamento)';
+    }
+
+    function syncEstufaMachineForm() {
+      const nameEl = document.getElementById('new-machine-name');
+      const cb = document.getElementById('new-machine-is-estufa');
+      if (!cb) return;
+      const looks = typeof machineNameLooksEstufa === 'function' && machineNameLooksEstufa(nameEl && nameEl.value);
+      if (document.activeElement === cb) cb.dataset.userToggled = '1';
+      if (looks && !cb.dataset.userToggled) cb.checked = true;
+      updateEstufaMachineVolumeHint();
+    }
+
+    function readEstufaMachineForm(name) {
+      const cb = document.getElementById('new-machine-is-estufa');
+      const isEstufa = !!(cb && cb.checked) || (typeof machineNameLooksEstufa === 'function' && machineNameLooksEstufa(name));
+      const h = parseFloat(document.getElementById('new-machine-estufa-h') && document.getElementById('new-machine-estufa-h').value);
+      const w = parseFloat(document.getElementById('new-machine-estufa-w') && document.getElementById('new-machine-estufa-w').value);
+      const d = parseFloat(document.getElementById('new-machine-estufa-d') && document.getElementById('new-machine-estufa-d').value);
+      return {
+        isEstufa,
+        estufaAlturaM: isEstufa ? ((h > 0) ? h : ESTUFA_CABIN_H) : (h > 0 ? h : 0),
+        estufaLarguraM: isEstufa ? ((w > 0) ? w : ESTUFA_CABIN_W) : (w > 0 ? w : 0),
+        estufaProfundidadeM: isEstufa ? ((d > 0) ? d : ESTUFA_CABIN_D) : (d > 0 ? d : 0)
+      };
+    }
+
+    function resetEstufaMachineForm() {
+      const cb = document.getElementById('new-machine-is-estufa');
+      if (cb) {
+        cb.checked = false;
+        delete cb.dataset.userToggled;
+      }
+      const hEl = document.getElementById('new-machine-estufa-h');
+      const wEl = document.getElementById('new-machine-estufa-w');
+      const dEl = document.getElementById('new-machine-estufa-d');
+      if (hEl) hEl.value = '2.00';
+      if (wEl) wEl.value = '1.75';
+      if (dEl) dEl.value = '3.85';
+      updateEstufaMachineVolumeHint();
+    }
+
+    function updatePartVolumeHint() {
+      const hint = document.getElementById('part-volume-hint');
+      if (!hint) return;
+      const h = parseFloat(document.getElementById('new-part-altura') && document.getElementById('new-part-altura').value) || 0;
+      const w = parseFloat(document.getElementById('new-part-largura') && document.getElementById('new-part-largura').value) || 0;
+      const d = parseFloat(document.getElementById('new-part-comprimento') && document.getElementById('new-part-comprimento').value) || 0;
+      const ppf = parseInt(document.getElementById('new-part-ppf') && document.getElementById('new-part-ppf').value, 10) || 1;
+      const vol = h * w * d;
+      if (vol <= 0) {
+        hint.textContent = 'Volume útil: — (sem dimensões, 1 fardo ocupa a cabine inteira)';
+        return;
+      }
+      const cabin = typeof ESTUFA_CABIN_VOLUME === 'number' ? ESTUFA_CABIN_VOLUME : 13.475;
+      const fit = vol > 0 ? Math.floor(cabin / vol) : 0;
+      hint.textContent = 'Volume útil: ' + vol.toFixed(3) + ' m³/fardo · ~' + fit + ' fardo(s) por ciclo · ' + ppf + ' pç/fardo';
+    }
+
+    function readPartDimFields() {
+      return {
+        altura_m: parseFloat(document.getElementById('new-part-altura') && document.getElementById('new-part-altura').value) || 0,
+        largura_m: parseFloat(document.getElementById('new-part-largura') && document.getElementById('new-part-largura').value) || 0,
+        comprimento_m: parseFloat(document.getElementById('new-part-comprimento') && document.getElementById('new-part-comprimento').value) || 0,
+        pecas_por_fardo: parseInt(document.getElementById('new-part-ppf') && document.getElementById('new-part-ppf').value, 10) || 1
+      };
+    }
+
+    function fillPartDimFields(p) {
+      const dims = typeof normalizePartDims === 'function' ? normalizePartDims(p || {}) : (p || {});
+      const hEl = document.getElementById('new-part-altura');
+      const wEl = document.getElementById('new-part-largura');
+      const dEl = document.getElementById('new-part-comprimento');
+      const ppfEl = document.getElementById('new-part-ppf');
+      if (hEl) hEl.value = dims.altura_m || 0;
+      if (wEl) wEl.value = dims.largura_m || 0;
+      if (dEl) dEl.value = dims.comprimento_m || 0;
+      if (ppfEl) ppfEl.value = dims.pecas_por_fardo || 1;
+      updatePartVolumeHint();
+    }
+
     function addMachine() {
       const name = document.getElementById('new-machine-name').value.trim();
       const pop = document.getElementById('new-machine-pop').value.trim();
-      const maintIntervalHours = parseFloat(document.getElementById('new-machine-maint-interval').value) || 0;
-      const maintDurationHours = parseFloat(document.getElementById('new-machine-maint-duration').value) || 0;
+      const maintIntervalHours = readFlexibleNumber('new-machine-maint-interval', 0);
+      const maintDurationHours = readFlexibleNumber('new-machine-maint-duration', 0);
       const defaultOperatorId = document.getElementById('new-machine-operator').value || '';
       const lastMaintenanceDate = document.getElementById('new-machine-last-maint').value || '';
       const nextMaintenanceDate = document.getElementById('new-machine-next-maint').value || '';
@@ -480,6 +591,7 @@
         return;
       }
 
+      const estufa = readEstufaMachineForm(name);
       const data = {
         id: editingMachineIndex >= 0 ? machines[editingMachineIndex].id : ("m" + Date.now()),
         name,
@@ -488,7 +600,11 @@
         maintDurationHours,
         defaultOperatorId,
         lastMaintenanceDate,
-        nextMaintenanceDate
+        nextMaintenanceDate,
+        isEstufa: estufa.isEstufa,
+        estufaAlturaM: estufa.estufaAlturaM,
+        estufaLarguraM: estufa.estufaLarguraM,
+        estufaProfundidadeM: estufa.estufaProfundidadeM
       };
 
       if (editingMachineIndex >= 0) {
@@ -505,6 +621,7 @@
       document.getElementById('new-machine-maint-duration').value = '0';
       document.getElementById('new-machine-last-maint').value = '';
       document.getElementById('new-machine-next-maint').value = '';
+      resetEstufaMachineForm();
       fillMachineOperatorSelect('');
       persistBaseCatalog();
       renderConfigUI();
@@ -519,6 +636,18 @@
       document.getElementById('new-machine-maint-duration').value = m.maintDurationHours || 0;
       document.getElementById('new-machine-last-maint').value = m.lastMaintenanceDate || '';
       document.getElementById('new-machine-next-maint').value = m.nextMaintenanceDate || '';
+      const cb = document.getElementById('new-machine-is-estufa');
+      if (cb) {
+        cb.checked = !!m.isEstufa || (typeof machineNameLooksEstufa === 'function' && machineNameLooksEstufa(m.name));
+        cb.dataset.userToggled = '1';
+      }
+      const hEl = document.getElementById('new-machine-estufa-h');
+      const wEl = document.getElementById('new-machine-estufa-w');
+      const dEl = document.getElementById('new-machine-estufa-d');
+      if (hEl) hEl.value = (m.estufaAlturaM || ESTUFA_CABIN_H).toFixed ? Number(m.estufaAlturaM || ESTUFA_CABIN_H) : ESTUFA_CABIN_H;
+      if (wEl) wEl.value = Number(m.estufaLarguraM || ESTUFA_CABIN_W);
+      if (dEl) dEl.value = Number(m.estufaProfundidadeM || ESTUFA_CABIN_D);
+      updateEstufaMachineVolumeHint();
       fillMachineOperatorSelect(m.defaultOperatorId || '');
       document.getElementById('btn-save-machine').innerText = 'Salvar Alterações';
     }
@@ -543,6 +672,7 @@
         document.getElementById('new-machine-maint-duration').value = '0';
         document.getElementById('new-machine-last-maint').value = '';
         document.getElementById('new-machine-next-maint').value = '';
+        if (typeof resetEstufaMachineForm === 'function') resetEstufaMachineForm();
         fillMachineOperatorSelect('');
       } else if (editingMachineIndex > idx) {
         editingMachineIndex--;
@@ -788,8 +918,8 @@
 
     function addStepToCurrentPart() {
       const mId = document.getElementById('step-machine-select').value;
-      const setup = parseInt(document.getElementById('step-setup-time').value) || 0;
-      const prodUnit = parseInt(document.getElementById('step-prod-time').value) || 1;
+      const setup = readTimeMinutes('step-setup-time', 0);
+      const prodUnit = readTimeMinutes('step-prod-time', 1);
       if (!mId) return;
       currentBuildingRoute.push({ machineId: mId, setup, prodUnit });
       renderCurrentBuildingRoute();
@@ -811,7 +941,7 @@
         const m = lookupMachine(step.machineId);
         container.innerHTML += `
           <span class="step-tag route-step" draggable="true" data-route-index="${idx}">
-            ${idx + 1}º: <strong>${m ? m.name : '?'}</strong> (Setup: ${step.setup}m | Prod/u: ${step.prodUnit}m)
+            ${idx + 1}º: <strong>${m ? m.name : '?'}</strong> (Setup: ${fmtStepTime(step.setup)} | Prod/u: ${fmtStepTime(step.prodUnit)})
             <span class="step-remove" style="color:#ef4444; cursor:pointer; font-weight:bold; margin-left:5px;" onclick="removeStepFromCurrentPart(${idx})">×</span>
           </span>`;
       });
@@ -831,12 +961,13 @@
       const qty = parseInt(document.getElementById('new-part-qty').value) || 1;
       if (!name) { alert('Informe o nome da peça.'); return; }
       if (currentBuildingRoute.length === 0) { alert('Adicione etapas ao roteiro.'); return; }
-      const partData = { name, thickness: thick, qty, route: [...currentBuildingRoute] };
+      const dims = readPartDimFields();
+      const partData = Object.assign({ name, thickness: thick, qty, route: [...currentBuildingRoute] }, dims);
       if (editingPartIndex >= 0) {
-        parts[editingPartIndex] = partData;
+        parts[editingPartIndex] = typeof normalizePart === 'function' ? normalizePart(partData) : partData;
         editingPartIndex = -1;
       } else {
-        parts.push(partData);
+        parts.push(typeof normalizePart === 'function' ? normalizePart(partData) : partData);
       }
       resetPartForm();
       renderConfigUI();
@@ -848,6 +979,7 @@
       document.getElementById('new-part-name').value = p.name;
       document.getElementById('new-part-thickness').value = p.thickness;
       document.getElementById('new-part-qty').value = p.qty;
+      fillPartDimFields(p);
       currentBuildingRoute = p.route.map(s => ({ ...s }));
       document.getElementById('btn-save-part').innerText = 'Atualizar Peça';
       document.getElementById('btn-cancel-edit').style.display = 'inline-block';
@@ -864,6 +996,7 @@
       document.getElementById('btn-save-part').innerText = 'Salvar e Cadastrar Peça';
       document.getElementById('btn-cancel-edit').style.display = 'none';
       currentBuildingRoute = [];
+      fillPartDimFields({ altura_m: 0, largura_m: 0, comprimento_m: 0, pecas_por_fardo: 1 });
       renderCurrentBuildingRoute();
     }
 
@@ -912,8 +1045,8 @@
     // --- MONTAGEM ---
     function addStepToCurrentJoin() {
       const mId = document.getElementById('join-step-machine-select').value;
-      const setup = parseInt(document.getElementById('join-step-setup-time').value, 10) || 0;
-      const prodUnit = parseInt(document.getElementById('join-step-prod-time').value, 10) || 1;
+      const setup = readTimeMinutes('join-step-setup-time', 0);
+      const prodUnit = readTimeMinutes('join-step-prod-time', 1);
       if (!mId) return;
       currentJoinBuildingRoute.push({ machineId: mId, setup, prodUnit });
       syncJoinRouteToActiveRule();
@@ -938,7 +1071,7 @@
         const m = lookupMachine(step.machineId);
         container.innerHTML += `
           <span class="step-tag route-step join-route-step" draggable="true" data-join-route-index="${idx}">
-            ${idx + 1}º: <strong>${m ? m.name : '?'}</strong> (Setup: ${step.setup}m | Prod/u: ${step.prodUnit}m)
+            ${idx + 1}º: <strong>${m ? m.name : '?'}</strong> (Setup: ${fmtStepTime(step.setup)} | Prod/u: ${fmtStepTime(step.prodUnit)})
             <span class="step-remove" style="color:#ef4444; cursor:pointer; font-weight:bold; margin-left:5px;" onclick="removeStepFromCurrentJoin(${idx})">×</span>
           </span>`;
       });
@@ -959,8 +1092,8 @@
       document.querySelectorAll('.assembly-part-cb:checked').forEach(cb => selected.push(cb.value));
       if (!resultName) { alert('Informe o nome do subconjunto.'); return; }
       if (selected.length < 2) { alert('Selecione ao menos 2 peças/insumos (requer).'); return; }
-      const setup = parseInt(document.getElementById('join-setup-time').value, 10) || 1;
-      const prodUnit = parseInt(document.getElementById('join-prod-time').value, 10) || 1;
+      const setup = readTimeMinutes('join-setup-time', 0);
+      const prodUnit = readTimeMinutes('join-prod-time', 1);
       const rule = normalizeAssemblyRule({
         machineId: mId,
         resultName,
@@ -969,7 +1102,11 @@
         setup,
         prodUnit,
         qty: 1,
-        route: currentJoinBuildingRoute.slice()
+        route: currentJoinBuildingRoute.slice(),
+        altura_m: parseFloat(document.getElementById('join-altura') && document.getElementById('join-altura').value) || 0,
+        largura_m: parseFloat(document.getElementById('join-largura') && document.getElementById('join-largura').value) || 0,
+        comprimento_m: parseFloat(document.getElementById('join-comprimento') && document.getElementById('join-comprimento').value) || 0,
+        pecas_por_fardo: parseInt(document.getElementById('join-ppf') && document.getElementById('join-ppf').value, 10) || 1
       });
       if (editingAssemblyIndex >= 0) {
         assemblyRules[editingAssemblyIndex] = rule;
@@ -983,6 +1120,14 @@
       currentJoinBuildingRoute = [];
       document.getElementById('join-setup-time').value = '1';
       document.getElementById('join-prod-time').value = '1';
+      const ja = document.getElementById('join-altura');
+      const jl = document.getElementById('join-largura');
+      const jc = document.getElementById('join-comprimento');
+      const jp = document.getElementById('join-ppf');
+      if (ja) ja.value = '0';
+      if (jl) jl.value = '0';
+      if (jc) jc.value = '0';
+      if (jp) jp.value = '1';
       renderConfigUI();
     }
 
@@ -996,6 +1141,14 @@
       });
       document.getElementById('join-setup-time').value = a.setup || 1;
       document.getElementById('join-prod-time').value = a.prodUnit || 1;
+      const ja = document.getElementById('join-altura');
+      const jl = document.getElementById('join-largura');
+      const jc = document.getElementById('join-comprimento');
+      const jp = document.getElementById('join-ppf');
+      if (ja) ja.value = a.altura_m || 0;
+      if (jl) jl.value = a.largura_m || 0;
+      if (jc) jc.value = a.comprimento_m || 0;
+      if (jp) jp.value = a.pecas_por_fardo || 1;
       currentJoinBuildingRoute = (a.route || []).map(s => ({ machineId: s.machineId, setup: s.setup, prodUnit: s.prodUnit }));
       document.getElementById('btn-save-assembly').innerText = 'Salvar Alterações';
       renderCurrentJoinRoute();
@@ -1100,12 +1253,16 @@
         const useTag = inUse
           ? '<span style="font-size:0.72rem; color:#4ade80; font-weight:600;">Em uso neste projeto</span>'
           : '<span style="font-size:0.72rem; color:#64748b;">Vinculada ao projeto (sem roteiro ainda)</span>';
+        const estufaTxt = m.isEstufa
+          ? `Estufa ${Number(m.estufaAlturaM).toFixed(2)}×${Number(m.estufaLarguraM).toFixed(2)}×${Number(m.estufaProfundidadeM).toFixed(2)} m (${(estufaCabinVolume(m) || 0).toFixed(3)} m³) · ciclo 60 min`
+          : '';
         mList.innerHTML += `
           <li>
             <div>
               <span class="machine-badge">M${idx + 1}</span><strong>${m.name}</strong>
               <div style="font-size:0.8rem; color:#94a3b8;">POP: ${m.pop}</div>
               <div style="font-size:0.78rem; color:#38bdf8;">Operador padrão: ${opTxt}</div>
+              ${estufaTxt ? `<div style="font-size:0.78rem; color:#f87171;">${estufaTxt}</div>` : ''}
               <div style="font-size:0.78rem; color:#a855f7;">${maintTxt}</div>
               <div style="font-size:0.78rem; color:#94a3b8;">Última manutenção: ${lastTxt} · Próxima: ${nextTxt}</div>
               <div style="font-size:0.78rem; color:${remainingColor}; font-weight:600;">⏱ ${remainingLabel}</div>
@@ -1135,13 +1292,18 @@
       parts.forEach((p, idx) => {
         const stepsHtml = p.route.map((s, sIdx) => {
           const m = lookupMachine(s.machineId);
-          return `<span class="step-tag route-step" draggable="true" data-route-index="${sIdx}" data-part-index="${idx}">${sIdx + 1}º ${m ? m.name : '?'}</span>`;
+          return `<span class="step-tag route-step" draggable="true" data-route-index="${sIdx}" data-part-index="${idx}">${sIdx + 1}º ${m ? m.name : '?'} (${fmtStepTime(s.setup)}/${fmtStepTime(s.prodUnit)})</span>`;
         }).join('');
+        const dims = typeof normalizePartDims === 'function' ? normalizePartDims(p) : p;
+        const vol = (dims.altura_m || 0) * (dims.largura_m || 0) * (dims.comprimento_m || 0);
+        const dimTxt = vol > 0
+          ? ` · fardo ${dims.altura_m}×${dims.largura_m}×${dims.comprimento_m} m (${vol.toFixed(3)} m³) · ${dims.pecas_por_fardo} pç/fardo`
+          : '';
         pList.innerHTML += `
           <li class="part-card" draggable="true" data-part-index="${idx}">
             <span class="drag-handle" title="Arrastar peça" aria-hidden="true">⋮⋮</span>
             <div style="flex:1;">
-              <strong>${p.name}</strong> (${p.qty} un | ${p.thickness}mm)
+              <strong>${p.name}</strong> (${p.qty} un | ${p.thickness}mm${dimTxt})
               <div class="part-route-steps">${stepsHtml}</div>
             </div>
             <div class="part-card-actions">
@@ -1217,7 +1379,7 @@
         const m = lookupMachine(rule.machineId);
         const subHtml = (rule.route || []).map((s, sIdx) => {
           const sm = lookupMachine(s.machineId);
-          return `<span class="step-tag route-step join-saved-step" draggable="true" data-join-route-index="${sIdx}" data-join-index="${idx}">${sIdx + 1}º ${sm ? sm.name : '?'}</span>`;
+          return `<span class="step-tag route-step join-saved-step" draggable="true" data-join-route-index="${sIdx}" data-join-index="${idx}">${sIdx + 1}º ${sm ? sm.name : '?'} (${fmtStepTime(s.setup)}/${fmtStepTime(s.prodUnit)})</span>`;
         }).join('');
         const requer = (rule.juncao && rule.juncao.requer) ? rule.juncao.requer : rule.requiredPartNames;
         aList.innerHTML += `<li class="part-card join-card" draggable="true" data-join-index="${idx}">
@@ -1225,7 +1387,7 @@
           <div style="flex:1;">
             <strong>JOIN ${m ? m.name : '?'}</strong> ➔ <span style="color:#22c55e;">${rule.resultName}</span>
             <div style="font-size:0.85rem; color:#f59e0b;">requer: ${requer.join(' + ')}</div>
-            <div style="font-size:0.8rem; color:#94a3b8;">Junção: setup ${rule.setup}m / prod ${rule.prodUnit}m${subHtml ? '' : ' · sem sub-roteiro'}</div>
+            <div style="font-size:0.8rem; color:#94a3b8;">Junção: setup ${fmtStepTime(rule.setup)} / prod ${fmtStepTime(rule.prodUnit)}${subHtml ? '' : ' · sem sub-roteiro'}</div>
             ${subHtml ? `<div class="part-route-steps join-sub-route">${subHtml}</div>` : ''}
           </div>
           <div class="part-card-actions">
@@ -1285,6 +1447,8 @@
       if (status === 'fila') return { text: 'FILA', cls: 'badge-fila' };
       if (status === 'setup') return { text: 'SETUP', cls: 'badge-setup' };
       if (status === 'working') return { text: 'EM PRODUÇÃO', cls: 'badge-working' };
+      if (status === 'queima') return { text: 'QUEIMA GLP (200–240°C)', cls: 'badge-queima' };
+      if (status === 'cooling') return { text: 'RESFRIAMENTO (TRAVA)', cls: 'badge-cooling' };
       if (status === 'lunch') return { text: 'ALMOÇO', cls: 'badge-lunch' };
       if (status === 'done') return { text: 'CONCLUÍDO', cls: 'badge-done' };
       if (status === 'maintenance') return { text: 'MANUTENÇÃO PREVENTIVA', cls: 'badge-maintenance' };
@@ -1416,6 +1580,10 @@
       if (bottleneck) bottleneck.textContent = '—';
       const bottleneckHint = document.getElementById('kpi-bottleneck-hint');
       if (bottleneckHint) bottleneckHint.textContent = 'Posto com maior ocupação (e fila)';
+      const estufaKpi = document.getElementById('kpi-estufa');
+      if (estufaKpi) estufaKpi.textContent = '—';
+      const estufaHint = document.getElementById('kpi-estufa-hint');
+      if (estufaHint) estufaHint.textContent = 'Ciclos de 60 min (30 queima GLP + 30 resfriamento)';
 
       const tbody = document.getElementById('operator-hours-body');
       if (tbody) {
@@ -1448,6 +1616,10 @@
         if (bottleneckHint) bottleneckHint.textContent = planMode
           ? 'Posto com maior fila acumulada na concorrência dos projetos'
           : 'Posto com maior ocupação (e fila)';
+        const estufaEmpty = document.getElementById('kpi-estufa');
+        if (estufaEmpty) estufaEmpty.textContent = '0';
+        const estufaHintEmpty = document.getElementById('kpi-estufa-hint');
+        if (estufaHintEmpty) estufaHintEmpty.textContent = 'Sem ciclos de estufa neste lote';
         return;
       }
 
@@ -1492,6 +1664,16 @@
         if (bottleneckHint) bottleneckHint.textContent = planMode
           ? 'Sem fila relevante na concorrência do mix'
           : 'Sem ocupação relevante no lote';
+      }
+
+      const estufaEl = document.getElementById('kpi-estufa');
+      const estufaHint = document.getElementById('kpi-estufa-hint');
+      const estufaN = analytics && analytics.estufaCount != null ? analytics.estufaCount : 0;
+      if (estufaEl) estufaEl.textContent = String(estufaN);
+      if (estufaHint) {
+        estufaHint.textContent = estufaN > 0
+          ? (estufaN + ' ciclo(s) de 60 min · 30 queima GLP + 30 resfriamento')
+          : 'Sem ciclos de estufa neste lote';
       }
     }
 
@@ -1571,6 +1753,7 @@
     function ganttKindClass(kind) {
       if (kind === 'setup') return 'gantt-block-setup';
       if (kind === 'prod') return 'gantt-block-prod';
+      if (kind === 'estufa') return 'gantt-block-estufa';
       if (kind === 'wait') return 'gantt-block-wait';
       if (kind === 'maint') return 'gantt-block-maint';
       return '';
@@ -1579,6 +1762,7 @@
     function ganttKindLabel(kind) {
       if (kind === 'setup') return 'Setup';
       if (kind === 'prod') return 'Produção';
+      if (kind === 'estufa') return 'Estufa (Queima+Resfriamento)';
       if (kind === 'wait') return 'Espera/Fila';
       if (kind === 'maint') return 'Manutenção';
       return kind;
@@ -1758,11 +1942,20 @@
         const blocks = row.blocks.map(b => {
           const left = pctInRange(b.start, range);
           const width = Math.max(0.35, ((b.end - b.start) / span) * 100);
-          const sku = b.planProjectName ? (b.planProjectName + ' · ') : '';
-          const title = `${row.name} · ${sku}${b.partName} · ${ganttKindLabel(b.kind)} ${minuteInDayToTimeStr(b.start % MINUTES_PER_DAY)}–${minuteInDayToTimeStr((b.end - 1) % MINUTES_PER_DAY)}`;
+          const sku = b.planProjectName && b.kind !== 'estufa' ? (b.planProjectName + ' · ') : '';
+          const occ = b.kind === 'estufa' && b.estufaOccupancyPct
+            ? ` · ${b.estufaOccupancyPct}% · ${b.estufaTrigger || ''}`
+            : '';
+          const dur = typeof formatDurationMinutes === 'function'
+            ? formatDurationMinutes(Math.max(0, b.end - b.start))
+            : '';
+          const title = `${row.name} · ${sku}${b.partName} · ${ganttKindLabel(b.kind)}${occ}${dur ? ' · ' + dur : ''} ${minuteInDayToTimeStr(b.start % MINUTES_PER_DAY)}–${minuteInDayToTimeStr((b.end - 1) % MINUTES_PER_DAY)}`;
           const fill = typeof ganttBlockFill === 'function' ? ganttBlockFill(b) : null;
           const bg = fill && fill.css ? `background:${fill.css};` : '';
-          return `<div class="gantt-block ${ganttKindClass(b.kind)}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;${bg}" title="${escapeHtml(title)}"></div>`;
+          const tags = (b.kind === 'estufa' && b.partName)
+            ? `<span class="gantt-block-tags">${escapeHtml(b.partName)}</span>`
+            : '';
+          return `<div class="gantt-block ${ganttKindClass(b.kind)}" style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;${bg}" title="${escapeHtml(title)}">${tags}</div>`;
         }).join('');
         return `<div class="gantt-row">
           <div class="gantt-label">${escapeHtml(row.name)}</div>
@@ -1877,10 +2070,11 @@
     function drawPdfKpiBoxes(doc, y, analytics) {
       y = pdfEnsureSpace(doc, y, 28);
       const pageW = doc.internal.pageSize.getWidth();
-      const gap = 6;
-      const boxW = (pageW - 28 - gap * 2) / 3;
+      const gap = 5;
+      const boxW = (pageW - 28 - gap * 3) / 4;
       const boxH = 22;
       const planMode = typeof isPlanSimulationMode === 'function' && isPlanSimulationMode();
+      const estufaN = analytics && analytics.estufaCount != null ? analytics.estufaCount : 0;
       const items = [
         {
           title: planMode ? 'Makespan Total do Plano' : 'Makespan Total',
@@ -1902,6 +2096,11 @@
           hint: analytics && analytics.bottleneck
             ? ('Fila ' + formatMinutesWithHours(analytics.bottleneck.wait) + ' · Ocupação ' + formatMinutesWithHours(analytics.bottleneck.occupied))
             : (planMode ? 'Maior fila na concorrência do mix' : 'Maior ocupação + fila')
+        },
+        {
+          title: 'Quantidade de Estufadas',
+          value: String(estufaN),
+          hint: estufaN > 0 ? (estufaN + ' ciclo(s) · 60 min (30+30)') : 'Sem ciclos de estufa'
         }
       ];
       items.forEach((item, i) => {
@@ -2018,6 +2217,14 @@
           const rgb = (fill && fill.rgb) || colors[b.kind] || [100, 116, 139];
           doc.setFillColor(rgb[0], rgb[1], rgb[2]);
           doc.rect(x, ry + 1.4, w, rowH - 2.8, 'F');
+          if (b.kind === 'estufa' && b.partName && w >= 16) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(4.5);
+            doc.setTextColor(255);
+            const tag = doc.splitTextToSize(String(b.partName), Math.max(12, w - 1.2))[0];
+            doc.text(tag, x + 0.6, ry + 4.4);
+            doc.setTextColor(40);
+          }
         });
       });
 
@@ -2037,6 +2244,7 @@
       const legend = [
         { c: [249, 115, 22], t: 'Setup' },
         { c: [34, 197, 94], t: 'Produção' },
+        { c: [239, 68, 68], t: 'Estufa (SKU no lote)' },
         { c: [100, 116, 139], t: 'Espera/Fila' },
         { c: [148, 163, 184], t: 'Almoço 12:00–13:00' }
       ];
@@ -2216,8 +2424,8 @@
               absMinuteToTimeLabel(evt.setupStart),
               evt.partName,
               String(qty),
-              String(evt.setupUnit),
-              String(evt.setupTime),
+              fmtStepTime(evt.setupUnit),
+              fmtStepTime(evt.setupTime),
               sector,
               operador,
               'Em Ajuste / Setup',
@@ -2235,8 +2443,8 @@
             absMinuteToTimeLabel(evt.prodStart),
             evt.partName,
             String(qty),
-            String(evt.prodUnit),
-            String(evt.prodTime),
+            fmtStepTime(evt.prodUnit),
+            fmtStepTime(evt.prodTime),
             sector,
             operador,
             'Em Processamento / Produção',

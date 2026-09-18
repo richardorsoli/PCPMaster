@@ -694,7 +694,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         id: (existing && existing.id) ? existing.id : ('p' + Date.now()),
         name,
         machines: (machines || []).map(normalizeMachine),
-        parts: cloneJson(parts, []),
+        parts: (cloneJson(parts, [])).map(p => typeof normalizePart === 'function' ? normalizePart(p) : p),
         employees: (employees || []).map(normalizeEmployee),
         groupingRules: cloneJson(groupingRules, []),
         assemblyRules: (assemblyRules || []).map(normalizeAssemblyRule),
@@ -793,7 +793,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
       const catalog = getBaseCatalogFromDatabase();
       machines = hydrateProjectMachines(proj, catalog.machines);
       employees = hydrateProjectEmployees(proj, getCatalogEmployees());
-      parts = cloneJson(proj.parts || [], []);
+      parts = (cloneJson(proj.parts || [], [])).map(p => typeof normalizePart === 'function' ? normalizePart(p) : p);
       groupingRules = cloneJson(proj.groupingRules || [], []);
       assemblyRules = (proj.assemblyRules || []).map(normalizeAssemblyRule);
       currentBuildingRoute = [];
