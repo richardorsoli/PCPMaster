@@ -171,10 +171,12 @@ window.onload = () => {
   startDateStr = document.getElementById('start-date').value;
   applyStartTimeToState(document.getElementById('start-time') && document.getElementById('start-time').value);
   document.title = APP_NAME + ' v' + APP_VERSION;
-  console.info(APP_NAME + ' v' + APP_VERSION + ' — Sprint 8 Batch 3 (accordion engenharia e data/hora inteligente)');
+  console.info(APP_NAME + ' v' + APP_VERSION + ' — Sprint 10 Batch 2 (TESTER dashboard / widget flutuante)');
   renderConfigUI();
   collapseEngineeringAccordions();
   updatePlayButtonUI();
   updateSpeedButtonsUI();
   if (typeof updateDbStatusIndicator === 'function') updateDbStatusIndicator();
+  if (typeof setTesterSearchMode === 'function') setTesterSearchMode('quick');
+  if (typeof syncAppNav === 'function') syncAppNav('screen-welcome');
 };

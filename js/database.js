@@ -10,8 +10,48 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         machines: [],
         projects: {},
         turnos: defaultShiftRows(),
+        historicoOtimizacao: [],
         metadados: buildDbMetadata()
       };
+    }
+
+    function normalizeOptimizationScenario(sc, rank) {
+      if (!sc || typeof sc !== 'object') return null;
+      const sequence = Array.isArray(sc.sequence)
+        ? sc.sequence.map(n => String(n || '').trim()).filter(Boolean)
+        : [];
+      if (!sequence.length) return null;
+      const scoreNum = Number(sc.score);
+      return {
+        rank: Number(sc.rank) > 0 ? Number(sc.rank) : (rank || 1),
+        score: isNaN(scoreNum) ? 0 : scoreNum,
+        makespan: Number(sc.makespan) || 0,
+        idle: Number(sc.idle) || 0,
+        sequence: sequence,
+        strategy: String(sc.strategy || '')
+      };
+    }
+
+    function normalizeHistoricoOtimizacao(list) {
+      if (!Array.isArray(list)) return [];
+      return list.map((row, i) => {
+        if (!row || typeof row !== 'object') return null;
+        const top3 = (Array.isArray(row.top3) ? row.top3 : [])
+          .map((sc, idx) => normalizeOptimizationScenario(sc, idx + 1))
+          .filter(Boolean)
+          .slice(0, 3);
+        if (!top3.length) return null;
+        return {
+          id: row.id || ('opt_' + i + '_' + Date.now()),
+          sku: String(row.sku || '').trim(),
+          projectName: String(row.projectName || '').trim(),
+          boxesQty: Number(row.boxesQty) > 0 ? Number(row.boxesQty) : 1,
+          startTime: String(row.startTime || ''),
+          iterations: Number(row.iterations) || 0,
+          updatedAt: String(row.updatedAt || ''),
+          top3: top3
+        };
+      }).filter(row => row && (row.sku || row.projectName));
     }
 
     function buildDbMetadata(exportedAt) {
@@ -80,6 +120,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
           ? raw.tb_projetos_pecas
           : {},
         turnos: turnosSrc.map(normalizeShiftRow),
+        historicoOtimizacao: normalizeHistoricoOtimizacao(raw && raw.tb_historico_otimizacao),
         metadados: meta
       };
     }
@@ -91,6 +132,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
       let machinesList = [];
       let projects = {};
       let turnos = defaultShiftRows();
+      let historicoOtimizacao = [];
       let exportedAt = source.exportedAt || source.data_exportacao ||
         (source.metadados && source.metadados.data_exportacao) || '';
 
@@ -101,6 +143,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         machinesList = wrap.machines;
         projects = wrap.projects;
         turnos = wrap.turnos;
+        historicoOtimizacao = wrap.historicoOtimizacao || [];
         exportedAt = (wrap.metadados && wrap.metadados.data_exportacao) || exportedAt;
       } else if (source.projects && typeof source.projects === 'object' && !Array.isArray(source.projects)) {
         projects = source.projects;
@@ -135,13 +178,14 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         tb_funcionarios: employeesList,
         tb_projetos_pecas: projects || {},
         tb_feriados: normalizeHolidayList(holidays),
-        tb_turnos: (turnos && turnos.length ? turnos : defaultShiftRows()).map(normalizeShiftRow)
+        tb_turnos: (turnos && turnos.length ? turnos : defaultShiftRows()).map(normalizeShiftRow),
+        tb_historico_otimizacao: normalizeHistoricoOtimizacao(historicoOtimizacao)
       };
     }
 
     /**
      * Converte o localStorage legado (simulafab_projects_v4 / envelope v1)
-     * para o schema relacional v2.0 de 5 tabelas, sem perda de dados.
+     * para o schema relacional v2.0 (6 tabelas) sem perda de dados.
      */
     function migrateToSchemaV2() {
       const current = readRawStorage(DB_STORAGE_KEY);
@@ -305,7 +349,12 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         tb_funcionarios: (resolved.employees || []).map(normalizeEmployee),
         tb_projetos_pecas: projectMap,
         tb_feriados: normalizeHolidayList(holidaySrc),
-        tb_turnos: turnosSrc.map(normalizeShiftRow)
+        tb_turnos: turnosSrc.map(normalizeShiftRow),
+        tb_historico_otimizacao: normalizeHistoricoOtimizacao(
+          options && Array.isArray(options.historicoOtimizacao)
+            ? options.historicoOtimizacao
+            : wrap.historicoOtimizacao
+        )
       };
     }
 
@@ -431,6 +480,79 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
 
     function getProjectsDatabase() {
       return getDatabaseWrapper().projects || {};
+    }
+
+    function getOptimizationHistory() {
+      const wrap = getDatabaseWrapper();
+      return normalizeHistoricoOtimizacao(wrap.historicoOtimizacao);
+    }
+
+    function persistOptimizationHistory(list) {
+      const wrap = getDatabaseWrapper();
+      setProjectsDatabase(wrap.projects || {}, catalogSnapshotForPersist(), {
+        holidays: wrap.holidays,
+        turnos: wrap.turnos,
+        historicoOtimizacao: normalizeHistoricoOtimizacao(list)
+      });
+    }
+
+    function optimizationHistoryKey(row) {
+      return String((row && row.projectName) || '').trim().toUpperCase() + '\u001f' +
+        String((row && row.sku) || '').trim().toUpperCase();
+    }
+
+    function upsertOptimizationHistory(entry) {
+      const row = normalizeHistoricoOtimizacao([{
+        id: (entry && entry.id) || ('opt_' + Date.now()),
+        sku: entry && entry.sku,
+        projectName: entry && entry.projectName,
+        boxesQty: entry && entry.boxesQty,
+        startTime: entry && entry.startTime,
+        iterations: entry && entry.iterations,
+        updatedAt: (entry && entry.updatedAt) || new Date().toISOString(),
+        top3: entry && entry.top3
+      }])[0];
+      if (!row) return null;
+      const list = getOptimizationHistory();
+      const key = optimizationHistoryKey(row);
+      const idx = list.findIndex(r => optimizationHistoryKey(r) === key);
+      if (idx >= 0) {
+        row.id = list[idx].id || row.id;
+        list[idx] = row;
+      } else {
+        list.push(row);
+      }
+      persistOptimizationHistory(list);
+      return row;
+    }
+
+    function getOptimizationSeedsForProject(projectName, sku) {
+      const keys = [projectName, sku]
+        .map(s => String(s || '').trim().toUpperCase())
+        .filter(Boolean);
+      if (!keys.length) return [];
+      const matches = getOptimizationHistory().filter(row => {
+        const skuU = String(row.sku || '').toUpperCase();
+        const projU = String(row.projectName || '').toUpperCase();
+        return keys.some(k => k === skuU || k === projU);
+      });
+      matches.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+      const seeds = [];
+      const seen = {};
+      matches.forEach(row => {
+        (row.top3 || []).forEach(sc => {
+          if (!sc || !Array.isArray(sc.sequence) || !sc.sequence.length) return;
+          const key = sc.sequence.join('\u001f');
+          if (seen[key]) return;
+          seen[key] = true;
+          seeds.push({
+            sequence: sc.sequence.slice(),
+            score: sc.score,
+            strategy: sc.strategy || 'historico'
+          });
+        });
+      });
+      return seeds.slice(0, 9);
     }
 
     function setProjectsDatabase(projects, catalog, options) {
@@ -753,7 +875,8 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         holidays: wrap.holidays,
         employees: wrap.employees,
         machines: wrap.machines,
-        turnos: wrap.turnos
+        turnos: wrap.turnos,
+        historicoOtimizacao: wrap.historicoOtimizacao || []
       };
     }
 
@@ -771,7 +894,8 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
             holidays: importedHolidays,
             employees: importedEmployees,
             machines: importedMachines,
-            turnos: importedTurnos
+            turnos: importedTurnos,
+            historicoOtimizacao: importedHistorico
           } = normalizeImportedDatabase(parsed);
           const count = Object.keys(projects).length;
           const current = getProjectsDatabase();
@@ -798,7 +922,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
           setProjectsDatabase(projects, {
             employees: importedEmployees || [],
             machines: importedMachines
-          }, { replaceCatalog: true, holidays, turnos: importedTurnos });
+          }, { replaceCatalog: true, holidays, turnos: importedTurnos, historicoOtimizacao: importedHistorico || [] });
           if (currentProjectName && projects[currentProjectName]) {
             applyProjectToState(currentProjectName, projects[currentProjectName]);
           } else {

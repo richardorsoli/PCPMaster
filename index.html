@@ -7,9 +7,18 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=1.6.4-s8b3b">
+  <link rel="stylesheet" href="css/styles.css?v=1.6.4-s10b3">
 </head>
 <body>
+
+  <nav id="app-nav" class="app-nav" hidden>
+    <div class="app-nav-brand">PCPMaster</div>
+    <div class="app-nav-links" role="navigation" aria-label="Navegação principal">
+      <button type="button" class="btn btn-secondary" data-nav="screen-config" onclick="navigateTo('screen-config')">Engenharia</button>
+      <button type="button" class="btn btn-secondary" data-nav="screen-sim" onclick="navigateTo('screen-sim')">Simulação</button>
+      <button type="button" class="btn btn-secondary" data-nav="screen-tester" onclick="openTesterScreen()">Otimizador TESTER</button>
+    </div>
+  </nav>
 
   <!-- TELA 1: INICIAL -->
   <div id="screen-welcome" class="screen active">
@@ -41,7 +50,7 @@
           <input type="file" id="import-db-file" accept=".json,application/json" style="display:none;" onchange="importDatabaseJSON(event)">
         </div>
         <p style="font-size: 0.78rem; color: #64748b; margin-top: 8px;">
-          O backup inclui as 5 tabelas do schema v2.0 (máquinas, funcionários, projetos/peças, feriados e turnos) com metadados de versão. O arquivo é gerado como <code>PCPMaster_DB_Backup_YYYY-MM-DD_HHmm.json</code>.
+          O backup inclui as 6 tabelas do schema v2.0 (máquinas, funcionários, projetos/peças, feriados, turnos e histórico do TESTER) com metadados de versão. O arquivo é gerado como <code>PCPMaster_DB_Backup_YYYY-MM-DD_HHmm.json</code>.
         </p>
         <p class="db-status-text" style="font-size: 0.78rem; color: #38bdf8; margin-top: 8px;">Banco ativo: v2.0</p>
       </div>
@@ -58,6 +67,7 @@
           <input type="text" id="project-name-input" placeholder="Ex: Caixa Completa _35cx" autocomplete="off">
         </div>
         <button class="btn btn-success" onclick="saveProjectPrompt()">💾 Salvar Projeto</button>
+        <button type="button" class="btn btn-secondary" id="btn-send-to-tester" onclick="sendProjectToTester()">Enviar para o TESTER</button>
         <button class="btn btn-secondary" onclick="navigateTo('screen-welcome')">Voltar</button>
       </div>
     </div>
@@ -356,7 +366,7 @@
       <option value="14:00"></option>
       <option value="15:00"></option>
     </datalist>
-    <button class="btn" style="padding: 14px 40px; font-size: 1.15rem; width:100%;" onclick="startSimulation()">🚀 Gerar e Rodar Simulação</button>
+    <button class="btn btn-lg" style="width:100%;" onclick="startSimulation()">🚀 Gerar e Rodar Simulação</button>
   </div>
 
   <!-- TELA 3: SIMULAÇÃO -->
@@ -365,7 +375,10 @@
       <div>
         <div class="sim-header-row">
           <div id="sim-project-title" style="color:#f8fafc; font-size:1.15rem; font-weight:700;">PCPMaster v1.6.4 - Controle de Chão de Fábrica</div>
-          <button type="button" class="btn btn-secondary" id="btn-new-project-sim" onclick="startNewProject(true)">Novo Projeto</button>
+          <div class="sim-header-actions">
+            <button type="button" class="btn btn-secondary" onclick="openTesterScreen()">Otimizador TESTER</button>
+            <button type="button" class="btn btn-secondary" id="btn-new-project-sim" onclick="startNewProject(true)">Novo Projeto</button>
+          </div>
         </div>
         <div class="sim-controls">
           <div class="form-group">
@@ -519,6 +532,95 @@
     </div>
   </div>
 
+  <!-- TELA 4: TESTER -->
+  <div id="screen-tester" class="screen">
+    <div class="config-topbar">
+      <div>
+        <h1 style="color:#38bdf8;">Otimizador TESTER</h1>
+        <p id="tester-sku-banner" class="tester-sku-banner">SKU ativo: —</p>
+      </div>
+      <div class="config-save-row">
+        <button type="button" class="btn btn-secondary" onclick="navigateTo('screen-config')">Engenharia</button>
+        <button type="button" class="btn btn-secondary" onclick="navigateTo('screen-sim')">Simulação</button>
+      </div>
+    </div>
+
+    <div id="tester-apply-banner" class="tester-apply-banner" hidden></div>
+
+    <div class="card tester-config-card">
+      <h2>Painel de Configuração</h2>
+      <p class="tester-hint">
+        O TESTER busca a ordem de disparo das peças primárias em um Web Worker (sem travar a interface).
+        Score = Makespan + (ociosidade × 0,5). Gantt, Analytics e PDF só mudam depois de aplicar um cenário.
+      </p>
+      <p id="tester-seed-hint" class="tester-seed-hint">Smart Seed: o histórico do SKU (se existir) entra como ponto de partida.</p>
+      <div class="tester-mode-row">
+        <span class="tester-mode-label">Tipo de busca</span>
+        <div class="gantt-mode-btns tester-mode-btns" role="group" aria-label="Tipo de busca do TESTER">
+          <button type="button" class="btn btn-speed is-active" id="tester-mode-quick" onclick="setTesterSearchMode('quick')">Busca Rápida (20)</button>
+          <button type="button" class="btn btn-speed" id="tester-mode-deep" onclick="setTesterSearchMode('deep')">Busca Profunda (200+)</button>
+        </div>
+        <input type="hidden" id="tester-max-iters" value="20">
+        <input type="hidden" id="tester-search-mode" value="quick">
+      </div>
+      <button type="button" class="btn btn-success btn-tester-start-lg" id="btn-tester-start" onclick="startTesterOptimization()">Iniciar Otimização</button>
+      <div class="tester-controls tester-controls-run">
+        <button type="button" class="btn btn-secondary js-tester-pause" id="btn-tester-pause" onclick="pauseTesterOptimization()" disabled>Pausar</button>
+        <button type="button" class="btn btn-secondary js-tester-resume" id="btn-tester-resume" onclick="resumeTesterOptimization()" disabled>Retomar</button>
+        <button type="button" class="btn btn-danger btn-danger-lg js-tester-cancel" id="btn-tester-cancel" onclick="cancelTesterOptimization()" disabled>Cancelar</button>
+      </div>
+      <div class="tester-progress-meta">
+        <span id="tester-progress-label">Aguardando início</span>
+        <span id="tester-eta-label"></span>
+      </div>
+      <div class="tester-progress-bar" aria-hidden="true"><div id="tester-progress-fill"></div></div>
+      <p id="tester-best-score">Melhor score encontrado: —</p>
+    </div>
+
+    <div class="card tester-results-card">
+      <h2>Dashboard de Resultados</h2>
+      <div class="tester-compare" id="tester-compare">
+        <article class="tester-compare-card" id="tester-card-current">
+          <h3>Cenário Atual</h3>
+          <p class="tester-empty">Aguardando avaliação da ordem cadastrada.</p>
+        </article>
+        <article class="tester-compare-card is-best" id="tester-card-top1">
+          <h3>Top 1 Cenário Otimizado</h3>
+          <p class="tester-empty">Inicie a otimização para ver o melhor cenário.</p>
+        </article>
+      </div>
+      <h3 class="tester-top3-title">Top 3 cenários</h3>
+      <div id="tester-top3"><p class="tester-empty">Nenhum cenário ranqueado ainda.</p></div>
+    </div>
+  </div>
+
+  <aside id="tester-fab" class="tester-fab" hidden>
+    <header class="tester-fab-header">
+      <strong>TESTER</strong>
+      <span id="tester-fab-percent">0%</span>
+    </header>
+    <div class="tester-progress-bar tester-fab-bar" aria-hidden="true"><div id="tester-fab-fill"></div></div>
+    <p id="tester-fab-iter" class="tester-fab-line">0/0</p>
+    <p id="tester-fab-eta" class="tester-fab-line">ETA —</p>
+    <p id="tester-fab-score" class="tester-fab-line">Melhor score: —</p>
+    <div class="tester-fab-actions">
+      <button type="button" class="btn btn-secondary js-tester-pause" id="btn-tester-fab-pause" onclick="pauseTesterOptimization()" disabled>Pausar</button>
+      <button type="button" class="btn btn-secondary js-tester-resume" id="btn-tester-fab-resume" onclick="resumeTesterOptimization()" disabled>Retomar</button>
+      <button type="button" class="btn btn-success" id="btn-tester-fab-open" onclick="openTesterScreen()">Abrir TESTER</button>
+    </div>
+  </aside>
+
+  <div id="tester-apply-modal" class="modal-overlay" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="tester-apply-title">
+      <h3 id="tester-apply-title">Aplicar sequência otimizada</h3>
+      <p id="tester-apply-message">A ordem das peças primárias no cadastro será reordenada. Confirma?</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-success" onclick="confirmApplyTesterSequence()">Aplicar Sequência Otimizada no Projeto</button>
+        <button type="button" class="btn btn-secondary" onclick="closeTesterApplyModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="overwrite-project-modal" class="modal-overlay" hidden>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="overwrite-project-title">
       <h3 id="overwrite-project-title">Projeto já existe</h3>
@@ -530,10 +632,12 @@
     </div>
   </div>
 
-  <script src="js/simulation.js?v=1.6.4-s8b3b"></script>
-  <script src="js/database.js?v=1.6.4-s8b3b"></script>
-  <script src="js/ui.js?v=1.6.4-s8b3b"></script>
-  <script src="js/app.js?v=1.6.4-s8b3b"></script>
+  <script src="js/simulation.js?v=1.6.4-s10b2"></script>
+  <script src="js/database.js?v=1.6.4-s10b2"></script>
+  <script src="js/ui.js?v=1.6.4-s10b2"></script>
+  <script src="js/tester-worker.js?v=1.6.4-s10b2"></script>
+  <script src="js/tester.js?v=1.6.4-s10b2"></script>
+  <script src="js/app.js?v=1.6.4-s10b2"></script>
   <footer class="app-footer">
     <span class="db-status-text">Banco ativo: v2.0</span>
     <span>PCPMaster v1.6.4</span>

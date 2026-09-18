@@ -297,7 +297,106 @@ Estamos iniciando a **Sprint 8 - BATCH 3** para finalizar os ajustes visuais e d
 - Mantenha 100% preservados os comportamentos do Schema v2.0, modais de duplicidade, motor de simulação, Gantt, Drag-and-Drop e exportação do PDF.
 
 SPRINT 10 - TESTER
- - Um testador de trajetos de qual é a melhor ordem de start de peças para gerar menos tempo ocioso, porque eu penso em achar a melhor disposição de peças de cada projeto para depois colocar dois ou mais projetos para testar o andamento e comportamento na linha de produção (sprint 10).
+Estamos iniciando a **Sprint 10 - BATCH 1** do **PCPMaster v1.6.4**. 
+O objetivo deste lote é construir a Engine do Módulo TESTER: um otimizador de sequenciamento de peças que roda em segundo plano (via Web Worker), permitindo encontrar a ordem de disparo que minimize o Makespan e a ociosidade sem travar a interface do usuário.
+
+---
+
+### OBJETIVOS DO BATCH 1 (Engine Headless & Algoritmo de Busca):
+
+1. **Simulador Headless em Web Worker (`js/tester-worker.js`):**
+   - Crie um arquivo isolado `js/tester-worker.js` que receba o objeto do projeto/BOM e execute o cálculo da simulação puramente em memória (sem dependências de DOM/UI).
+   - O worker deve suportar controle de execução assíncrona:
+     - `START`: Inicia o loop de testes das permutações.
+     - `PAUSE`: Congela a iteração atual mantendo o estado na memória.
+     - `RESUME`: Continua o teste a partir do último vetor testado.
+     - `CANCEL`: Interrompe a execução e retorna o melhor resultado obtido até o momento.
+
+2. **Algoritmo de Otimização Combinatória (Heurística + Permutação):**
+   - O worker deve testar variações de sequências de disparo das peças primárias.
+   - **Métricas do Cálculo (Função Objetivo):**
+     - $Score = \text{Makespan Total (min)} + (\text{Tempo Total Ocioso das Máquinas} \times 0.5)$
+   - O algoritmo deve testar estratégias mistas:
+     - **Regras Heurísticas Iniciais:** Maior Tempo de Processamento Primeiro (LPT), Menor Tempo Primeiro (SPT) e Maior Gargalo Primeiro.
+     - **Busca Stocástica/Genética:** Swaps aleatórios (trocas de posição entre peças) a partir das melhores sequências encontradas.
+   - Guarde sempre o **Top 3 Melhores Cenários** encontrados.
+
+3. **Comunicação e Estado da Mensageria (Worker <-> Main Thread):**
+   - A cada lote de permutações testadas, o worker deve enviar mensagens de progresso via `postMessage`:
+     - `% Concluído`
+     - `Iteração Atual / Total` (ex: 45/100)
+     - `Tempo Restante Estimado (ETA em segundos)`
+     - `Melhor Score Encontrado até o momento`
+
+4. **Persistência de Aprendizado (`tb_historico_otimizacao`):**
+   - Crie uma nova coleção no Schema v2.0 do `localStorage`: `tb_historico_otimizacao`.
+   - Ao concluir um teste com sucesso, salve o resultado do Top 3 vinculando ao SKU do projeto.
+   - **Smart Seed:** Se o TESTER for iniciado para um projeto que já possui histórico, o worker deve carregar os melhores resultados antigos como ponto de partida inicial para acelerar a busca.
+
+---
+
+### REQUISITOS TÉCNICOS:
+- O processamento DEVE rodar obrigatoriamente dentro de um `Worker` para garantir $0\%$ de travamento da thread principal (main UI).
+- Mantenha $100\%$ intactos os motores originais de simulação, Gantt, Analytics e exportação em PDF.
+
+Estamos iniciando a **Sprint 8 / Sprint 10 - BATCH 2** da aplicação **PCPMaster v1.6.4**.
+O objetivo deste lote é construir a interface visual completa e a experiência de usuário (UX) para o módulo TESTER.
+
+---
+
+### OBJETIVOS DO BATCH 2 (Interface do Otimizador & Controles Flutuantes):
+
+1. **Atalhos e Acesso ao TESTER:**
+   - **Header Principal:** Adicione o botão **`[Otimizador TESTER]`** na barra de navegação superior, ao lado dos botões de Engenharia e Simulação.
+   - **Área de Engenharia:** Adicione um botão secundário **`[Enviar para o TESTER]`** ao lado do botão "Salvar Projeto", que abre a interface do TESTER com o SKU ativo selecionado.
+
+2. **Dashboard do Módulo TESTER (Aba / Modal Dedicada):**
+   - **Painel de Configuração:**
+     - Seletor do tipo de busca: *Busca Rápida* (20 combinações - regras heurísticas) vs. *Busca Profunda* (200+ permutações genéticas).
+     - Botão grande de **`[Iniciar Otimização]`**.
+   - **Dashboard de Resultados (Top 3 Cenários):**
+     - Exibição comparativa clara entre o **Cenário Atual** vs. **Top 1 Cenário Otimizado**.
+     - Destaque para o ganho percentual (ex: `Ganha de Tempo: -18% no Makespan`).
+     - Lista da sequência recomendada de disparo das peças com tags visuais.
+     - Botão **`[Aplicar Sequência Otimizada no Projeto]`** que reordena as peças primárias no cadastro com confirmação visual.
+
+3. **Painel Flutuante em Background (Floating Toast / Widget):**
+   - Se o TESTER estiver a rodar e o utilizador mudar de aba (ex: for para a Engenharia ou Simulação):
+     - Um **Widget Flutuante** no canto inferior direito da tela deve permanecer visível.
+     - O widget deve exibir: % da barra de progresso viva, iteração (ex: `45/200`), ETA em segundos e o melhor score encontrado até ao momento.
+     - Botões embutidos no widget: `[Pausar]`, `[Retomar]` e `[Abrir TESTER]`.
+
+---
+
+### REQUISITOS TÉCNICOS:
+- Conecte a UI flutuante diretamente aos eventos emitidos pelo `js/tester-worker.js` e `js/tester.js`.
+- Mantenha 100% funcionais o gráfico de Gantt, os relatórios Analytics, a exportação de PDF e o Schema v2.0.
+
+**CORREÇÃO E PADRONIZAÇÃO VISUAL DOS BOTÕES (UI/CSS Refinement):**
+
+Os botões da aplicação perderam a estilização do design system e estão aparecendo como retângulos brutos e desalinhados. Aplique uma refatoração no `css/styles.css` para padronizar TODOS os botões da aplicação.
+
+1. **Estilo Base Global (`button`, `.btn`):**
+   - **Padding:** `8px 16px` (espaçamento interno confortável).
+   - **Border-radius:** `6px` ou `8px` (cantos suavemente arredondados).
+   - **Borda:** `none` ou `1px solid transparent`.
+   - **Fonte:** `font-weight: 600`, `font-size: 0.9rem`, alinhamento centralizado com `display: inline-flex; align-items: center; gap: 6px;`.
+   - **Cursor:** `pointer`.
+   - **Transição:** `all 0.2s ease-in-out` para efeitos suaves ao passar o mouse.
+
+2. **Classes de Botões por Ação:**
+   - **Verde / Sucesso (`.btn-success`, Carregar, Salvar, Exportar):**
+     - Background: `#10b981` (ou `#059669`). Hover: `#047857` com leve sombra.
+   - **Vermelho / Perigo (`.btn-danger`, Excluir):**
+     - Background: `#ef4444` (ou `#dc2626`). Hover: `#b91c1c`.
+   - **Azul / Primário (`.btn-primary`, Navegação Ativa, Eng, TESTER):**
+     - Background: `#0284c7` (ou `#0ea5e9`). Hover: `#0369a1`.
+   - **Neutro / Secundário (`.btn-secondary`, Restaurar, Voltar, Links):**
+     - Background: `#334155` ou `#1e293b`. Borda: `1px solid #475569`. Texto: `#f8fafc`. Hover: `#475569`.
+
+3. **Ajuste de Alinhamento e Espaçamento:**
+   - Garanta que botões agrupados em formulários (ex: "Carregar" e "Excluir", ou "Salvar Projeto" e "Enviar para TESTER") tenham `gap: 10px` e mesma altura (`height: 38px` ou `40px`).
+   - Garanta que o fundo transparente/escuro do tema não corte os cantos arredondados.
 
 SPRINT 11 - PLANO DE PRODUCAO
 1. UM MÓDULO QUE A PARTIR DOS PROJETOS JÁ CRIADOS PODEMOS ESCOLHER A DATA E HORA DE INÍCIO E A ORDEM E QUANTIDADE DOS PROJETOS QUE VÃO SER EXECUTADOS NA ORDEM PARA VERIFICAR O COMPORTAMENTO DAS MOVIMENTAÇÕES DE PEÇAS E FUNCIONÁRIOS NAS MÁQUINAS E DAR UMA PREVISÃO DE SAÍDA, tem casos que eu quero ver se entrar um projeto DAE JUNDIAI agora na linha de produção, com a caixa comando já iniciada, como será o andamento e a quando será a finalização dos produtos

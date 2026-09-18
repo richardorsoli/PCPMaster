@@ -195,6 +195,7 @@
       }
       const analyticsName = document.getElementById('analytics-project-name');
       if (analyticsName) analyticsName.textContent = name || 'Projeto sem nome';
+      if (typeof refreshTesterSkuBanner === 'function') refreshTesterSkuBanner();
     }
 
     function updateCurrentProjectLabel() {
@@ -2096,10 +2097,17 @@
 
 function navigateTo(screenId) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(screenId).classList.add('active');
+  const target = document.getElementById(screenId);
+  if (target) target.classList.add('active');
   if (screenId !== 'screen-sim') {
     clearInterval(timerInterval);
     isPlaying = false;
     updatePlayButtonUI();
   }
+  if (typeof syncAppNav === 'function') syncAppNav(screenId);
+  if (screenId === 'screen-tester') {
+    if (typeof refreshTesterSkuBanner === 'function') refreshTesterSkuBanner();
+    if (typeof setTesterSearchMode === 'function') setTesterSearchMode(typeof testerSearchMode === 'string' ? testerSearchMode : 'quick');
+  }
+  if (typeof syncTesterFloatingWidget === 'function') syncTesterFloatingWidget();
 }
