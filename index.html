@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PCPMaster v1.8.0</title>
+  <title>PCPMaster v1.9.3</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=1.8.0-s12j">
+  <link rel="stylesheet" href="css/styles.css?v=1.9.3-jornada-pdf">
 </head>
 <body>
 
@@ -31,7 +31,7 @@
   <!-- TELA 1: INICIAL -->
   <div id="screen-welcome" class="screen active">
     <div style="background: #1e293b; padding: 40px; border-radius: 12px; border: 1px solid #334155; text-align: center; max-width: 780px; margin: 40px auto;">
-      <h1 style="color: #38bdf8; font-size: 2.3rem; margin-bottom: 15px;">PCPMaster v1.8.0</h1>
+      <h1 style="color: #38bdf8; font-size: 2.3rem; margin-bottom: 15px;">PCPMaster v1.9.3</h1>
       <p style="color: #94a3b8; font-size: 1.05rem; line-height: 1.6; margin-bottom: 30px;">
         Simulação multi-dia com Gantt, plano de produção multiprojeto, relatórios PDF, indicadores de eficiência, hora de início flexível, recálculo por caixas e manutenção preventiva.
       </p>
@@ -457,7 +457,7 @@
     <div class="dashboard">
       <div>
         <div class="sim-header-row">
-          <div id="sim-project-title" style="color:#f8fafc; font-size:1.15rem; font-weight:700;">PCPMaster v1.8.0 - Controle de Chão de Fábrica</div>
+          <div id="sim-project-title" style="color:#f8fafc; font-size:1.15rem; font-weight:700;">PCPMaster v1.9.3 - Controle de Chão de Fábrica</div>
           <div class="sim-header-actions">
             <button type="button" class="btn btn-secondary" onclick="openTesterScreen()">Otimizador TESTER</button>
             <button type="button" class="btn btn-secondary" id="btn-new-project-sim" onclick="startNewProject(true)">Novo Projeto</button>
@@ -579,6 +579,44 @@
         <div class="gantt-empty">Gere a simulação para montar o Gantt.</div>
       </div>
     </div>
+
+    <div class="chart-card gantt-card part-journey-card pdf-keep-together">
+      <div class="gantt-header-row">
+        <h2 id="part-journey-title" style="color: #38bdf8; font-size: 1.2rem; margin: 0;">Gráfico de Jornada das Peças / Subconjuntos</h2>
+      </div>
+      <p class="gantt-subtitle" id="part-journey-range-label">Gere a simulação para ver a jornada de cada peça no turno.</p>
+      <div class="legend gantt-legend" id="part-journey-legend">
+        <div class="legend-item part-journey-legend-item" data-kind="fila"><div class="color-box" style="background:#7f8c8d;"></div> Fila</div>
+        <div class="legend-item part-journey-legend-item" data-kind="setup"><div class="color-box" style="background:#e67e22;"></div> Setup</div>
+        <div class="legend-item part-journey-legend-item" data-kind="prod"><div class="color-box" style="background:#2ecc71;"></div> Produção</div>
+        <div class="legend-item part-journey-legend-item" data-kind="union"><div class="color-box" style="background:#f1c40f;"></div> Aguardando União</div>
+        <div class="legend-item part-journey-legend-item" data-kind="transport"><div class="color-box" style="background:#3498db;"></div> Transporte</div>
+        <div class="legend-item"><div class="color-box" style="background:rgba(148,163,184,0.45); border:1px dashed #cbd5e1;"></div> Almoço 12:00–13:00</div>
+      </div>
+      <div id="part-journey-chart" class="gantt-chart part-journey-chart">
+        <div class="gantt-empty">Gere a simulação para ver a jornada das peças.</div>
+      </div>
+      <div class="part-journey-kpis" id="part-journey-kpis">
+        <h3>Lead Time e Agregação de Valor</h3>
+        <p class="gantt-subtitle">Eficiência do Ciclo = (Tempo de Produção / Lead Time Total) × 100</p>
+        <div class="operator-hours-wrap" style="margin-top:8px;">
+          <table class="floor-table operator-hours-table part-journey-kpi-table">
+            <thead>
+              <tr>
+                <th>Peça / Subconjunto</th>
+                <th>Lead Time Total</th>
+                <th>Tempo de Produção</th>
+                <th>Eficiência do Ciclo</th>
+              </tr>
+            </thead>
+            <tbody id="part-journey-kpi-body">
+              <tr><td colspan="4" style="color:#64748b;">Gere a simulação para ver o lead time por peça.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div id="part-journey-tooltip" class="part-journey-tooltip" hidden role="tooltip"></div>
 
     <div class="chart-card">
       <h2 style="color: #38bdf8; font-size: 1.2rem; margin-bottom: 6px;">Análise de Eficiência dos Postos de Trabalho</h2>
@@ -879,16 +917,16 @@
     </div>
   </div>
 
-  <script src="js/simulation.js?v=1.8.0-s12i"></script>
-  <script src="js/database.js?v=1.8.0-s12j"></script>
-  <script src="js/ui.js?v=1.8.0-s12j"></script>
-  <script src="js/tester-worker.js?v=1.8.0-s12h"></script>
-  <script src="js/tester.js?v=1.8.0-s12h"></script>
-  <script src="js/plan.js?v=1.8.0-s12f"></script>
-  <script src="js/app.js?v=1.8.0-s12h"></script>
+  <script src="js/simulation.js?v=1.9.3-jornada-pdf"></script>
+  <script src="js/database.js?v=1.9.3-jornada"></script>
+  <script src="js/ui.js?v=1.9.3-jornada-pdf"></script>
+  <script src="js/tester-worker.js?v=1.9.3-jornada"></script>
+  <script src="js/tester.js?v=1.9.3-jornada"></script>
+  <script src="js/plan.js?v=1.9.3-jornada"></script>
+  <script src="js/app.js?v=1.9.3-jornada"></script>
   <footer class="app-footer">
     <span class="db-status-text">Banco ativo: v2.0</span>
-    <span>PCPMaster v1.8.0</span>
+    <span>PCPMaster v1.9.3</span>
   </footer>
 </body>
 </html>

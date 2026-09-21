@@ -1,4 +1,4 @@
-/* PCPMaster v1.8.0 — Inicialização, playback e integração dos módulos */
+/* PCPMaster v1.9.3 — Inicialização, playback e integração dos módulos */
 
     function syncSimHeaderFields() {
       const simBoxes = document.getElementById('sim-boxes-qty');
@@ -235,7 +235,7 @@ window.onload = () => {
   startDateStr = document.getElementById('start-date').value;
   applyStartTimeToState(document.getElementById('start-time') && document.getElementById('start-time').value);
   document.title = APP_NAME + ' v' + APP_VERSION;
-  console.info(APP_NAME + ' v' + APP_VERSION + ' — Sprint 11 Batch 1 (Plano de Produção Multiprojeto)');
+  console.info(APP_NAME + ' v' + APP_VERSION + ' — Jornada das Peças / Subconjuntos');
   renderConfigUI();
   collapseEngineeringAccordions();
   updatePlayButtonUI();

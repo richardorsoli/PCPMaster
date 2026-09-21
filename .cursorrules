@@ -1,6 +1,6 @@
-# PCPMaster v1.8.0 — Regras do Projeto
+# PCPMaster v1.9.3 — Regras do Projeto
 
-App web de simulação PPCP / chão de fábrica (HTML + JS vanilla + CSS). UI em português (pt-BR). Tema escuro industrial. Entry point: `index.html`. Marca: **PCPMaster** (`APP_NAME`), versão **v1.8.0**.
+App web de simulação PPCP / chão de fábrica (HTML + JS vanilla + CSS). UI em português (pt-BR). Tema escuro industrial. Entry point: `index.html`. Marca: **PCPMaster** (`APP_NAME`), versão **v1.9.3**.
 
 ## Arquitetura modular
 
@@ -28,7 +28,7 @@ Scripts clássicos no escopo global (não ES modules), para `onclick` e abertura
 
 | Arquivo | Contém | Não colocar aqui |
 |---------|--------|------------------|
-| `simulation.js` | Constantes de turno, estado, `calculateSimulationHistory`, calendário multi-dia, manutenção preventiva, helpers de data/tempo/velocidade, `computeEfficiencyAnalytics`, `buildGanttRows` | Persistência, PDF, markup |
+| `simulation.js` | Constantes de turno, estado, `calculateSimulationHistory`, calendário multi-dia, manutenção preventiva, helpers de data/tempo/velocidade, `computeEfficiencyAnalytics`, `buildGanttRows`, `buildPartJourneyRows` | Persistência, PDF, markup |
 | `database.js` | `DB_STORAGE_KEY` (`pcpmaster_db_v2`), `migrateToSchemaV2`, backup/restauração, tabelas v2.0 (incl. `tb_planos_producao`) | Motor de simulação, render de tela |
 | `ui.js` | CRUD (funcionários, máquinas, peças, regras), `renderConfigUI`, chão, charts, `generatePDFReport` | Persistência bruta, loop de playback |
 | `plan.js` | Fila mix, merge de SKUs, `tb_planos_producao` UI, simulação/PDF do plano | Playback, schema bruto |
@@ -88,10 +88,10 @@ Rodapé global: `Banco ativo: v2.0 — Atualizado em DD/MM/YYYY HH:mm`.
 - Tabela de horas por operador: Produção, Setup, Inativo/Aguardando, Total trabalhado (produção + setup); posto principal = máquina com maior ocupação.
 
 ### PDF (landscape, jsPDF 2.5.1 + autotable 3.5.28)
-Cabeçalho parametrizado em todas as páginas: **Projeto / SKU Final**, **Qtd. Caixas**, **Data de emissão**, **Hora inicial**, **Versão v1.8.0**.  
-Arquivo: `Relatorio_PCPMaster_[NomeDoProjeto]_[QtdCaixas]cx_v1.8.0.pdf`.  
-Plano mix: `Relatorio_Plano_PCPMaster_[NomeDoPlano]_v1.8.0.pdf` (KPIs do mix, datas de conclusão por SKU, Gantt Unificado colorido por projeto).  
-Conteúdo: KPIs (Makespan, Eficiência, Gargalo), horas por operador, BOM/JOIN, Gantt por dia (e lote contínuo se multi-dia; no plano sempre o Gantt Unificado), cronoanálise.  
+Cabeçalho parametrizado em todas as páginas: **Projeto / SKU Final**, **Qtd. Caixas**, **Data de emissão**, **Hora inicial**, **Versão v1.9.3**.  
+Arquivo: `Relatorio_PCPMaster_[NomeDoProjeto]_[QtdCaixas]cx_v1.9.3.pdf`.  
+Plano mix: `Relatorio_Plano_PCPMaster_[NomeDoPlano]_v1.9.3.pdf` (KPIs do mix, datas de conclusão por SKU, Gantt Unificado colorido por projeto).  
+Conteúdo: KPIs (Makespan, Eficiência, Gargalo), horas por operador, BOM/JOIN, **Jornada e Eficiência das Peças** (lead time, fila, JOIN, eficiência do ciclo com badge ≥50% verde / <50% laranja, gargalos de espera), Gantt por dia (e lote contínuo se multi-dia; no plano sempre o Gantt Unificado), cronoanálise.  
 Tabelas usam `rowPageBreak: 'avoid'`. Colunas da cronoanálise em branco para preenchimento manual / premiação.
 
 ### Gantt (v1.6.4 / v1.8.0 mix)
@@ -99,6 +99,14 @@ Tabelas usam `rowPageBreak: 'avoid'`. Colunas da cronoanálise em branco para pr
 - Prioridade de cor na máquina: **Produção > Setup > Manutenção > Espera/Fila** (`resolveGanttMachineBlocks`). Peças na fila não pintam de cinza um intervalo em que a máquina já produz/setup. Tela e PDF usam a mesma ocupação.
 - Plano mix: **Gantt Unificado** com cor distinta por SKU (produção na cor do projeto, setup mais claro); espera cinza e manutenção roxa permanecem; legenda `[Cor] → SKU`. Blocos adjacentes de SKUs diferentes não se fundem.
 - PDF: um Gantt por dia útil do lote; se multi-dia, Gantt contínuo adicional; no plano sempre imprime o Gantt Unificado.
+
+### Jornada das Peças (v1.9.3)
+- Painel **Gráfico de Jornada das Peças / Subconjuntos** na Simulação, abaixo do Gantt de máquinas (`buildPartJourneyRows`).
+- Uma linha por peça/SKU; mesmo eixo de tempo do Gantt (por dia / lote contínuo).
+- Estados: Fila `#7f8c8d`, Setup `#e67e22`, Produção `#2ecc71`, Aguardando União `#f1c40f`, Transporte `#3498db`.
+- Tooltip no segmento: nome, estado (ex. Em Produção no CORTE LASER), início/fim e duração em minutos.
+- KPIs por peça: **Lead Time Total** e **Eficiência do Ciclo** = `(Tempo de Produção / Lead Time Total) * 100`.
+- PDF: seção **Jornada e Eficiência das Peças / Subconjuntos** com tabela de KPIs (fila cinza, JOIN amarelo, eficiência ≥50% verde / <50% laranja) e detalhamento de gargalo (espera > produção).
 
 ### Playback
 - Play/Pause (verde ativo / verde opaco pausado); Stop → Dia 1, 07:30:00.
@@ -197,4 +205,4 @@ Import aceita envelope legado (`app: SimulaFab`, `projects`/`holidays`/`employee
 
 ## Versão
 
-Documento alinhado à **PCPMaster v1.8.0** (Sprint 12: Estufa por batelada 3D e ciclo GLP 60 min). Schema relacional v2.0. Motor monoproduto, TESTER e Engenharia permanecem independentes; a Estufa é recurso compartilhado no Plano mix.
+Documento alinhado à **PCPMaster v1.9.3** (Jornada das Peças na Simulação). Schema relacional v2.0. Motor monoproduto, TESTER e Engenharia permanecem independentes; a Estufa é recurso compartilhado no Plano mix.

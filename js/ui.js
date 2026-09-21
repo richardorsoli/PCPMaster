@@ -1,4 +1,4 @@
-/* PCPMaster v1.8.0 — Manipulação de DOM, timeline, relógio, tabelas, Gantt, analytics e PDF */
+/* PCPMaster v1.9.3 — Manipulação de DOM, timeline, relógio, tabelas, Gantt, jornada das peças, analytics e PDF */
 
     function readFlexibleNumber(id, fallback) {
       const el = document.getElementById(id);
@@ -18,6 +18,34 @@
 
     function fmtStepTime(mins) {
       return typeof formatDurationMinutes === 'function' ? formatDurationMinutes(mins) : (mins + 'm');
+    }
+
+    let appToastTimer = null;
+
+    function showAppToast(message) {
+      const text = String(message || '').trim();
+      if (!text) return;
+      let host = document.getElementById('app-toast-host');
+      if (!host) {
+        host = document.createElement('div');
+        host.id = 'app-toast-host';
+        host.className = 'app-toast-host';
+        host.setAttribute('aria-live', 'polite');
+        host.setAttribute('role', 'status');
+        document.body.appendChild(host);
+      }
+      host.innerHTML = '';
+      const toast = document.createElement('div');
+      toast.className = 'app-toast';
+      toast.textContent = text;
+      host.appendChild(toast);
+      if (appToastTimer) clearTimeout(appToastTimer);
+      appToastTimer = setTimeout(() => {
+        toast.classList.add('is-leaving');
+        setTimeout(() => {
+          if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 200);
+      }, 4200);
     }
 
     function showEstufaValidationModal(message) {
@@ -154,6 +182,7 @@
       if (charts) charts.innerHTML = '';
       resetAnalyticsView();
       resetGanttView();
+      resetPartJourneyView();
       const dayWrap = document.getElementById('day-select-wrap');
       if (dayWrap) dayWrap.style.display = 'none';
       const startAbs = getSimulationStartAbsMin();
@@ -1077,6 +1106,11 @@
       const setup = readTimeMinutes('step-setup-time', 0);
       const prodUnit = readTimeMinutes('step-prod-time', 1);
       if (!mId) return;
+      const last = currentBuildingRoute[currentBuildingRoute.length - 1];
+      if (last && last.machineId === mId) {
+        showAppToast('⚠️ Esta máquina já é a última etapa do roteiro. Por favor, edite o card existente e some os tempos de setup/produção.');
+        return;
+      }
       currentBuildingRoute.push({ machineId: mId, setup, prodUnit });
       renderCurrentBuildingRoute();
     }
@@ -1679,6 +1713,7 @@
       }
 
       if (typeof updateGanttPlaybackCursor === 'function') updateGanttPlaybackCursor();
+      if (typeof updatePartJourneyPlaybackCursor === 'function') updatePartJourneyPlaybackCursor();
     }
 
     function updatePlayButtonUI() {
@@ -1723,6 +1758,8 @@
       if (ef) ef.textContent = plan ? 'Índice de Eficiência Global do Plano (OEE Mix)' : 'Índice de Eficiência Global';
       if (bn) bn.textContent = plan ? 'Gargalo Crítico do Plano' : 'Gargalo Identificado';
       if (ganttTitle) ganttTitle.textContent = plan ? 'Gráfico de Gantt Unificado do Plano' : 'Gráfico de Gantt do Projeto';
+      const journeyTitle = document.getElementById('part-journey-title');
+      if (journeyTitle) journeyTitle.textContent = plan ? 'Gráfico de Jornada das Peças / Subconjuntos do Plano' : 'Gráfico de Jornada das Peças / Subconjuntos';
       if (pdfBtn) pdfBtn.textContent = plan ? '📄 Exportar Relatório do Plano (PDF)' : '📄 Gerar Relatório PDF';
     }
 
@@ -2036,6 +2073,7 @@
       applyAnalyticsKpiTitles(typeof isPlanSimulationMode === 'function' && isPlanSimulationMode());
       renderGanttSkuLegend([]);
       updateGanttModeButtons();
+      resetPartJourneyView();
     }
 
     function updateGanttPlaybackCursor() {
@@ -2044,7 +2082,7 @@
         renderGanttChart();
         return;
       }
-      const lines = document.querySelectorAll('#gantt-chart .gantt-now');
+      const lines = document.querySelectorAll('#gantt-chart .gantt-now, #part-journey-chart .gantt-now');
       if (!lines.length) return;
       const pct = pctInRange(getCurrentAbsMinute(), lastGanttRange);
       lines.forEach(line => {
@@ -2153,10 +2191,291 @@
 
       if (!rows.length) {
         host.innerHTML = '<div class="gantt-empty">Nenhuma máquina ativa neste lote.</div>';
+        renderPartJourneyChart(range);
         return;
       }
 
       host.innerHTML = `<div class="gantt-axis${range.mode === 'lot' ? ' is-lot' : ''}">${axisMarksHtml}${axisHtml}</div>${rowsHtml}`;
+      renderPartJourneyChart(range);
+    }
+
+    function partJourneyKindClass(kind) {
+      if (kind === 'fila') return 'part-journey-block-fila';
+      if (kind === 'setup') return 'part-journey-block-setup';
+      if (kind === 'prod') return 'part-journey-block-prod';
+      if (kind === 'union') return 'part-journey-block-union';
+      if (kind === 'transport') return 'part-journey-block-transport';
+      return '';
+    }
+
+    function partJourneyEfficiencyClass(pct) {
+      if (pct >= 40) return 'is-high';
+      if (pct >= 20) return 'is-mid';
+      return 'is-low';
+    }
+
+    function hidePartJourneyTooltip() {
+      const tip = document.getElementById('part-journey-tooltip');
+      if (tip) {
+        tip.hidden = true;
+        tip.innerHTML = '';
+      }
+    }
+
+    function showPartJourneyTooltip(blockEl, clientX, clientY) {
+      const tip = document.getElementById('part-journey-tooltip');
+      if (!tip || !blockEl) return;
+      const partName = blockEl.getAttribute('data-part') || '';
+      const status = blockEl.getAttribute('data-status') || '';
+      const start = blockEl.getAttribute('data-start-label') || '';
+      const end = blockEl.getAttribute('data-end-label') || '';
+      const dur = blockEl.getAttribute('data-duration') || '';
+      tip.hidden = false;
+      tip.innerHTML =
+        '<strong>' + escapeHtml(partName) + '</strong>' +
+        '<div class="pj-state">' + escapeHtml(status) + '</div>' +
+        '<div class="pj-meta">Início: ' + escapeHtml(start) + '</div>' +
+        '<div class="pj-meta">Fim: ' + escapeHtml(end) + '</div>' +
+        '<div class="pj-meta">Duração: ' + escapeHtml(dur) + '</div>';
+      const pad = 14;
+      const rect = tip.getBoundingClientRect();
+      let left = clientX + pad;
+      let top = clientY + pad;
+      if (left + rect.width > window.innerWidth - 8) left = Math.max(8, clientX - rect.width - pad);
+      if (top + rect.height > window.innerHeight - 8) top = Math.max(8, clientY - rect.height - pad);
+      tip.style.left = left + 'px';
+      tip.style.top = top + 'px';
+    }
+
+    function highlightPartJourney(partId) {
+      const chartRows = document.querySelectorAll('#part-journey-chart .gantt-row');
+      chartRows.forEach(function (row) {
+        row.classList.toggle('is-highlight', !!partId && row.getAttribute('data-part-id') === partId);
+      });
+      const kpiRows = document.querySelectorAll('#part-journey-kpi-body tr[data-part-id]');
+      kpiRows.forEach(function (row) {
+        row.classList.toggle('is-highlight', !!partId && row.getAttribute('data-part-id') === partId);
+      });
+    }
+
+    let partJourneyUiBound = false;
+    function bindPartJourneyUi() {
+      if (partJourneyUiBound) return;
+      partJourneyUiBound = true;
+      const chart = document.getElementById('part-journey-chart');
+      const kpiBody = document.getElementById('part-journey-kpi-body');
+      if (chart) {
+        chart.addEventListener('mousemove', function (ev) {
+          const block = ev.target && ev.target.closest ? ev.target.closest('.gantt-block') : null;
+          if (!block || !chart.contains(block)) {
+            hidePartJourneyTooltip();
+            return;
+          }
+          showPartJourneyTooltip(block, ev.clientX, ev.clientY);
+        });
+        chart.addEventListener('mouseleave', function () {
+          hidePartJourneyTooltip();
+        });
+        chart.addEventListener('mouseover', function (ev) {
+          const row = ev.target && ev.target.closest ? ev.target.closest('.gantt-row') : null;
+          highlightPartJourney(row ? row.getAttribute('data-part-id') : '');
+        });
+        chart.addEventListener('mouseout', function (ev) {
+          const toRow = ev.relatedTarget && ev.relatedTarget.closest ? ev.relatedTarget.closest('.gantt-row') : null;
+          if (!toRow || !chart.contains(toRow)) highlightPartJourney('');
+        });
+      }
+      if (kpiBody) {
+        kpiBody.addEventListener('mouseover', function (ev) {
+          const row = ev.target && ev.target.closest ? ev.target.closest('tr[data-part-id]') : null;
+          highlightPartJourney(row ? row.getAttribute('data-part-id') : '');
+        });
+        kpiBody.addEventListener('mouseleave', function () {
+          highlightPartJourney('');
+        });
+      }
+      const legend = document.getElementById('part-journey-legend');
+      if (legend) {
+        legend.addEventListener('mouseover', function (ev) {
+          const item = ev.target && ev.target.closest ? ev.target.closest('.part-journey-legend-item') : null;
+          filterPartJourneyKind(item ? item.getAttribute('data-kind') : '');
+        });
+        legend.addEventListener('mouseleave', function () {
+          filterPartJourneyKind('');
+        });
+      }
+    }
+
+    function filterPartJourneyKind(kind) {
+      const chart = document.getElementById('part-journey-chart');
+      const legend = document.getElementById('part-journey-legend');
+      if (legend) {
+        legend.querySelectorAll('.part-journey-legend-item').forEach(function (el) {
+          el.classList.toggle('is-active', !!kind && el.getAttribute('data-kind') === kind);
+        });
+      }
+      if (!chart) return;
+      chart.classList.toggle('is-filtering', !!kind);
+      chart.querySelectorAll('.gantt-block').forEach(function (el) {
+        el.classList.toggle('is-kind-active', !!kind && el.getAttribute('data-kind') === kind);
+      });
+    }
+
+    function resetPartJourneyView() {
+      hidePartJourneyTooltip();
+      highlightPartJourney('');
+      filterPartJourneyKind('');
+      const host = document.getElementById('part-journey-chart');
+      if (host) host.innerHTML = '<div class="gantt-empty">Gere a simulação para ver a jornada das peças.</div>';
+      const label = document.getElementById('part-journey-range-label');
+      if (label) label.textContent = 'Gere a simulação para ver a jornada de cada peça no turno.';
+      const tbody = document.getElementById('part-journey-kpi-body');
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:#64748b;">Gere a simulação para ver o lead time por peça.</td></tr>';
+      }
+    }
+
+    function updatePartJourneyPlaybackCursor() {
+      if (!lastGanttRange) return;
+      const lines = document.querySelectorAll('#part-journey-chart .gantt-now');
+      if (!lines.length) return;
+      const pct = pctInRange(getCurrentAbsMinute(), lastGanttRange);
+      lines.forEach(function (line) {
+        if (pct < 0 || pct > 100) {
+          line.style.display = 'none';
+          return;
+        }
+        line.style.display = 'block';
+        line.style.left = pct + '%';
+      });
+    }
+
+    function renderPartJourneyKpis(rows) {
+      const tbody = document.getElementById('part-journey-kpi-body');
+      if (!tbody) return;
+      if (!rows || !rows.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:#64748b;">Nenhuma peça com jornada neste lote.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(function (row) {
+        const k = row.kpis || { leadTime: 0, prodTime: 0, efficiency: 0 };
+        const eff = Number(k.efficiency) || 0;
+        const effTxt = (Math.round(eff * 10) / 10).toFixed(1).replace('.', ',') + '%';
+        const kind = row.kindLabel ? ' <span class="part-journey-kind">' + escapeHtml(row.kindLabel) + '</span>' : '';
+        return '<tr data-part-id="' + escapeHtml(row.id) + '">' +
+          '<td><strong>' + escapeHtml(row.name) + '</strong>' + kind + '</td>' +
+          '<td>' + formatMinutesWithHours(k.leadTime) + '</td>' +
+          '<td>' + formatMinutesWithHours(k.prodTime) + '</td>' +
+          '<td><span class="part-journey-eff ' + partJourneyEfficiencyClass(eff) + '">' + effTxt + '</span></td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    function renderPartJourneyChart(sharedRange) {
+      bindPartJourneyUi();
+      hidePartJourneyTooltip();
+      highlightPartJourney('');
+      const host = document.getElementById('part-journey-chart');
+      const label = document.getElementById('part-journey-range-label');
+      if (!host) return;
+      if (!simulationHistory.length) {
+        resetPartJourneyView();
+        return;
+      }
+
+      const range = sharedRange || lastGanttRange || (ganttViewMode === 'lot'
+        ? getGanttRangeForLot()
+        : getGanttRangeForDay(selectedDayIndex));
+      const rows = typeof buildPartJourneyRows === 'function'
+        ? buildPartJourneyRows(range.start, range.end)
+        : [];
+      const lunches = lunchOverlaysInRange(range.start, range.end);
+      const dayMarks = range.mode === 'lot' ? dayBoundaryAbsMins(range.start, range.end) : [];
+      const ticks = ganttAxisTicks(range);
+      const span = Math.max(1, range.end - range.start);
+
+      if (label) {
+        if (range.mode === 'day') {
+          const iso = workDays[range.dayIndex] || startDateStr;
+          label.textContent = 'Dia ' + (range.dayIndex + 1) + ' (' + formatDisplayDate(iso) + ') · turno 07:30–17:18 · almoço 12:00–13:00';
+        } else {
+          label.textContent = 'Lote contínuo: ' +
+            absMinuteToTimeLabel(range.start) + ' → ' + absMinuteToTimeLabel(Math.max(range.start, range.end - 1));
+        }
+      }
+
+      renderPartJourneyKpis(rows);
+
+      if (!rows.length) {
+        host.innerHTML = '<div class="gantt-empty">Nenhuma peça com jornada neste lote.</div>';
+        return;
+      }
+
+      const axisHtml = ticks.map(function (tk) {
+        const left = pctInRange(tk.abs, range);
+        if (left < -1 || left > 101) return '';
+        if (tk.kind !== 'day' && left > 96) return '';
+        if (tk.kind === 'day') {
+          return '<span class="gantt-tick gantt-tick-day" style="left:' + left.toFixed(2) + '%">' +
+            '<span class="gantt-tick-date">' + escapeHtml(tk.label) + '</span>' +
+            '<span class="gantt-tick-time">' + escapeHtml(tk.sub || '07:30') + '</span>' +
+            '</span>';
+        }
+        return '<span class="gantt-tick gantt-tick-hour" style="left:' + left.toFixed(2) + '%">' + escapeHtml(tk.label) + '</span>';
+      }).join('');
+
+      const lunchHtml = lunches.map(function (b) {
+        const left = pctInRange(b.start, range);
+        const width = Math.max(0.4, ((b.end - b.start) / span) * 100);
+        return '<div class="gantt-lunch" style="left:' + left.toFixed(2) + '%;width:' + width.toFixed(2) + '%"></div>';
+      }).join('');
+
+      const marksHtml = dayMarks.map(function (t) {
+        const left = pctInRange(t, range);
+        return '<div class="gantt-day-mark" style="left:' + left.toFixed(2) + '%"></div>';
+      }).join('');
+      const axisMarksHtml = dayMarks.map(function (t) {
+        const left = pctInRange(t, range);
+        return '<div class="gantt-day-mark gantt-day-mark-axis" style="left:' + left.toFixed(2) + '%"></div>';
+      }).join('');
+
+      const nowPct = pctInRange(getCurrentAbsMinute(), range);
+      const nowVisible = nowPct >= 0 && nowPct <= 100;
+      const nowStyle = nowVisible
+        ? 'left:' + nowPct.toFixed(2) + '%'
+        : 'display:none;left:0';
+
+      const rowsHtml = rows.map(function (row) {
+        const blocks = (row.blocks || []).map(function (b) {
+          const left = pctInRange(b.start, range);
+          const width = Math.max(0.35, ((b.end - b.start) / span) * 100);
+          const fill = (typeof PART_JOURNEY_COLORS !== 'undefined' && PART_JOURNEY_COLORS[b.kind])
+            ? PART_JOURNEY_COLORS[b.kind]
+            : '';
+          const bg = fill ? 'background:' + fill + ';' : '';
+          const dur = typeof formatExactMinutes === 'function'
+            ? formatExactMinutes(Math.max(0, b.end - b.start))
+            : (Math.max(0, b.end - b.start) + ' min');
+          const startLabel = absMinuteToTimeLabel(b.start);
+          const endLabel = absMinuteToTimeLabel(b.end);
+          const status = b.statusText || partJourneyKindLabel(b.kind);
+          return '<div class="gantt-block ' + partJourneyKindClass(b.kind) + '"' +
+            ' style="left:' + left.toFixed(2) + '%;width:' + width.toFixed(2) + '%;' + bg + '"' +
+            ' data-part="' + escapeHtml(row.name) + '"' +
+            ' data-kind="' + escapeHtml(b.kind) + '"' +
+            ' data-status="' + escapeHtml(status) + '"' +
+            ' data-start-label="' + escapeHtml(startLabel) + '"' +
+            ' data-end-label="' + escapeHtml(endLabel) + '"' +
+            ' data-duration="' + escapeHtml(dur) + '"></div>';
+        }).join('');
+        const kind = row.kindLabel ? '<span class="part-journey-kind">' + escapeHtml(row.kindLabel) + '</span>' : '';
+        return '<div class="gantt-row" data-part-id="' + escapeHtml(row.id) + '">' +
+          '<div class="gantt-label">' + escapeHtml(row.name) + kind + '</div>' +
+          '<div class="gantt-track">' + lunchHtml + marksHtml + blocks + '<div class="gantt-now" style="' + nowStyle + '"></div></div>' +
+          '</div>';
+      }).join('');
+
+      host.innerHTML = '<div class="gantt-axis' + (range.mode === 'lot' ? ' is-lot' : '') + '">' + axisMarksHtml + axisHtml + '</div>' + rowsHtml;
     }
 
     function renderCharts() {
@@ -2167,6 +2486,7 @@
       if (!simulationHistory.length) {
         resetAnalyticsView();
         resetGanttView();
+        resetPartJourneyView();
         return;
       }
 
@@ -2316,6 +2636,185 @@
         doc.text(doc.splitTextToSize(item.hint, boxW - 6), x + 3, y + 17);
       });
       return y + boxH + 6;
+    }
+
+    function formatPdfJourneyMinutes(mins) {
+      const n = Number(mins);
+      if (!isFinite(n) || n <= 0) return '0';
+      const rounded = Math.round(n * 10) / 10;
+      if (Math.abs(rounded - Math.round(rounded)) < 1e-9) return String(Math.round(rounded));
+      return String(rounded).replace('.', ',');
+    }
+
+    function formatPdfJourneyEfficiency(pct) {
+      const n = Number(pct);
+      if (!isFinite(n)) return '0,0%';
+      return (Math.round(n * 10) / 10).toFixed(1).replace('.', ',') + '%';
+    }
+
+    function drawPdfJourneyColorLegend(doc, y) {
+      const items = [
+        { label: 'Fila', hex: '#7f8c8d', rgb: [127, 140, 141] },
+        { label: 'Setup', hex: '#e67e22', rgb: [230, 126, 34] },
+        { label: 'Produção', hex: '#2ecc71', rgb: [46, 204, 113] },
+        { label: 'Aguardando União', hex: '#f1c40f', rgb: [241, 196, 15] }
+      ];
+      let x = 14;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      items.forEach(function (it) {
+        doc.setFillColor(it.rgb[0], it.rgb[1], it.rgb[2]);
+        doc.setDrawColor(148, 163, 184);
+        doc.rect(x, y - 2.4, 4.2, 4.2, 'FD');
+        doc.setTextColor(50);
+        doc.text(it.label, x + 5.4, y + 0.8);
+        x += doc.getTextWidth(it.label) + 14;
+      });
+      return y + 6;
+    }
+
+    function drawPdfPartJourneySection(doc, y, tableMargin) {
+      const rows = typeof buildPartJourneyRows === 'function' ? buildPartJourneyRows() : [];
+      y = drawPdfSectionTitle(doc, y, 'Jornada e Eficiência das Peças / Subconjuntos');
+      y = drawPdfJourneyColorLegend(doc, y);
+      y = pdfEnsureSpace(doc, y, 8);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(90);
+      doc.text('Eficiência do Ciclo = (Tempo de Produção / Lead Time Total) × 100.  Verde ≥ 50%   |   Laranja < 50%.', 14, y);
+      y += 5;
+
+      const kpiBody = rows.length
+        ? rows.map(function (r) {
+          const k = r.kpis || {};
+          return [
+            r.name + (r.kindLabel ? ' (' + r.kindLabel + ')' : ''),
+            formatPdfJourneyMinutes(k.leadTime),
+            formatPdfJourneyMinutes(k.prodTime),
+            formatPdfJourneyMinutes(k.filaTime != null ? k.filaTime : k.waitTime),
+            formatPdfJourneyMinutes(k.unionTime),
+            formatPdfJourneyEfficiency(k.efficiency)
+          ];
+        })
+        : [['—', '—', '—', '—', '—', '—']];
+
+      doc.autoTable({
+        startY: y,
+        head: [[
+          'Peça / SKU',
+          'Lead Time Total (min)',
+          'Tempo de Produção (min)',
+          'Tempo em Fila/Espera (min)',
+          'Tempo no JOIN (min)',
+          'Eficiência do Ciclo (%)'
+        ]],
+        body: kpiBody,
+        theme: 'striped',
+        margin: tableMargin,
+        rowPageBreak: 'avoid',
+        showHead: 'everyPage',
+        headStyles: { fillColor: [2, 132, 199], fontSize: 7, textColor: 255 },
+        styles: { fontSize: 7, cellPadding: 1.5, minCellHeight: 7, overflow: 'linebreak' },
+        columnStyles: {
+          0: { cellWidth: 62, fontStyle: 'bold' },
+          5: { halign: 'center', fontStyle: 'bold' }
+        },
+        didParseCell: function (data) {
+          if (data.section !== 'body' || !rows.length) return;
+          const row = rows[data.row.index];
+          if (!row || !row.kpis) return;
+          if (data.column.index === 3) {
+            data.cell.styles.textColor = [127, 140, 141];
+          }
+          if (data.column.index === 4) {
+            data.cell.styles.textColor = [180, 140, 10];
+          }
+          if (data.column.index === 5) {
+            const eff = Number(row.kpis.efficiency) || 0;
+            if (eff >= 50) {
+              data.cell.styles.textColor = [21, 128, 61];
+              data.cell.styles.fillColor = [220, 252, 231];
+            } else {
+              data.cell.styles.textColor = [194, 65, 12];
+              data.cell.styles.fillColor = [255, 237, 213];
+            }
+          }
+        },
+        didDrawPage: function (data) {
+          if (data.pageNumber > 1) drawPdfReportHeader(doc);
+        }
+      });
+      y = (doc.lastAutoTable && doc.lastAutoTable.finalY ? doc.lastAutoTable.finalY : y) + 8;
+
+      y = drawPdfSectionTitle(doc, y, 'Detalhamento da Jornada e Indicadores de Gargalo');
+      y = pdfEnsureSpace(doc, y, 8);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(90);
+      doc.text('Lead time: da primeira fila até a conclusão do último posto/união. Gargalo: mais tempo em Fila (cinza) ou Aguardando União (amarelo) do que em produção.', 14, y);
+      y += 5;
+
+      const detailBody = rows.length
+        ? rows.map(function (r) {
+          const k = r.kpis || {};
+          const startLbl = k.startAbs != null ? absMinuteToTimeLabel(k.startAbs) : '—';
+          const endLbl = k.endAbs != null ? absMinuteToTimeLabel(k.endAbs) : '—';
+          return [
+            r.name + (r.kindLabel ? ' (' + r.kindLabel + ')' : ''),
+            startLbl,
+            endLbl,
+            formatPdfJourneyMinutes(k.leadTime),
+            formatPdfJourneyMinutes(k.filaTime),
+            formatPdfJourneyMinutes(k.unionTime),
+            formatPdfJourneyMinutes(k.prodTime),
+            k.bottleneckNote || '—'
+          ];
+        })
+        : [['—', '—', '—', '—', '—', '—', '—', '—']];
+
+      doc.autoTable({
+        startY: y,
+        head: [[
+          'Peça / SKU',
+          'Início (1ª fila)',
+          'Conclusão',
+          'Lead Time (min)',
+          'Fila (min)',
+          'União (min)',
+          'Produção (min)',
+          'Indicador de gargalo'
+        ]],
+        body: detailBody,
+        theme: 'striped',
+        margin: tableMargin,
+        rowPageBreak: 'avoid',
+        showHead: 'everyPage',
+        headStyles: { fillColor: [2, 132, 199], fontSize: 6.5, textColor: 255 },
+        styles: { fontSize: 6.5, cellPadding: 1.4, minCellHeight: 7, overflow: 'linebreak' },
+        columnStyles: {
+          0: { cellWidth: 48, fontStyle: 'bold' },
+          7: { cellWidth: 78 }
+        },
+        didParseCell: function (data) {
+          if (data.section !== 'body' || !rows.length) return;
+          const row = rows[data.row.index];
+          if (!row || !row.kpis) return;
+          if (data.column.index === 4) data.cell.styles.textColor = [127, 140, 141];
+          if (data.column.index === 5) data.cell.styles.textColor = [180, 140, 10];
+          if (data.column.index === 6) data.cell.styles.textColor = [21, 128, 61];
+          if (row.kpis.isBottleneck) {
+            if (data.column.index === 7) {
+              data.cell.styles.fontStyle = 'bold';
+              data.cell.styles.textColor = [146, 64, 14];
+              data.cell.styles.fillColor = [254, 243, 199];
+            }
+          }
+        },
+        didDrawPage: function (data) {
+          if (data.pageNumber > 1) drawPdfReportHeader(doc);
+        }
+      });
+      return (doc.lastAutoTable && doc.lastAutoTable.finalY ? doc.lastAutoTable.finalY : y) + 8;
     }
 
     function drawPdfGantt(doc, y, range, title) {
@@ -2569,6 +3068,8 @@
         }
       });
       y = (doc.lastAutoTable && doc.lastAutoTable.finalY ? doc.lastAutoTable.finalY : y) + 8;
+
+      y = drawPdfPartJourneySection(doc, y, tableMargin);
 
       const usedDays = Math.max(1, Math.ceil(Math.max(1, getProjectMakespanEndAbsMin()) / MINUTES_PER_DAY));
       for (let d = 0; d < usedDays; d++) {

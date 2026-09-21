@@ -513,12 +513,6 @@ O objetivo deste lote é conectar a fila do Plano de Produção ao motor de simu
 - O motor monoproduto atual da aba **Simulação** e o **Módulo TESTER** devem continuar $100\%$ funcionais e independentes.
 - Garanta que as pausas de almoço (12:00-13:00) e os limites de turno (07:30-17:18) sejam aplicados rigorosamente ao longo de todos os dias da simulação do plano.
 
-========================================
- PRÓXIMAS SPRINTS (A FAZER)
-========================================
-[Sua Cabeça] ──> [Bloco de Notas] ──> [Trello: Backlog] ──> [Trello: Sprint A Fazer] ──> [Cursor + Git]
- (Ideia Solta)     (Rascunho Rápido)   (Ideias Organizadas)    (Prompt Formatado)        (Código Rodando)
-
 SPRINT 12 - ESTUFA
 Olá! Vamos dar continuidade ao desenvolvimento da aplicação **PCPMaster** (sistema APS/MRP de chão de fábrica). Por favor, leia este resumo contextual para alinhar o ambiente antes de começarmos as novas tarefas:
 
@@ -547,16 +541,6 @@ Olá! Vamos dar continuidade ao desenvolvimento da aplicação **PCPMaster** (si
 - O repositório no GitHub (`main`) está atualizado até o commit da tag **`v1.8.0`**.
 
 Por favor, confirme que leu este handover e está pronto para receber as próximas orientações ou novas demandas do projeto!
-
-SPRINT 13 - JUST IN TIME
-1. POR EXISTIR PEÇAS QUE VÃO DIRETO DO CORTE OU DA DOBRA PARA MONTAGEM, ESCOLHER UM MOMENTO MAIS "CASADO" QUE ELA SÓ INICIA QUANDO ESTIVER PERTO DE OUTRAS PEÇAS CHEGAREM NO SETOR. EXEMPLO A GUILHOTINA SÓ INICIA QUANDO O TEMPO NECESSÁRIO DELA ATÉ ENCERRAR FOR CASAR COM O ENCERRAMENTO DA MONTAGEM.
-
-SPRINT 14 - ULTIMATE DESIGN
-1. REMOVER OU ACRESCENTAR BOTÕES E FUNCIONALIDADES
-A. HOME
-2. Simulação parar quando finalizar a expedição (última)
-3. Ordens dinâmicas, de acordo com as entradas anteriores e atuais.
-4. Fim da atividade -movimentação-
 **CORREÇÃO DE SPRINT 12: DIMENSÕES DA PEÇA INDIVIDUAL, MARGEM ANTI-COLISÃO E FORMALIZAÇÃO DO FARDO**
 
 Ajuste a interface da Engenharia e o motor 3D da ESTUFA para tratar Altura, Largura e Comprimento como propriedades da PEÇA INDIVIDUAL.
@@ -610,4 +594,28 @@ Aplique uma normalização global em todos os campos de entrada de tempo do sist
 2. **Formatação de Exibição (UI & Tags):**
    - Nas tags de roteiro, tabelas e cards do Gantt, exiba o tempo com suporte a decimais (ex: `0.25m` ou `15s` caso seja menor que 1 minuto).
    - Remova qualquer trava do tipo `Math.max(1, tempo)` ou `parseInt()` nos formulários de cadastro de peças e máquinas.
+
+========================================
+ PRÓXIMAS SPRINTS (A FAZER)
+========================================
+[Sua Cabeça] ──> [Bloco de Notas] ──> [Trello: Backlog] ──> [Trello: Sprint A Fazer] ──> [Cursor + Git]
+ (Ideia Solta)     (Rascunho Rápido)   (Ideias Organizadas)    (Prompt Formatado)        (Código Rodando)
+
+SPRINT 13 - RELATÓRIO DA Estufa
+1. AO GERAR O RELATÓRIO SAI A "FOTO" DA PINTURA FRONTAL E LATERAL PARA VISUALIZAR COMO O ALGORITIMO MONTOU A ESTUFA. ISSO SERVIRÁ DE MAPA/ESQUEMA QUE OS OPERADORES DEVERÃO SEGUIR NA ETAPA DE "MONTAGEM" DA ESTUFA
+PARA PREENCHER E ENCHER A ESTUFA DO JEITO PROGRAMADO.
+2. BOTÃO DE GERAR SIMULAÇÃO FICA NO TOPO ABAIXO DOS BOTÕES, ASSIM DEPENDENDO DO NUMERO QUE ESTA EM QTDE DE CAIXAS, AO CADASTRAR AS PEÇAS ELA JA MULTIPLICA PARA ENTREGAR O TEMPO DE PRODUÇÃO
+3. TEXTO DE CONFIRMAÇÃO AO SALVAR UM PROJETO NOVO
+4.  
+
+SPRINT 14 - JUST IN TIME
+1. POR EXISTIR PEÇAS QUE VÃO DIRETO DO CORTE OU DA DOBRA PARA MONTAGEM, ESCOLHER UM MOMENTO MAIS "CASADO" QUE ELA SÓ INICIA QUANDO ESTIVER PERTO DE OUTRAS PEÇAS CHEGAREM NO SETOR. EXEMPLO A GUILHOTINA SÓ INICIA QUANDO O TEMPO NECESSÁRIO DELA ATÉ ENCERRAR FOR CASAR COM O ENCERRAMENTO DA MONTAGEM.
+2. CASO O FUNCIONÁRIO SE AUSENTE OU A MÁQUINA PARE DE FUNCIONAR, É PRECISO PODER INSERIR PARADAS NO PLANO DE PRODUÇÃO, ATÉ MESMO PARA PROCESSAR O OEE
+
+SPRINT 15 - ULTIMATE DESIGN
+1. REMOVER OU ACRESCENTAR BOTÕES E FUNCIONALIDADES
+A. HOME
+2. Simulação parar quando finalizar a expedição (última)
+3. Ordens dinâmicas, de acordo com as entradas anteriores e atuais.
+4. Fim da atividade -movimentação-
    

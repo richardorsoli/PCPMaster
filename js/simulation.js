@@ -1,7 +1,7 @@
-/* PCPMaster v1.8.0 — Motor de simulação, calendário, manutenção, analytics e Gantt */
+/* PCPMaster v1.9.3 — Motor de simulação, calendário, manutenção, analytics, Gantt e jornada das peças */
 
 const APP_NAME = 'PCPMaster';
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.9.3';
 const SCHEMA_VERSION = 'v2.0';
 
 // --- PARÂMETROS DO TURNO ---
@@ -752,9 +752,17 @@ const ESTUFA_FULL_EPS = 0.01;
       const requerRaw = Array.isArray(rule.requiredPartNames)
         ? rule.requiredPartNames
         : (rule.juncao && Array.isArray(rule.juncao.requer) ? rule.juncao.requer : []);
-      const requer = requerRaw.map(n => String(n || '').toUpperCase()).filter(Boolean);
-      const machineId = rule.machineId || (rule.juncao && rule.juncao.maquina) || '';
       const resultName = String(rule.resultName || '').toUpperCase();
+      const requer = requerRaw.map(n => String(n || '').toUpperCase()).filter(Boolean)
+        .filter(n => {
+          if (n === resultName) {
+            console.warn('[JOIN] Cadastro circular: o SKU "' + resultName + '" não pode requerer a si mesmo. Insumo ignorado.');
+            return false;
+          }
+          return true;
+        })
+        .filter((n, i, arr) => arr.indexOf(n) === i);
+      const machineId = rule.machineId || (rule.juncao && rule.juncao.maquina) || '';
       return Object.assign(copyPlanRuntimeFields(rule), {
         machineId,
         resultName,
@@ -851,6 +859,10 @@ const ESTUFA_FULL_EPS = 0.01;
       return { css: '#64748b', rgb: [100, 116, 139] };
     }
 
+    function namesEqual(a, b) {
+      return String(a || '').toUpperCase() === String(b || '').toUpperCase();
+    }
+
     function joinRequerOf(stepOrRule) {
       if (!stepOrRule) return [];
       if (stepOrRule.juncao && Array.isArray(stepOrRule.juncao.requer)) return stepOrRule.juncao.requer;
@@ -860,6 +872,77 @@ const ESTUFA_FULL_EPS = 0.01;
 
     function isJoinStep(step) {
       return !!(step && step.juncao && joinRequerOf(step).length > 0);
+    }
+
+    function firstMachineStepIndex(route, machineId) {
+      return (route || []).findIndex(s => s && s.machineId === machineId);
+    }
+
+    function readyMapKey(partName, machineId, stepIndex) {
+      if (typeof stepIndex === 'number' && stepIndex >= 0) {
+        return String(partName) + '_' + machineId + '_' + stepIndex;
+      }
+      return String(partName) + '_' + machineId;
+    }
+
+    function logPartStepTransition(part, completedStepIndex, completedStep, nextIdx, nextStepIndexMap) {
+      if (!part || part.isVirtual) return;
+      const route = part.route || [];
+      const total = route.length;
+      if (!total) return;
+      const doneN = completedStepIndex + 1;
+      const doneName = machineNameOf(completedStep && completedStep.machineId) || (completedStep && completedStep.machineId) || '?';
+      if (nextIdx >= total) {
+        const joinRule = (assemblyRules || []).find(r => joinRequerOf(r).some(n => namesEqual(n, part.name)));
+        const joinM = joinRule ? (machineNameOf(joinRule.machineId) || joinRule.machineId) : '';
+        const extra = joinM
+          ? ' -> Aguardando união em ' + joinM
+          : ' -> roteiro individual concluído';
+        console.log('[SIMULAÇÃO] ' + part.name + ': Concluiu ' + doneName + ' (' + doneN + '/' + total + ')' + extra);
+        if (joinRule && nextStepIndexMap) {
+          const pending = describeJoinPendingInputs(joinRule, nextStepIndexMap);
+          if (!pending.length) {
+            console.log('[JOIN] Máquina ' + joinM + ' liberada: ' + part.name +
+              ' concluiu ' + doneName + ' (' + doneN + '/' + total + '). Insumos prontos: ' +
+              (joinRequerOf(joinRule).join(' + ') || '—') + '.');
+          }
+        }
+        return;
+      }
+      const next = route[nextIdx];
+      const nextName = machineNameOf(next && next.machineId) || (next && next.machineId) || '?';
+      console.log('[SIMULAÇÃO] ' + part.name + ': Concluiu ' + doneName + ' (' + doneN + '/' + total +
+        ') -> Entrou na fila ' + nextName + ' (' + (nextIdx + 1) + '/' + total + ')');
+    }
+
+    function findSourcePartByName(name, list) {
+      const target = String(name || '').toUpperCase();
+      return (list || []).find(p => p && String(p.name || p.resultName || '').toUpperCase() === target) || null;
+    }
+
+    function originalIndividualRoute(partName) {
+      const src = findSourcePartByName(partName, parts);
+      if (!src) return [];
+      return (src.route || []).map(normalizeRouteStep).filter(s => s && s.machineId && !isJoinStep(s));
+    }
+
+    function expectedIndividualRoute(partName) {
+      const orig = originalIndividualRoute(partName);
+      if (orig.length <= 1) return orig;
+      const last = orig[orig.length - 1];
+      const joinOnLast = (assemblyRules || []).find(r =>
+        r && r.machineId === last.machineId &&
+        joinRequerOf(r).some(n => namesEqual(n, partName)) &&
+        isSharedJoinMeetingPoint(r, parts)
+      );
+      return joinOnLast ? orig.slice(0, -1) : orig;
+    }
+
+    function lookupReadyTime(readyMap, name) {
+      if (!readyMap || name == null) return null;
+      if (readyMap[name] != null) return readyMap[name];
+      const key = Object.keys(readyMap).find(k => namesEqual(k, name));
+      return key != null ? readyMap[key] : null;
     }
 
     function otherJoinMachineIds(exceptRule) {
@@ -877,7 +960,7 @@ const ESTUFA_FULL_EPS = 0.01;
       const inferredRoute = Array.isArray(rule.route) ? rule.route.slice() : [];
       const stopMachines = otherJoinMachineIds(rule);
       (srcParts || parts).forEach(p => {
-        if (!rule.requiredPartNames.includes(p.name)) return;
+        if (!(rule.requiredPartNames || []).some(n => namesEqual(n, p.name))) return;
         const idx = (p.route || []).findIndex(s => s.machineId === rule.machineId);
         if (idx < 0) return;
         const step = p.route[idx];
@@ -935,7 +1018,22 @@ const ESTUFA_FULL_EPS = 0.01;
       return (route || []).concat(extra);
     }
 
+    function ownNonJoinEvents(partName) {
+      return (rawEvents || []).filter(e => namesEqual(e.partName, partName) && !e.isJoin);
+    }
+
+    function hasUnfinishedOriginalIndividualWork(partName, absMin) {
+      const orig = expectedIndividualRoute(partName);
+      if (!orig.length) return false;
+      const ownEvents = ownNonJoinEvents(partName);
+      if (!ownEvents.length) return true;
+      const lastOwn = ownEvents[ownEvents.length - 1];
+      if (absMin < lastOwn.end) return true;
+      return ownEvents.length < orig.length;
+    }
+
     function hasRemainingIndividualSteps(part, partEvents, absMin) {
+      if (part && !part.isVirtual && hasUnfinishedOriginalIndividualWork(part.name, absMin)) return true;
       const routeLen = part && Array.isArray(part.route) ? part.route.length : 0;
       if (routeLen <= 1) {
         const lastEvt = partEvents && partEvents.length ? partEvents[partEvents.length - 1] : null;
@@ -950,19 +1048,23 @@ const ESTUFA_FULL_EPS = 0.01;
     }
 
     function pendingJoinWaitForPart(partName, absMin) {
+      if (hasUnfinishedOriginalIndividualWork(partName, absMin)) return false;
       const part = findSimPart(partName);
+      if (part && part.isVirtual) return false;
       const routeLen = part && Array.isArray(part.route) ? part.route.length : 0;
-      const ownEvents = (rawEvents || []).filter(e => e.partName === partName && !e.isJoin);
+      const ownEvents = ownNonJoinEvents(partName);
       if (routeLen > 0) {
         const lastOwn = ownEvents.length ? ownEvents[ownEvents.length - 1] : null;
         if (!lastOwn || absMin < lastOwn.end) return false;
         const etapaAtual = typeof lastOwn.stepIndex === 'number' ? lastOwn.stepIndex + 1 : ownEvents.length;
         if (etapaAtual < routeLen) return false;
+      } else if (expectedIndividualRoute(partName).length > 0 && ownEvents.length === 0) {
+        return false;
       }
       return (assemblyRules || []).some(rule => {
         const requer = joinRequerOf(rule);
-        if (!requer.some(n => String(n).toUpperCase() === String(partName).toUpperCase())) return false;
-        const joinEvt = rawEvents.find(e => e.isJoin && e.partName === rule.resultName);
+        if (!requer.some(n => namesEqual(n, partName))) return false;
+        const joinEvt = (rawEvents || []).find(e => e.isJoin && namesEqual(e.partName, rule.resultName));
         if (!joinEvt) return true;
         return absMin < joinEvt.setupStart;
       });
@@ -973,7 +1075,7 @@ const ESTUFA_FULL_EPS = 0.01;
       const requer = (rule && rule.requiredPartNames) || [];
       let n = 0;
       requer.forEach(name => {
-        const p = (srcParts || []).find(x => x.name === name);
+        const p = findSourcePartByName(name, srcParts || []);
         if (p && (p.route || []).some(s => s && s.machineId === rule.machineId && !isJoinStep(s))) n++;
       });
       return n;
@@ -1016,21 +1118,31 @@ const ESTUFA_FULL_EPS = 0.01;
       });
 
       const physical = (parts || []).map(p => {
-        const consumeAt = expandedRules.find(r =>
-          (r.requiredPartNames || []).some(n => String(n).toUpperCase() === String(p.name).toUpperCase())
+        const consumeMatches = expandedRules.filter(r =>
+          (r.requiredPartNames || []).some(n => namesEqual(n, p.name))
         );
+        let consumeAt = null;
+        let consumeIdx = -1;
+        consumeMatches.forEach(r => {
+          const idx = (p.route || []).findIndex(s => s && s.machineId === r.machineId && !isJoinStep(s));
+          if (idx > consumeIdx) {
+            consumeIdx = idx;
+            consumeAt = r;
+          }
+        });
+        if (!consumeAt && consumeMatches.length) consumeAt = consumeMatches[consumeMatches.length - 1];
         let route = (p.route || []).map(normalizeRouteStep)
           .filter(s => s && s.machineId && !isJoinStep(s));
         if (consumeAt) {
           const cut = route.findIndex(s => s.machineId === consumeAt.machineId);
           if (cut >= 0) {
-            // Ponto de encontro (vários insumos na mesma máquina) = JOIN, não produção individual.
-            // Se só ESTE insumo tem a máquina no roteiro (ex: MADEIRITE na MONTAGEM),
-            // a etapa individual permanece; o JOIN fica no SKU virtual.
-            if (isSharedJoinMeetingPoint(consumeAt, parts)) {
-              route = route.slice(0, cut);
-            } else {
-              route = route.slice(0, cut + 1);
+            // JOIN só substitui a ÚLTIMA operação se ela for o ponto de encontro.
+            // Nunca corta CORTE / SOLDA / EMBALAGEM no meio do roteiro individual.
+            const isLastOp = cut === route.length - 1;
+            if (isLastOp && isSharedJoinMeetingPoint(consumeAt, parts)) {
+              const kept = route.slice(0, cut);
+              if (kept.length > 0) route = kept;
+              // Única etapa = máquina do JOIN (ex: MADEIRITE): manter produção individual.
             }
           }
         }
@@ -1073,10 +1185,21 @@ const ESTUFA_FULL_EPS = 0.01;
 
     function entityRouteDone(name, nextStepIndex, list) {
       const ent = findSimPart(name, list);
-      if (!ent) return false;
+      const idxMap = nextStepIndex || {};
+      if (!ent) {
+        const orig = expectedIndividualRoute(name);
+        const progressed = idxMap[name] != null ? idxMap[name] : 0;
+        if (orig.length > 0) return Number(progressed) >= orig.length;
+        return false;
+      }
       const len = Array.isArray(ent.route) ? ent.route.length : 0;
-      if (len === 0) return true;
-      return (nextStepIndex[ent.name] || nextStepIndex[name] || 0) >= len;
+      const progressed = idxMap[ent.name] != null ? idxMap[ent.name] : (idxMap[name] != null ? idxMap[name] : 0);
+      if (len === 0) {
+        const orig = expectedIndividualRoute(name);
+        if (orig.length > 0) return Number(progressed) >= orig.length;
+        return true;
+      }
+      return progressed >= len;
     }
 
     function joinInputsCompleted(requer, nextStepIndex, list) {
@@ -1087,10 +1210,96 @@ const ESTUFA_FULL_EPS = 0.01;
     function joinAvailableAt(requer, partReady) {
       let t = getSimulationStartAbsMin();
       (requer || []).forEach(name => {
-        const end = partReady[name] != null ? partReady[name] : getSimulationStartAbsMin();
-        if (end > t) t = end;
+        const end = lookupReadyTime(partReady, name);
+        const ready = end != null ? end : getSimulationStartAbsMin();
+        if (ready > t) t = ready;
       });
       return t;
+    }
+
+    function describeJoinPendingInputs(rule, nextStepIndex) {
+      const pending = [];
+      joinRequerOf(rule).forEach(n => {
+        if (entityRouteDone(n, nextStepIndex || {}, getSimParts())) return;
+        const ent = findSimPart(n);
+        const orig = originalIndividualRoute(n);
+        const total = (ent && ent.route && ent.route.length) ? ent.route.length : orig.length;
+        const idx = ent && nextStepIndex
+          ? (nextStepIndex[ent.name] != null ? nextStepIndex[ent.name] : (nextStepIndex[n] || 0))
+          : 0;
+        const step = ent && ent.route ? ent.route[idx] : orig[idx];
+        const setor = step ? machineNameOf(step.machineId) : '—';
+        pending.push(n + ' (etapa ' + idx + '/' + total + (setor && setor !== '—' ? ' em ' + setor : '') + ')');
+      });
+      return pending;
+    }
+
+    function logJoinCadastroDiagnostics() {
+      const rules = assemblyRules || [];
+      if (!rules.length) return;
+      const bySku = {};
+      rules.forEach(r => {
+        if (!r || !r.resultName) return;
+        bySku[String(r.resultName).toUpperCase()] = joinRequerOf(r).map(n => String(n).toUpperCase());
+      });
+      const cycles = [];
+      function visit(node, stack) {
+        const pos = stack.indexOf(node);
+        if (pos >= 0) {
+          cycles.push(stack.slice(pos).concat(node).join(' → '));
+          return;
+        }
+        const deps = bySku[node];
+        if (!deps) return;
+        const next = stack.concat(node);
+        deps.forEach(d => { if (bySku[d]) visit(d, next); });
+      }
+      Object.keys(bySku).forEach(n => visit(n, []));
+      const uniqueCycles = cycles.filter((c, i) => cycles.indexOf(c) === i);
+      if (uniqueCycles.length) {
+        console.warn('[JOIN] Vínculo circular no BOM: ' + uniqueCycles.join(' | '));
+      }
+      rules.forEach(rule => {
+        const machineName = machineNameOf(rule.machineId) || rule.machineId || '?';
+        const missing = [];
+        const cross = [];
+        joinRequerOf(rule).forEach(n => {
+          const physical = findSourcePartByName(n, parts);
+          const sku = bySku[String(n).toUpperCase()];
+          if (!physical && !sku) missing.push(n);
+          const other = rules.find(r =>
+            r && !namesEqual(r.resultName, rule.resultName) &&
+            joinRequerOf(r).some(x => namesEqual(x, n)) &&
+            !namesEqual(r.resultName, n)
+          );
+          if (other && physical) cross.push(n + ' também entra em ' + other.resultName);
+        });
+        if (missing.length) {
+          console.warn('[JOIN] SKU "' + rule.resultName + '" na ' + machineName + ' requer insumos inexistentes: ' + missing.join(', ') + '.');
+        }
+        if (cross.length) {
+          console.log('[JOIN] SKU "' + rule.resultName + '" na ' + machineName + ': ' + cross.join('; ') + '.');
+        }
+      });
+    }
+
+    function logJoinWaitDiagnostics(nextStepIndex, events) {
+      (assemblyRules || []).forEach(rule => {
+        const machineName = machineNameOf(rule.machineId) || rule.machineId || '?';
+        const requer = joinRequerOf(rule);
+        const pending = describeJoinPendingInputs(rule, nextStepIndex);
+        const joinEvt = (events || []).find(e => e.isJoin && namesEqual(e.partName, rule.resultName));
+        if (pending.length) {
+          console.log('[JOIN] Peça/SKU "' + rule.resultName + '" na máquina ' + machineName +
+            ' aguarda insumos: ' + pending.join('; ') + '.');
+        } else if (joinEvt) {
+          console.log('[JOIN] SKU "' + rule.resultName + '" na ' + machineName +
+            ' liberado após ' + (requer.join(' + ') || '—') + '.');
+        } else {
+          console.log('[JOIN] SKU "' + rule.resultName + '" na ' + machineName +
+            ' pronto (insumos ' + (requer.join(' + ') || '—') + '), mas a união não foi programada.');
+        }
+      });
     }
 
     /** IDs de máquinas citadas em roteiros, agrupamentos ou uniões. */
@@ -1736,6 +1945,341 @@ const ESTUFA_FULL_EPS = 0.01;
       });
     }
 
+    const PART_JOURNEY_COLORS = {
+      fila: '#7f8c8d',
+      setup: '#e67e22',
+      prod: '#2ecc71',
+      union: '#f1c40f',
+      transport: '#3498db'
+    };
+
+    function partJourneyKindLabel(kind) {
+      if (kind === 'fila') return 'Fila';
+      if (kind === 'setup') return 'Setup';
+      if (kind === 'prod') return 'Produção';
+      if (kind === 'union') return 'Aguardando União';
+      if (kind === 'transport') return 'Transporte';
+      return kind || '';
+    }
+
+    function partJourneyStatusText(kind, machineName, extra) {
+      extra = extra || {};
+      const posto = machineName ? String(machineName) : '';
+      if (kind === 'fila') return posto ? ('Em fila no ' + posto) : 'Em fila';
+      if (kind === 'setup') return posto ? ('Em Setup no ' + posto) : 'Em Setup';
+      if (kind === 'prod') {
+        if (extra.estufaPhase === 'queima') return posto ? ('Em Queima na ' + posto) : 'Em Queima';
+        if (extra.estufaPhase === 'cooling') return posto ? ('Em Resfriamento na ' + posto) : 'Em Resfriamento';
+        if (extra.estufaPhase === 'unload') return posto ? ('Descarregando na ' + posto) : 'Descarregar';
+        return posto ? ('Em Produção no ' + posto) : 'Em Produção';
+      }
+      if (kind === 'union') return posto ? ('Aguardando União no ' + posto) : 'Aguardando União';
+      if (kind === 'transport') {
+        const dest = extra.toMachine || posto;
+        const from = extra.fromMachine || '';
+        if (from && dest) return 'Transporte de ' + from + ' para ' + dest;
+        return dest ? ('Transporte para ' + dest) : 'Transporte';
+      }
+      return partJourneyKindLabel(kind);
+    }
+
+    function formatExactMinutes(mins) {
+      const n = Number(mins);
+      if (!isFinite(n) || n <= 0) return '0 min';
+      const rounded = Math.round(n * 100) / 100;
+      if (Math.abs(rounded - Math.round(rounded)) < 1e-9) return String(Math.round(rounded)) + ' min';
+      return String(rounded).replace('.', ',') + ' min';
+    }
+
+    function productiveSpanMinutes(start, end) {
+      return excludeLunchFromInterval(start, end).reduce(function (sum, seg) {
+        return sum + Math.max(0, seg.end - seg.start);
+      }, 0);
+    }
+
+    function pushPartJourneyBlocks(blocks, kind, start, end, extra) {
+      extra = extra || {};
+      excludeLunchFromInterval(start, end).forEach(function (seg) {
+        if (!(seg.end > seg.start)) return;
+        blocks.push({
+          kind: kind,
+          start: seg.start,
+          end: seg.end,
+          partName: extra.partName || '',
+          machineId: extra.machineId || '',
+          machineName: extra.machineName || '',
+          statusText: extra.statusText || partJourneyStatusText(kind, extra.machineName, extra),
+          planProjectName: extra.planProjectName || '',
+          planItemId: extra.planItemId || '',
+          fromMachine: extra.fromMachine || '',
+          toMachine: extra.toMachine || ''
+        });
+      });
+    }
+
+    function mergeAdjacentJourneyBlocks(blocks) {
+      const sorted = (blocks || []).slice().sort(function (a, b) {
+        return a.start - b.start || String(a.kind).localeCompare(String(b.kind));
+      });
+      const out = [];
+      sorted.forEach(function (b) {
+        const last = out[out.length - 1];
+        if (last
+          && last.kind === b.kind
+          && last.end === b.start
+          && last.machineId === b.machineId
+          && last.statusText === b.statusText) {
+          last.end = b.end;
+          return;
+        }
+        out.push(Object.assign({}, b));
+      });
+      return out;
+    }
+
+    function eventsForJourneyPart(part) {
+      return (rawEvents || []).filter(function (e) {
+        if (!e || !part) return false;
+        if (!namesEqual(e.partName, part.name)) return false;
+        if (part.planItemId && e.planItemId && String(e.planItemId) !== String(part.planItemId)) return false;
+        return true;
+      }).slice().sort(function (a, b) {
+        return (a.arrivalTime - b.arrivalTime) || (a.setupStart - b.setupStart) || (a.end - b.end);
+      });
+    }
+
+    function joinWaitIntervalForPart(part, lastOwnEnd) {
+      if (!part || part.isVirtual || lastOwnEnd == null) return null;
+      const rules = (assemblyRules || []).filter(function (rule) {
+        return joinRequerOf(rule).some(function (n) { return namesEqual(n, part.name); });
+      });
+      if (!rules.length) return null;
+      let end = lastOwnEnd;
+      let machineId = '';
+      let found = false;
+      rules.forEach(function (rule) {
+        const joinEvt = (rawEvents || []).find(function (e) {
+          if (!e || !e.isJoin || !namesEqual(e.partName, rule.resultName)) return false;
+          if (part.planItemId && e.planItemId && String(e.planItemId) !== String(part.planItemId)) return false;
+          return true;
+        });
+        const waitEnd = joinEvt ? joinEvt.setupStart : getProjectMakespanEndAbsMin();
+        if (waitEnd > lastOwnEnd) {
+          found = true;
+          if (waitEnd > end) {
+            end = waitEnd;
+            machineId = rule.machineId || (joinEvt && joinEvt.machineId) || '';
+          }
+        }
+      });
+      return found && end > lastOwnEnd ? { start: lastOwnEnd, end: end, machineId: machineId } : null;
+    }
+
+    function computePartJourneyKpis(blocks) {
+      const empty = {
+        leadTime: 0,
+        prodTime: 0,
+        setupTime: 0,
+        waitTime: 0,
+        filaTime: 0,
+        unionTime: 0,
+        transportTime: 0,
+        efficiency: 0,
+        startAbs: null,
+        endAbs: null,
+        isBottleneck: false,
+        bottleneckKind: '',
+        bottleneckNote: 'Sem jornada'
+      };
+      const src = (blocks || []).filter(function (b) { return b && b.end > b.start; });
+      if (!src.length) return empty;
+      const first = Math.min.apply(null, src.map(function (b) { return b.start; }));
+      const last = Math.max.apply(null, src.map(function (b) { return b.end; }));
+      const leadTime = productiveSpanMinutes(first, last);
+      let prodTime = 0;
+      let setupTime = 0;
+      let filaTime = 0;
+      let unionTime = 0;
+      let transportTime = 0;
+      src.forEach(function (b) {
+        const dur = Math.max(0, b.end - b.start);
+        if (b.kind === 'prod') prodTime += dur;
+        else if (b.kind === 'setup') setupTime += dur;
+        else if (b.kind === 'union') unionTime += dur;
+        else if (b.kind === 'transport') transportTime += dur;
+        else filaTime += dur;
+      });
+      const waitTime = filaTime + transportTime;
+      const waitIdle = filaTime + unionTime;
+      const efficiency = leadTime > 0 ? (prodTime / leadTime) * 100 : 0;
+      const isBottleneck = waitIdle > prodTime && waitIdle > 0;
+      let bottleneckKind = '';
+      let bottleneckNote = 'Sem gargalo de espera';
+      if (isBottleneck) {
+        const filaLbl = typeof formatExactMinutes === 'function' ? formatExactMinutes(filaTime) : (filaTime + ' min');
+        const unionLbl = typeof formatExactMinutes === 'function' ? formatExactMinutes(unionTime) : (unionTime + ' min');
+        const prodLbl = typeof formatExactMinutes === 'function' ? formatExactMinutes(prodTime) : (prodTime + ' min');
+        if (filaTime > prodTime && unionTime > prodTime) {
+          bottleneckKind = 'both';
+          bottleneckNote = 'Gargalo: Fila (' + filaLbl + ') e Aguardando União (' + unionLbl + ') > Produção (' + prodLbl + ')';
+        } else if (unionTime >= filaTime) {
+          bottleneckKind = 'union';
+          bottleneckNote = 'Gargalo de Aguardando União (' + unionLbl + ') > Produção (' + prodLbl + ')';
+        } else {
+          bottleneckKind = 'fila';
+          bottleneckNote = 'Gargalo de Fila (' + filaLbl + ') > Produção (' + prodLbl + ')';
+        }
+      }
+      return {
+        leadTime: leadTime,
+        prodTime: prodTime,
+        setupTime: setupTime,
+        waitTime: waitTime,
+        filaTime: filaTime,
+        unionTime: unionTime,
+        transportTime: transportTime,
+        efficiency: efficiency,
+        startAbs: first,
+        endAbs: last,
+        isBottleneck: isBottleneck,
+        bottleneckKind: bottleneckKind,
+        bottleneckNote: bottleneckNote
+      };
+    }
+
+    function collectPartJourneyBlocks(part) {
+      const events = eventsForJourneyPart(part);
+      const blocks = [];
+      events.forEach(function (evt, i) {
+        const prev = i > 0 ? events[i - 1] : null;
+        const machineName = machineNameOf(evt.machineId) || '';
+        const meta = {
+          partName: part.name,
+          machineId: evt.machineId,
+          machineName: machineName,
+          planProjectName: evt.planProjectName || part.planProjectName || '',
+          planItemId: evt.planItemId || part.planItemId || ''
+        };
+
+        if (prev && evt.arrivalTime > prev.end) {
+          const prevName = machineNameOf(prev.machineId) || '';
+          const sameMachine = prev.machineId === evt.machineId;
+          const isUnionGap = !!(evt.isJoin && evt.waitingForAssembly && evt.assemblyGate > prev.end);
+          if (!sameMachine && !isUnionGap) {
+            pushPartJourneyBlocks(blocks, 'transport', prev.end, evt.arrivalTime, Object.assign({}, meta, {
+              fromMachine: prevName,
+              toMachine: machineName,
+              statusText: partJourneyStatusText('transport', machineName, { fromMachine: prevName, toMachine: machineName })
+            }));
+          } else if (sameMachine && !isUnionGap) {
+            pushPartJourneyBlocks(blocks, 'fila', prev.end, evt.arrivalTime, Object.assign({}, meta, {
+              statusText: partJourneyStatusText('fila', machineName)
+            }));
+          }
+        }
+
+        const setupEnd = eventSetupEnd(evt);
+        let cursor = evt.arrivalTime;
+        if (evt.isJoin && evt.waitingForAssembly && evt.assemblyGate > evt.arrivalTime) {
+          const unionEnd = Math.min(evt.assemblyGate, evt.setupStart);
+          if (unionEnd > cursor) {
+            pushPartJourneyBlocks(blocks, 'union', cursor, unionEnd, Object.assign({}, meta, {
+              statusText: partJourneyStatusText('union', machineName)
+            }));
+            cursor = unionEnd;
+          }
+        }
+        if (evt.setupStart > cursor) {
+          pushPartJourneyBlocks(blocks, 'fila', cursor, evt.setupStart, Object.assign({}, meta, {
+            statusText: partJourneyStatusText('fila', machineName)
+          }));
+        }
+        if (setupEnd > evt.setupStart) {
+          pushPartJourneyBlocks(blocks, 'setup', evt.setupStart, setupEnd, Object.assign({}, meta, {
+            statusText: partJourneyStatusText('setup', machineName)
+          }));
+        }
+        if (evt.prodStart > setupEnd) {
+          pushPartJourneyBlocks(blocks, 'fila', setupEnd, evt.prodStart, Object.assign({}, meta, {
+            statusText: partJourneyStatusText('fila', machineName)
+          }));
+        }
+
+        if (evt.isEstufaBatch) {
+          const queimaEnd = evt.estufaQueimaEnd != null ? evt.estufaQueimaEnd : evt.end;
+          const resfrioEnd = estufaResfrioEndOf(evt);
+          const unloadStart = evt.estufaUnloadStart != null ? evt.estufaUnloadStart : resfrioEnd;
+          if (queimaEnd > evt.prodStart) {
+            pushPartJourneyBlocks(blocks, 'prod', evt.prodStart, queimaEnd, Object.assign({}, meta, {
+              statusText: partJourneyStatusText('prod', machineName, { estufaPhase: 'queima' })
+            }));
+          }
+          if (resfrioEnd > queimaEnd) {
+            pushPartJourneyBlocks(blocks, 'prod', queimaEnd, resfrioEnd, Object.assign({}, meta, {
+              statusText: partJourneyStatusText('prod', machineName, { estufaPhase: 'cooling' })
+            }));
+          }
+          if (evt.end > unloadStart) {
+            pushPartJourneyBlocks(blocks, 'prod', unloadStart, evt.end, Object.assign({}, meta, {
+              statusText: partJourneyStatusText('prod', machineName, { estufaPhase: 'unload' })
+            }));
+          }
+        } else if (evt.end > evt.prodStart) {
+          pushPartJourneyBlocks(blocks, 'prod', evt.prodStart, evt.end, Object.assign({}, meta, {
+            statusText: partJourneyStatusText('prod', machineName)
+          }));
+        }
+      });
+
+      const lastOwn = events.filter(function (e) { return !e.isJoin; }).slice(-1)[0];
+      const lastEvt = events.length ? events[events.length - 1] : null;
+      const lastEnd = lastOwn ? lastOwn.end : (lastEvt ? lastEvt.end : 0);
+      if (lastEnd) {
+        const wait = joinWaitIntervalForPart(part, lastEnd);
+        if (wait) {
+          const mName = machineNameOf(wait.machineId) || '';
+          pushPartJourneyBlocks(blocks, 'union', wait.start, wait.end, {
+            partName: part.name,
+            machineId: wait.machineId,
+            machineName: mName,
+            planProjectName: part.planProjectName || '',
+            planItemId: part.planItemId || '',
+            statusText: partJourneyStatusText('union', mName)
+          });
+        }
+      }
+      return mergeAdjacentJourneyBlocks(blocks);
+    }
+
+    function clipPartJourneyBlocks(blocks, rangeStart, rangeEnd) {
+      const out = [];
+      (blocks || []).forEach(function (b) {
+        const clipped = clipAbsInterval(b.start, b.end, rangeStart, rangeEnd);
+        if (!clipped) return;
+        out.push(Object.assign({}, b, { start: clipped.start, end: clipped.end }));
+      });
+      return out;
+    }
+
+    function buildPartJourneyRows(rangeStart, rangeEnd) {
+      const hasRange = rangeStart != null && rangeEnd != null;
+      return (getSimParts() || []).map(function (part) {
+        const fullBlocks = collectPartJourneyBlocks(part);
+        if (!fullBlocks.length) return null;
+        const blocks = hasRange ? clipPartJourneyBlocks(fullBlocks, rangeStart, rangeEnd) : fullBlocks;
+        return {
+          id: String(part.planItemId || '') + '|' + String(part.name || ''),
+          name: part.name,
+          kindLabel: part.isVirtual ? 'JOIN / SKU' : 'Peça',
+          isVirtual: !!part.isVirtual,
+          planProjectName: part.planProjectName || '',
+          blocks: blocks,
+          fullBlocks: fullBlocks,
+          kpis: computePartJourneyKpis(fullBlocks)
+        };
+      }).filter(Boolean);
+    }
+
     function buildBomDetailRows() {
       const rows = [];
       (parts || []).forEach(p => {
@@ -1815,38 +2359,41 @@ const ESTUFA_FULL_EPS = 0.01;
       return v;
     }
 
-    function getPartReadyForMachine(partName, machineId, readyMap) {
+    function lookupPrevStepReady(partName, route, stepIndex, readyMap, t0) {
+      if (!(stepIndex > 0) || !route) return t0;
+      const prevStep = route[stepIndex - 1];
+      if (!prevStep) return t0;
+      const keyed = lookupReadyTime(readyMap, readyMapKey(partName, prevStep.machineId, stepIndex - 1));
+      if (keyed != null) return keyed;
+      const fallback = lookupReadyTime(readyMap, partName + '_' + prevStep.machineId);
+      return fallback != null ? fallback : t0;
+    }
+
+    function getPartReadyForMachine(partName, machineId, readyMap, stepIndex) {
       const t0 = getSimulationStartAbsMin();
       const simP = findSimPart(partName);
       if (simP) {
-        const asmIdx = simP.route.findIndex(s => s.machineId === machineId);
-        if (asmIdx > 0) {
-          const prevStep = simP.route[asmIdx - 1];
-          return readyMap[`${partName}_${prevStep.machineId}`] != null
-            ? readyMap[`${partName}_${prevStep.machineId}`]
-            : t0;
-        }
-        if (asmIdx === 0 && isJoinStep(simP.route[0])) {
-          return t0;
-        }
+        const asmIdx = (typeof stepIndex === 'number' && stepIndex >= 0)
+          ? stepIndex
+          : firstMachineStepIndex(simP.route, machineId);
+        if (asmIdx > 0) return lookupPrevStepReady(partName, simP.route, asmIdx, readyMap, t0);
+        if (asmIdx === 0 && isJoinStep(simP.route[0])) return t0;
       }
-      const part = parts.find(p => p.name === partName);
+      const part = findSourcePartByName(partName, parts);
       if (!part) {
-        const prevAsm = assemblyRules.find(a => a.resultName === partName);
+        const prevAsm = (assemblyRules || []).find(a => namesEqual(a.resultName, partName));
         if (prevAsm) {
-          return readyMap[`${partName}_${prevAsm.machineId}`] != null
-            ? readyMap[`${partName}_${prevAsm.machineId}`]
-            : t0;
+          const keyed = lookupReadyTime(readyMap, partName + '_' + prevAsm.machineId);
+          return keyed != null ? keyed : t0;
         }
         return t0;
       }
-      const asmIdx = part.route.findIndex(s => s.machineId === machineId);
+      const asmIdx = (typeof stepIndex === 'number' && stepIndex >= 0)
+        ? stepIndex
+        : firstMachineStepIndex(part.route, machineId);
       if (asmIdx < 0) return t0;
       if (asmIdx === 0) return t0;
-      const prevStep = part.route[asmIdx - 1];
-      return readyMap[`${partName}_${prevStep.machineId}`] != null
-        ? readyMap[`${partName}_${prevStep.machineId}`]
-        : t0;
+      return lookupPrevStepReady(partName, part.route, asmIdx, readyMap, t0);
     }
 
     function maybeInsertMaintenance(machineId, machineFreeUntil, machineOperated, localMaintEvents) {
@@ -1984,15 +2531,18 @@ const ESTUFA_FULL_EPS = 0.01;
     function collectGroupingMembers(groupRule, readyMap, partReady, nextStepIndex) {
       const members = [];
       const simList = getSimParts();
-      groupRule.partNames.forEach(name => {
+      (groupRule.partNames || []).forEach(name => {
         const part = findSimPart(name, simList);
         if (!part) return;
-        const stepIndex = part.route.findIndex(s => s.machineId === groupRule.machineId);
-        if (stepIndex < 0) return;
+        const stepIndex = (nextStepIndex && nextStepIndex[part.name] != null)
+          ? nextStepIndex[part.name]
+          : firstMachineStepIndex(part.route, groupRule.machineId);
+        if (stepIndex < 0 || stepIndex >= (part.route || []).length) return;
         const step = part.route[stepIndex];
+        if (!step || step.machineId !== groupRule.machineId) return;
         const arrivalTime = (partReady && Object.prototype.hasOwnProperty.call(partReady, part.name))
           ? partReady[part.name]
-          : getPartReadyForMachine(part.name, step.machineId, readyMap);
+          : getPartReadyForMachine(part.name, step.machineId, readyMap, stepIndex);
         const asm = resolveAssemblyWait(part, step, arrivalTime, readyMap, partReady, nextStepIndex);
         members.push({
           part,
@@ -2048,10 +2598,13 @@ const ESTUFA_FULL_EPS = 0.01;
         });
         passEvents.push(evt);
         groupedScheduled[`${m.part.name}_${machineId}`] = evt;
+        groupedScheduled[`${m.part.name}_${machineId}_${m.stepIndex}`] = evt;
         readyTimeOfParts[`${m.part.name}_${machineId}`] = evt.end;
+        readyTimeOfParts[readyMapKey(m.part.name, machineId, m.stepIndex)] = evt.end;
         if (m.assemblyRule) {
           readyTimeOfParts[`${m.assemblyRule.resultName}_${m.assemblyRule.machineId}`] = evt.end;
         }
+        logPartStepTransition(m.part, m.stepIndex, m.step, m.stepIndex + 1, nextStepIndex);
       });
 
       machineFreeUntil[machineId] = batchEnd;
@@ -2071,24 +2624,35 @@ const ESTUFA_FULL_EPS = 0.01;
     function groupRepresentativeName(groupRule) {
       const simList = getSimParts();
       for (let i = 0; i < groupRule.partNames.length; i++) {
-        if (simList.some(p => p.name === groupRule.partNames[i])) return groupRule.partNames[i];
+        const found = simList.find(p => namesEqual(p.name, groupRule.partNames[i]));
+        if (found) return found.name;
       }
       return groupRule.partNames[0];
     }
 
     function allGroupMembersAtGroupedStep(groupRule, nextStepIndex) {
       const simList = getSimParts();
-      return groupRule.partNames.every(name => {
+      return (groupRule.partNames || []).every(name => {
         const part = findSimPart(name, simList);
         if (!part) return true;
-        const si = part.route.findIndex(s => s.machineId === groupRule.machineId);
+        const si = firstMachineStepIndex(part.route, groupRule.machineId);
         if (si < 0) return true;
-        return (nextStepIndex[name] || 0) === si;
+        const cur = nextStepIndex[part.name] != null ? nextStepIndex[part.name] : (nextStepIndex[name] || 0);
+        return cur === si;
       });
     }
 
-    function findGroupRuleForStep(part, step) {
-      return groupingRules.find(g => g.machineId === step.machineId && g.partNames.includes(part.name)) || null;
+    function findGroupRuleForStep(part, step, stepIndex) {
+      if (!part || !step) return null;
+      const rule = (groupingRules || []).find(g =>
+        g && g.machineId === step.machineId &&
+        (g.partNames || []).some(n => namesEqual(n, part.name))
+      );
+      if (!rule) return null;
+      const firstIdx = firstMachineStepIndex(part.route, rule.machineId);
+      if (firstIdx < 0) return null;
+      if (typeof stepIndex === 'number' && stepIndex !== firstIdx) return null;
+      return rule;
     }
 
     function getMachineById(id) {
@@ -2614,6 +3178,8 @@ const ESTUFA_FULL_EPS = 0.01;
       // CONCLUÍDO / Aguardando União só após a última etapa individual (chão).
       nextStepIndex[part.name] = stepIndex + 1;
       readyTimeOfParts[`${part.name}_${step.machineId}`] = end;
+      readyTimeOfParts[readyMapKey(part.name, step.machineId, stepIndex)] = end;
+      logPartStepTransition(part, stepIndex, step, nextStepIndex[part.name], nextStepIndex);
 
       if (assemblyRule) {
         readyTimeOfParts[`${assemblyRule.resultName}_${assemblyRule.machineId}`] = end;
@@ -2652,12 +3218,13 @@ const ESTUFA_FULL_EPS = 0.01;
         if (stepIndex >= part.route.length) return;
         const step = part.route[stepIndex];
         if (isEstufaMachineId(step.machineId)) return;
-        const groupRule = findGroupRuleForStep(part, step);
+        const groupRule = findGroupRuleForStep(part, step, stepIndex);
         const joinBlocked = isJoinStep(step) && !joinInputsCompleted(joinRequerOf(step), nextStepIndex, simList);
         if (joinBlocked) return;
 
         if (groupRule) {
-          if (groupedScheduled[`${part.name}_${step.machineId}`]) return;
+          if (groupedScheduled[`${part.name}_${step.machineId}_${stepIndex}`]
+            || groupedScheduled[`${part.name}_${step.machineId}`]) return;
           if (!allGroupMembersAtGroupedStep(groupRule, nextStepIndex)) return;
           if (part.name !== groupRepresentativeName(groupRule)) return;
 
@@ -2729,6 +3296,7 @@ const ESTUFA_FULL_EPS = 0.01;
       const machineFreeUntil = {};
       const machineOperated = {};
       const simParts = buildBomRuntimeParts();
+      logJoinCadastroDiagnostics();
       const simMachines = getSimulationMachines();
       const t0 = getSimulationStartAbsMin();
       simMachines.forEach(m => {
@@ -2794,10 +3362,15 @@ const ESTUFA_FULL_EPS = 0.01;
             nextStepIndex
           );
           chosen.groupRule.partNames.forEach(name => {
-            const evt = groupedScheduled[`${name}_${chosen.groupRule.machineId}`];
+            const part = findSimPart(name);
+            const keyName = part ? part.name : name;
+            const evt = groupedScheduled[`${keyName}_${chosen.groupRule.machineId}_${chosen.stepIndex}`]
+              || groupedScheduled[`${keyName}_${chosen.groupRule.machineId}`]
+              || groupedScheduled[`${name}_${chosen.groupRule.machineId}`];
             if (!evt) return;
-            nextStepIndex[name] = evt.stepIndex + 1;
-            partReady[name] = evt.end;
+            nextStepIndex[keyName] = evt.stepIndex + 1;
+            if (name !== keyName) nextStepIndex[name] = evt.stepIndex + 1;
+            partReady[keyName] = evt.end;
           });
           const added = events.length - before;
           if (added <= 0) break;
@@ -2839,6 +3412,7 @@ const ESTUFA_FULL_EPS = 0.01;
         }
       }
 
+      logJoinWaitDiagnostics(nextStepIndex, events);
       return { events, maintEvents };
     }
 
@@ -2896,7 +3470,7 @@ const ESTUFA_FULL_EPS = 0.01;
           );
           const machineState = snapshot.machinesStatus[evt.machineId];
           if (absMin >= evt.arrivalTime && absMin < evt.setupStart) {
-            const waitReason = (evt.waitingForAssembly && absMin < evt.assemblyGate) ? 'waiting' : 'fila';
+            const waitReason = (evt.isJoin && evt.waitingForAssembly && absMin < evt.assemblyGate) ? 'waiting' : 'fila';
             if (!mMaint && !isActiveMachineState(machineState && machineState.state)) {
               snapshot.machinesStatus[evt.machineId] = {
                 state: isLunchTime ? 'lunch' : 'waiting',
@@ -2973,7 +3547,7 @@ const ESTUFA_FULL_EPS = 0.01;
               } else if (absMin >= evt.setupStart && absMin < setupEnd) {
                 status = isLunchTime ? 'lunch' : 'setup';
                 remaining = remainingMinutesLabel(absMin, setupEnd);
-              } else if (evt.waitingForAssembly && absMin < evt.assemblyGate) {
+              } else if (evt.isJoin && evt.waitingForAssembly && absMin < evt.assemblyGate) {
                 status = isLunchTime ? 'lunch' : 'waiting';
               } else if (evt.isJoin && absMin < evt.setupStart) {
                 status = isLunchTime ? 'lunch' : 'ready';
@@ -3022,7 +3596,7 @@ const ESTUFA_FULL_EPS = 0.01;
                 remaining: '-'
               };
             } else if (pendingJoinWaitForPart(part.name, absMin)) {
-              const joinRule = (assemblyRules || []).find(r => joinRequerOf(r).includes(part.name));
+              const joinRule = (assemblyRules || []).find(r => joinRequerOf(r).some(n => namesEqual(n, part.name)));
               const mObj = joinRule ? machines.find(m => m.id === joinRule.machineId) : null;
               row = {
                 name: part.name,
@@ -3063,6 +3637,24 @@ const ESTUFA_FULL_EPS = 0.01;
         });
 
         simulationHistory.push(snapshot);
+      }
+
+      if (simulationHistory[0] && (assemblyRules || []).length) {
+        simulationHistory[0].floorRows.forEach(row => {
+          if (!row || row.status !== 'waiting') return;
+          if (hasUnfinishedOriginalIndividualWork(row.name, 0)) {
+            console.warn('[JOIN] Peça "' + row.name + '" ainda tem processos individuais em ' +
+              (row.sector || '?') + ' e não deveria aguardar união.');
+            return;
+          }
+          const asSku = (assemblyRules || []).find(r => namesEqual(r.resultName, row.name));
+          const asInput = (assemblyRules || []).find(r => joinRequerOf(r).some(n => namesEqual(n, row.name)));
+          const rule = asSku || asInput;
+          if (!rule) return;
+          const pending = joinRequerOf(rule).filter(n => !namesEqual(n, row.name));
+          console.log('[JOIN] Peça "' + row.name + '" na máquina ' + (row.sector || machineNameOf(rule.machineId) || '?') +
+            ' aguarda insumos: ' + (pending.join(', ') || '—') + ' para formar ' + rule.resultName + '.');
+        });
       }
 
       const pStart = (LUNCH_START_OFFSET / MINUTES_PER_DAY) * 100;

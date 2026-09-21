@@ -309,9 +309,11 @@ function pcpmasterTesterWorkerBootstrap() {
     const requerRaw = Array.isArray(rule.requiredPartNames)
       ? rule.requiredPartNames
       : (rule.juncao && Array.isArray(rule.juncao.requer) ? rule.juncao.requer : []);
-    const requer = requerRaw.map(n => String(n || '').toUpperCase()).filter(Boolean);
-    const machineId = rule.machineId || (rule.juncao && rule.juncao.maquina) || '';
     const resultName = String(rule.resultName || '').toUpperCase();
+    const requer = requerRaw.map(n => String(n || '').toUpperCase()).filter(Boolean)
+      .filter(n => n !== resultName)
+      .filter((n, i, arr) => arr.indexOf(n) === i);
+    const machineId = rule.machineId || (rule.juncao && rule.juncao.maquina) || '';
     const dims = normalizePartDims(rule);
     return Object.assign({
       machineId: machineId,
@@ -325,6 +327,10 @@ function pcpmasterTesterWorkerBootstrap() {
     }, dims);
   }
 
+  function namesEqual(a, b) {
+    return String(a || '').toUpperCase() === String(b || '').toUpperCase();
+  }
+
   function joinRequerOf(stepOrRule) {
     if (!stepOrRule) return [];
     if (stepOrRule.juncao && Array.isArray(stepOrRule.juncao.requer)) return stepOrRule.juncao.requer;
@@ -334,6 +340,10 @@ function pcpmasterTesterWorkerBootstrap() {
 
   function isJoinStep(step) {
     return !!(step && step.juncao && joinRequerOf(step).length > 0);
+  }
+
+  function firstMachineStepIndex(route, machineId) {
+    return (route || []).findIndex(s => s && s.machineId === machineId);
   }
 
   function groupedSetupTime(setup, memberCount) {
@@ -434,7 +444,7 @@ function pcpmasterTesterWorkerBootstrap() {
       const inferredRoute = Array.isArray(rule.route) ? rule.route.slice() : [];
       const stopMachines = otherJoinMachineIds(rule);
       (srcParts || sim.parts).forEach(p => {
-        if (!rule.requiredPartNames.includes(p.name)) return;
+        if (!(rule.requiredPartNames || []).some(n => namesEqual(n, p.name))) return;
         const idx = (p.route || []).findIndex(s => s.machineId === rule.machineId);
         if (idx < 0) return;
         const step = p.route[idx];
@@ -463,7 +473,7 @@ function pcpmasterTesterWorkerBootstrap() {
       const requer = (rule && rule.requiredPartNames) || [];
       let n = 0;
       requer.forEach(name => {
-        const p = (srcParts || []).find(x => x.name === name);
+        const p = (srcParts || []).find(x => namesEqual(x.name, name));
         if (p && (p.route || []).some(s => s && s.machineId === rule.machineId && !isJoinStep(s))) n++;
       });
       return n;
@@ -489,7 +499,8 @@ function pcpmasterTesterWorkerBootstrap() {
     }
 
     function findSimPart(name, list) {
-      return (list || getSimParts()).find(p => p.name === name) || null;
+      const target = String(name || '').toUpperCase();
+      return (list || getSimParts()).find(p => p && String(p.name || '').toUpperCase() === target) || null;
     }
 
     function isEstufaMachineId(machineId) {
@@ -682,8 +693,12 @@ function pcpmasterTesterWorkerBootstrap() {
 
     function entityRouteDone(name, nextStepIndex, list) {
       const ent = findSimPart(name, list);
-      const len = ent && Array.isArray(ent.route) ? ent.route.length : 0;
-      return (nextStepIndex[name] || 0) >= len;
+      const idxMap = nextStepIndex || {};
+      if (!ent) return false;
+      const len = Array.isArray(ent.route) ? ent.route.length : 0;
+      const progressed = idxMap[ent.name] != null ? idxMap[ent.name] : (idxMap[name] != null ? idxMap[name] : 0);
+      if (len === 0) return true;
+      return progressed >= len;
     }
 
     function joinInputsCompleted(requer, nextStepIndex, list) {
@@ -700,22 +715,27 @@ function pcpmasterTesterWorkerBootstrap() {
       return t;
     }
 
-    function getPartReadyForMachine(partName, machineId, readyMap) {
+    function getPartReadyForMachine(partName, machineId, readyMap, stepIndex) {
       const start = t0();
       const simP = findSimPart(partName);
-      if (simP) {
-        const asmIdx = simP.route.findIndex(s => s.machineId === machineId);
+      const route = simP && simP.route ? simP.route : null;
+      if (route) {
+        const asmIdx = (typeof stepIndex === 'number' && stepIndex >= 0)
+          ? stepIndex
+          : firstMachineStepIndex(route, machineId);
         if (asmIdx > 0) {
-          const prevStep = simP.route[asmIdx - 1];
+          const prevStep = route[asmIdx - 1];
+          const keyed = readyMap[partName + '_' + prevStep.machineId + '_' + (asmIdx - 1)];
+          if (keyed != null) return keyed;
           return readyMap[partName + '_' + prevStep.machineId] != null
             ? readyMap[partName + '_' + prevStep.machineId]
             : start;
         }
-        if (asmIdx === 0 && isJoinStep(simP.route[0])) return start;
+        if (asmIdx === 0 && isJoinStep(route[0])) return start;
       }
-      const part = sim.parts.find(p => p.name === partName);
+      const part = (sim.parts || []).find(p => namesEqual(p.name, partName));
       if (!part) {
-        const prevAsm = sim.assemblyRules.find(a => a.resultName === partName);
+        const prevAsm = (sim.assemblyRules || []).find(a => namesEqual(a.resultName, partName));
         if (prevAsm) {
           return readyMap[partName + '_' + prevAsm.machineId] != null
             ? readyMap[partName + '_' + prevAsm.machineId]
@@ -723,10 +743,14 @@ function pcpmasterTesterWorkerBootstrap() {
         }
         return start;
       }
-      const asmIdx = part.route.findIndex(s => s.machineId === machineId);
+      const asmIdx = (typeof stepIndex === 'number' && stepIndex >= 0)
+        ? stepIndex
+        : firstMachineStepIndex(part.route, machineId);
       if (asmIdx < 0) return start;
       if (asmIdx === 0) return start;
       const prevStep = part.route[asmIdx - 1];
+      const keyed = readyMap[partName + '_' + prevStep.machineId + '_' + (asmIdx - 1)];
+      if (keyed != null) return keyed;
       return readyMap[partName + '_' + prevStep.machineId] != null
         ? readyMap[partName + '_' + prevStep.machineId]
         : start;
@@ -800,15 +824,18 @@ function pcpmasterTesterWorkerBootstrap() {
     function collectGroupingMembers(groupRule, readyMap, partReady, nextStepIndex) {
       const members = [];
       const simList = getSimParts();
-      groupRule.partNames.forEach(name => {
+      (groupRule.partNames || []).forEach(name => {
         const part = findSimPart(name, simList);
         if (!part) return;
-        const stepIndex = part.route.findIndex(s => s.machineId === groupRule.machineId);
-        if (stepIndex < 0) return;
+        const stepIndex = (nextStepIndex && nextStepIndex[part.name] != null)
+          ? nextStepIndex[part.name]
+          : firstMachineStepIndex(part.route, groupRule.machineId);
+        if (stepIndex < 0 || stepIndex >= (part.route || []).length) return;
         const step = part.route[stepIndex];
+        if (!step || step.machineId !== groupRule.machineId) return;
         const arrivalTime = (partReady && Object.prototype.hasOwnProperty.call(partReady, part.name))
           ? partReady[part.name]
-          : getPartReadyForMachine(part.name, step.machineId, readyMap);
+          : getPartReadyForMachine(part.name, step.machineId, readyMap, stepIndex);
         const asm = resolveAssemblyWait(part, step, arrivalTime, readyMap, partReady, nextStepIndex);
         members.push({
           part: part,
@@ -856,7 +883,9 @@ function pcpmasterTesterWorkerBootstrap() {
         });
         passEvents.push(evt);
         groupedScheduled[m.part.name + '_' + machineId] = evt;
+        groupedScheduled[m.part.name + '_' + machineId + '_' + m.stepIndex] = evt;
         readyTimeOfParts[m.part.name + '_' + machineId] = evt.end;
+        readyTimeOfParts[m.part.name + '_' + machineId + '_' + m.stepIndex] = evt.end;
         if (m.assemblyRule) {
           readyTimeOfParts[m.assemblyRule.resultName + '_' + m.assemblyRule.machineId] = evt.end;
         }
@@ -874,24 +903,35 @@ function pcpmasterTesterWorkerBootstrap() {
     function groupRepresentativeName(groupRule) {
       const simList = getSimParts();
       for (let i = 0; i < groupRule.partNames.length; i++) {
-        if (simList.some(p => p.name === groupRule.partNames[i])) return groupRule.partNames[i];
+        const found = simList.find(p => namesEqual(p.name, groupRule.partNames[i]));
+        if (found) return found.name;
       }
       return groupRule.partNames[0];
     }
 
     function allGroupMembersAtGroupedStep(groupRule, nextStepIndex) {
       const simList = getSimParts();
-      return groupRule.partNames.every(name => {
+      return (groupRule.partNames || []).every(name => {
         const part = findSimPart(name, simList);
         if (!part) return true;
-        const si = part.route.findIndex(s => s.machineId === groupRule.machineId);
+        const si = firstMachineStepIndex(part.route, groupRule.machineId);
         if (si < 0) return true;
-        return (nextStepIndex[name] || 0) === si;
+        const cur = nextStepIndex[part.name] != null ? nextStepIndex[part.name] : (nextStepIndex[name] || 0);
+        return cur === si;
       });
     }
 
-    function findGroupRuleForStep(part, step) {
-      return sim.groupingRules.find(g => g.machineId === step.machineId && g.partNames.includes(part.name)) || null;
+    function findGroupRuleForStep(part, step, stepIndex) {
+      if (!part || !step) return null;
+      const rule = (sim.groupingRules || []).find(g =>
+        g && g.machineId === step.machineId &&
+        (g.partNames || []).some(n => namesEqual(n, part.name))
+      );
+      if (!rule) return null;
+      const firstIdx = firstMachineStepIndex(part.route, rule.machineId);
+      if (firstIdx < 0) return null;
+      if (typeof stepIndex === 'number' && stepIndex !== firstIdx) return null;
+      return rule;
     }
 
     function collectEstufaWaitingMembers(machineId, nextStepIndex, partReady, readyTimeOfParts, estufaHeldUntil) {
@@ -1094,6 +1134,7 @@ function pcpmasterTesterWorkerBootstrap() {
       partReady[part.name] = end;
       nextStepIndex[part.name] = stepIndex + 1;
       readyTimeOfParts[part.name + '_' + step.machineId] = end;
+      readyTimeOfParts[part.name + '_' + step.machineId + '_' + stepIndex] = end;
       if (assemblyRule) {
         readyTimeOfParts[assemblyRule.resultName + '_' + assemblyRule.machineId] = end;
       }
@@ -1123,12 +1164,13 @@ function pcpmasterTesterWorkerBootstrap() {
         if (stepIndex >= part.route.length) return;
         const step = part.route[stepIndex];
         if (isEstufaMachineId(step.machineId)) return;
-        const groupRule = findGroupRuleForStep(part, step);
+        const groupRule = findGroupRuleForStep(part, step, stepIndex);
         const joinBlocked = isJoinStep(step) && !joinInputsCompleted(joinRequerOf(step), nextStepIndex, simList);
         if (joinBlocked) return;
 
         if (groupRule) {
-          if (groupedScheduled[part.name + '_' + step.machineId]) return;
+          if (groupedScheduled[part.name + '_' + step.machineId + '_' + stepIndex]
+            || groupedScheduled[part.name + '_' + step.machineId]) return;
           if (!allGroupMembersAtGroupedStep(groupRule, nextStepIndex)) return;
           if (part.name !== groupRepresentativeName(groupRule)) return;
           const members = collectGroupingMembers(groupRule, readyTimeOfParts, partReady, nextStepIndex);
@@ -1213,18 +1255,28 @@ function pcpmasterTesterWorkerBootstrap() {
         if (rule && rule.machineId) claimedJoinMachines[rule.machineId] = true;
       });
       const physical = (sim.parts || []).map(p => {
-        const consumeAt = expandedRules.find(r =>
-          (r.requiredPartNames || []).some(n => String(n).toUpperCase() === String(p.name).toUpperCase())
+        const consumeMatches = expandedRules.filter(r =>
+          (r.requiredPartNames || []).some(n => namesEqual(n, p.name))
         );
+        let consumeAt = null;
+        let consumeIdx = -1;
+        consumeMatches.forEach(r => {
+          const idx = (p.route || []).findIndex(s => s && s.machineId === r.machineId && !isJoinStep(s));
+          if (idx > consumeIdx) {
+            consumeIdx = idx;
+            consumeAt = r;
+          }
+        });
+        if (!consumeAt && consumeMatches.length) consumeAt = consumeMatches[consumeMatches.length - 1];
         let route = (p.route || []).map(normalizeRouteStep)
           .filter(s => s && s.machineId && !isJoinStep(s));
         if (consumeAt) {
           const cut = route.findIndex(s => s.machineId === consumeAt.machineId);
           if (cut >= 0) {
-            if (isSharedJoinMeetingPoint(consumeAt, sim.parts)) {
-              route = route.slice(0, cut);
-            } else {
-              route = route.slice(0, cut + 1);
+            const isLastOp = cut === route.length - 1;
+            if (isLastOp && isSharedJoinMeetingPoint(consumeAt, sim.parts)) {
+              const kept = route.slice(0, cut);
+              if (kept.length > 0) route = kept;
             }
           }
         }
@@ -1326,10 +1378,15 @@ function pcpmasterTesterWorkerBootstrap() {
             nextStepIndex
           );
           chosen.groupRule.partNames.forEach(name => {
-            const evt = groupedScheduled[name + '_' + chosen.groupRule.machineId];
+            const part = findSimPart(name);
+            const keyName = part ? part.name : name;
+            const evt = groupedScheduled[keyName + '_' + chosen.groupRule.machineId + '_' + chosen.stepIndex]
+              || groupedScheduled[keyName + '_' + chosen.groupRule.machineId]
+              || groupedScheduled[name + '_' + chosen.groupRule.machineId];
             if (!evt) return;
-            nextStepIndex[name] = evt.stepIndex + 1;
-            partReady[name] = evt.end;
+            nextStepIndex[keyName] = evt.stepIndex + 1;
+            if (name !== keyName) nextStepIndex[name] = evt.stepIndex + 1;
+            partReady[keyName] = evt.end;
           });
           const added = events.length - before;
           if (added <= 0) break;
