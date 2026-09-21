@@ -7,14 +7,21 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=1.8.0-s12c">
+  <link rel="stylesheet" href="css/styles.css?v=1.8.0-s12j">
 </head>
 <body>
 
   <nav id="app-nav" class="app-nav" hidden>
-    <div class="app-nav-brand">PCPMaster</div>
+    <div class="app-nav-brand-wrap">
+      <div class="app-nav-brand">PCPMaster</div>
+      <div class="app-nav-project" role="group" aria-label="Nome e salvamento do projeto">
+        <input type="text" id="projeto_nome_topo" placeholder="Nome do Projeto / SKU" autocomplete="off" aria-label="Nome do Projeto / SKU" onkeydown="if(event.key==='Enter'){event.preventDefault();saveProjectPrompt();}">
+        <button type="button" class="btn btn-success" id="btn_salvar_projeto_topo" onclick="saveProjectPrompt()">💾 Salvar Projeto</button>
+      </div>
+    </div>
     <div class="app-nav-links" role="navigation" aria-label="Navegação principal">
       <button type="button" class="btn btn-secondary" data-nav="screen-config" onclick="navigateTo('screen-config')">Engenharia</button>
+      <button type="button" class="btn btn-secondary" id="btn-nav-ajustar-roteiro" onclick="goToEngineeringRoutes()">Ajustar Roteiro</button>
       <button type="button" class="btn btn-secondary" data-nav="screen-sim" onclick="navigateTo('screen-sim')">Simulação</button>
       <button type="button" class="btn btn-secondary" data-nav="screen-plan" onclick="openPlanScreen()">Plano de Produção</button>
       <button type="button" class="btn btn-secondary" data-nav="screen-tester" onclick="openTesterScreen()">Otimizador TESTER</button>
@@ -61,13 +68,10 @@
   <!-- TELA 2: CONFIGURAÇÃO -->
   <div id="screen-config" class="screen">
     <div class="config-topbar">
-      <h1 style="color: #38bdf8;">Engenharia de Processo e Roteiro</h1>
+      <div class="config-topbar-title">
+        <h1 style="color: #38bdf8;">Engenharia de Processo e Roteiro</h1>
+      </div>
       <div class="config-save-row">
-        <div class="form-group project-name-field">
-          <label for="project-name-input">Nome do Projeto / SKU</label>
-          <input type="text" id="project-name-input" placeholder="Ex: Caixa Completa _35cx" autocomplete="off">
-        </div>
-        <button class="btn btn-success" onclick="saveProjectPrompt()">💾 Salvar Projeto</button>
         <button type="button" class="btn btn-secondary" id="btn-send-to-tester" onclick="sendProjectToTester()">Enviar para o TESTER</button>
         <button class="btn btn-secondary" onclick="navigateTo('screen-welcome')">Voltar</button>
       </div>
@@ -76,7 +80,7 @@
     <div class="card">
       <h2>Projetos Salvos</h2>
       <p class="current-project-banner">Projeto em edição: <strong id="current-project-label">Não salvo (sem nome)</strong></p>
-      <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:8px;">Informe o nome no topo e clique em Salvar. Se o nome já existir, o sistema pede confirmação para sobrescrever ou permite gravar uma variação (ex.: sufixo _v2 ou _35cx).</p>
+      <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:8px;">Informe o nome no cabeçalho superior e clique em Salvar. Se o nome já existir, o sistema pede confirmação para sobrescrever ou permite gravar uma variação (ex.: sufixo _v2 ou _35cx).</p>
       <ul id="saved-projects-list" class="item-list saved-projects-list"></ul>
     </div>
 
@@ -195,6 +199,16 @@
           <p id="estufa-machine-volume-hint" class="catalog-picker-hint" style="margin:0;">Volume: 13.475 m³ · Ciclo 60 min (30 queima + 30 resfriamento)</p>
         </div>
       </div>
+      <div class="form-row estufa-cycle-row" id="estufa-cycle-fields" hidden>
+        <div class="form-group" style="flex:1;">
+          <label for="maquina_tempo_queima">Tempo Padrão de Queima (min)</label>
+          <input type="number" id="maquina_tempo_queima" min="1" step="1" value="30" oninput="updateEstufaMachineVolumeHint()">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label for="maquina_tempo_resfriamento">Tempo Padrão de Resfriamento (min)</label>
+          <input type="number" id="maquina_tempo_resfriamento" min="0" step="1" value="30" oninput="updateEstufaMachineVolumeHint()">
+        </div>
+      </div>
       <div class="catalog-picker">
         <p class="catalog-picker-title">Incluir máquina já cadastrada no Catálogo Global</p>
         <div class="form-row">
@@ -216,7 +230,7 @@
     </div>
 
     <!-- ETAPA 3: PEÇAS -->
-    <div class="card">
+    <div class="card" id="engineering-routes">
       <h2><span class="step-number">3</span> Cadastro de Peças e Roteiros Individuais</h2>
       <div class="form-row">
         <div class="form-group" style="flex:2;">
@@ -234,16 +248,16 @@
       </div>
       <div class="form-row">
         <div class="form-group" style="flex:1;">
-          <label>Altura da Peça (m)</label>
-          <input type="number" id="peca_altura_m" min="0" step="0.01" value="0" oninput="updatePartVolumeHint()">
+          <label>Altura da Peça (mm)</label>
+          <input type="number" id="peca_altura_mm" min="0" step="1" value="0" oninput="updatePartVolumeHint()">
         </div>
         <div class="form-group" style="flex:1;">
-          <label>Largura da Peça (m)</label>
-          <input type="number" id="peca_largura_m" min="0" step="0.01" value="0" oninput="updatePartVolumeHint()">
+          <label>Largura da Peça (mm)</label>
+          <input type="number" id="peca_largura_mm" min="0" step="1" value="0" oninput="updatePartVolumeHint()">
         </div>
         <div class="form-group" style="flex:1;">
-          <label>Comprimento da Peça (m)</label>
-          <input type="number" id="peca_comprimento_m" min="0" step="0.01" value="0" oninput="updatePartVolumeHint()">
+          <label>Comprimento da Peça (mm)</label>
+          <input type="number" id="peca_comprimento_mm" min="0" step="1" value="0" oninput="updatePartVolumeHint()">
         </div>
         <div class="form-group" style="flex:1;">
           <label>Máx. Peças por Fardo/Gancheira</label>
@@ -332,16 +346,16 @@
       </div>
       <div class="form-row">
         <div class="form-group" style="flex:1;">
-          <label>Altura da Peça (m)</label>
-          <input type="number" id="join-altura" min="0" step="0.01" value="0">
+          <label>Altura da Peça (mm)</label>
+          <input type="number" id="join-altura" min="0" step="1" value="0">
         </div>
         <div class="form-group" style="flex:1;">
-          <label>Largura da Peça (m)</label>
-          <input type="number" id="join-largura" min="0" step="0.01" value="0">
+          <label>Largura da Peça (mm)</label>
+          <input type="number" id="join-largura" min="0" step="1" value="0">
         </div>
         <div class="form-group" style="flex:1;">
-          <label>Comprimento da Peça (m)</label>
-          <input type="number" id="join-comprimento" min="0" step="0.01" value="0">
+          <label>Comprimento da Peça (mm)</label>
+          <input type="number" id="join-comprimento" min="0" step="1" value="0">
         </div>
         <div class="form-group" style="flex:1;">
           <label>Máx. Peças por Fardo/Gancheira</label>
@@ -477,6 +491,22 @@
             </div>
           </div>
         </div>
+        <details class="sim-estufa-cycle" id="sim-estufa-cycle-panel" hidden>
+          <summary>Parâmetros do Ciclo Térmico (Estufa)</summary>
+          <div class="sim-estufa-cycle-body">
+            <div class="form-group">
+              <label for="sim_tempo_queima">Queima (min)</label>
+              <input type="number" id="sim_tempo_queima" min="1" step="1" value="30"
+                oninput="onSimEstufaCycleInput()" onchange="onSimEstufaCycleChange()">
+            </div>
+            <div class="form-group">
+              <label for="sim_tempo_resfriamento">Resfriamento (min)</label>
+              <input type="number" id="sim_tempo_resfriamento" min="0" step="1" value="30"
+                oninput="onSimEstufaCycleInput()" onchange="onSimEstufaCycleChange()">
+            </div>
+            <p id="sim-estufa-cycle-indicator" class="sim-estufa-cycle-indicator">Valores Padrão da Máquina</p>
+          </div>
+        </details>
         <p id="sim-plan-banner" class="plan-sim-banner" hidden>Modo Plano Multiprojeto: quantidade de caixas e hora de início vêm da fila. Ajuste no Plano de Produção.</p>
       </div>
       <div class="sim-clock-box" id="kpi-clock">14/09/26 - 07:30:00</div>
@@ -524,7 +554,7 @@
       </div>
       <div>
         <button class="btn btn-success" id="btn-export-pdf" onclick="generatePDFReport()">📄 Gerar Relatório PDF</button>
-        <button class="btn btn-secondary" onclick="navigateTo('screen-config')">Ajustar Roteiro</button>
+        <button class="btn btn-secondary" onclick="goToEngineeringRoutes()">Ajustar Roteiro</button>
       </div>
     </div>
 
@@ -573,7 +603,8 @@
         <div class="analytics-kpi analytics-kpi-estufa">
           <div class="kpi-title" id="kpi-estufa-title">Quantidade de Estufadas</div>
           <div class="kpi-value" id="kpi-estufa">—</div>
-          <div class="kpi-hint" id="kpi-estufa-hint">Ciclos de 60 min (30 queima GLP + 30 resfriamento)</div>
+          <div class="kpi-hint" id="kpi-estufa-occ"></div>
+          <div class="kpi-hint" id="kpi-estufa-hint">30 min queima + 30 min resfriamento + descarregar (prod/peça)</div>
         </div>
       </div>
 
@@ -598,7 +629,9 @@
 
       <div class="legend" id="efficiency-legend">
         <div class="legend-item"><div class="color-box" style="background:#22c55e;"></div> <span id="legend-working">Produção</span></div>
-        <div class="legend-item"><div class="color-box" style="background:#ef4444;"></div> <span id="legend-estufa">Estufa (Queima + Resfriamento)</span></div>
+        <div class="legend-item"><div class="color-box" style="background:#ef4444;"></div> <span id="legend-estufa">Estufa (QUEIMA)</span></div>
+        <div class="legend-item"><div class="color-box" style="background:#38bdf8;"></div> <span id="legend-cooling">Resfriamento</span></div>
+        <div class="legend-item"><div class="color-box" style="background:#16a34a;"></div> <span id="legend-unload">Descarregar</span></div>
         <div class="legend-item"><div class="color-box" style="background:#f97316;"></div> <span id="legend-setup">Setup</span></div>
         <div class="legend-item"><div class="color-box" style="background:#eab308;"></div> <span id="legend-waiting">Espera/Fila</span></div>
         <div class="legend-item"><div class="color-box" style="background:#a855f7;"></div> <span id="legend-maintenance">Manutenção Preventiva</span></div>
@@ -836,13 +869,23 @@
     </div>
   </div>
 
-  <script src="js/simulation.js?v=1.8.0-s12d"></script>
-  <script src="js/database.js?v=1.8.0-s12d"></script>
-  <script src="js/ui.js?v=1.8.0-s12d"></script>
-  <script src="js/tester-worker.js?v=1.8.0-s12d"></script>
-  <script src="js/tester.js?v=1.8.0-s11-ui"></script>
-  <script src="js/plan.js?v=1.8.0-s11b2"></script>
-  <script src="js/app.js?v=1.8.0-s11b2"></script>
+  <div id="estufa-validation-modal" class="modal-overlay" hidden>
+    <div class="modal-card modal-card-wide" role="alertdialog" aria-modal="true" aria-labelledby="estufa-validation-title" aria-describedby="estufa-validation-message">
+      <h3 id="estufa-validation-title">Validação da Estufa</h3>
+      <pre id="estufa-validation-message" class="estufa-validation-body"></pre>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="estufa-validation-close" onclick="closeEstufaValidationModal()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/simulation.js?v=1.8.0-s12i"></script>
+  <script src="js/database.js?v=1.8.0-s12j"></script>
+  <script src="js/ui.js?v=1.8.0-s12j"></script>
+  <script src="js/tester-worker.js?v=1.8.0-s12h"></script>
+  <script src="js/tester.js?v=1.8.0-s12h"></script>
+  <script src="js/plan.js?v=1.8.0-s12f"></script>
+  <script src="js/app.js?v=1.8.0-s12h"></script>
   <footer class="app-footer">
     <span class="db-status-text">Banco ativo: v2.0</span>
     <span>PCPMaster v1.8.0</span>

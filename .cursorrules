@@ -153,21 +153,25 @@ Import aceita envelope legado (`app: SimulaFab`, `projects`/`holidays`/`employee
   isEstufa,                // true se nome contém ESTUFA ou flag explícita
   estufaAlturaM,           // cabine; default 2.00
   estufaLarguraM,          // default 1.75
-  estufaProfundidadeM      // default 3.85 → 13.475 m³
+  estufaProfundidadeM,     // default 3.85 → 13.475 m³
+  tempo_queima_default,    // min; default 30
+  tempo_resfriamento_default // min; default 30 (aceita 0)
 }
 ```
 
 ### Schema peça / rota
-- Peça: `{ name, thickness, qty, peca_altura_m, peca_largura_m, peca_comprimento_m, peca_max_fardo, peca_espacamento_mm, route: [{ machineId, setup, prodUnit }] }`.
-- Dimensões são da **peça individual**. Folga: `altura_efetiva = peca_altura_m + (peca_espacamento_mm/1000)` (idem largura/comprimento).
-- `volume_unitario_com_folga` = A_ef × L_ef × C_ef. `volume_fardo` = volume_unitario_com_folga × peca_max_fardo. `total_fardos` = ceil(qty×caixas / peca_max_fardo).
-- Empacotamento da Estufa usa `volume_fardo` na cabine 13.475 m³; caixa 3D usa dimensões efetivas (anti-colisão). Sem dimensões, 1 fardo ocupa a cabine inteira (conservador).
-- Import legado aceita `altura_m` / `largura_m` / `comprimento_m` / `pecas_por_fardo`.
+- Peça: `{ name, thickness, qty, peca_altura_mm, peca_largura_mm, peca_comprimento_mm, peca_max_fardo, peca_espacamento_mm, route: [{ machineId, setup, prodUnit }] }`.
+- Dimensões da **peça individual** em mm. Conversão: `altura_m = peca_altura_mm / 1000` (idem largura/comprimento). Folga: `espacamento_m = peca_espacamento_mm / 1000`.
+- `volume_peca_m3` = (A_m + folga) × (L_m + folga) × (C_m + folga). `volume_fardo_m3` = volume_peca_m3 × peca_max_fardo. `total_fardos` = ceil(qty×caixas / peca_max_fardo).
+- Empacotamento da Estufa usa `volume_fardo_m3` na cabine 13.475 m³; caixa 3D usa dimensões efetivas em metros. Sem dimensões, 1 fardo ocupa a cabine inteira (conservador).
+- Import legado: `peca_altura_m` / `altura_m` (metros). Valor **menor que 10** é tratado como metro e convertido ×1000 para mm.
 - JOIN/SKU virtual também pode ter as mesmas dimensões de peça/fardo (sub-roteiro com Estufa).
 
 ### Estufa — batelada 3D e ciclo GLP (Sprint 12)
-- Identificação: `isEstufa` ou nome contendo `ESTUFA`. Não usa mais `prodUnit × qty` no posto.
-- Ciclo trava: **60 min** = 30 min Queima GLP (200–240°C) + 30 min resfriamento obrigatório. Setup 0.
+- Identificação: `isEstufa` ou nome contendo `ESTUFA`. Batelada 3D não usa `prodUnit × qty` na queima/resfriamento; **DESCARREGAR** usa `prodUnit × quantidade do lote na batelada`.
+- Ciclo em 3 etapas: **QUEIMA** (`tempo_queima_default` da máquina, override em `sim_tempo_queima`) + **RESFRIAMENTO** (`tempo_resfriamento_default` / `sim_tempo_resfriamento`) + **DESCARREGAR** (`tempo_prod_peca * quantidade_lote`). Fallback global 30/30. Setup 0. O lote só é liberado para a próxima operação ao fim do descarregamento (operador da máquina).
+- Painel na Simulação: **Parâmetros do Ciclo Térmico (Estufa)** com indicador “Valores Padrão da Máquina” vs “Modificado para esta Simulação”; recálculo ao vivo.
+- Painel: badge `QUEIMA` / `RESFRIAMENTO (TRAVA)` / `DESCARREGAR`; tempo restante em minutos inteiros (`12m`).
 - Empacotamento First-Fit 3D (6 rotações) na cabine 2.00 × 1.75 × 3.85 m.
 - Disparo: **carga cheia** (100% ou não cabe mais no buffer pós-Cabine); **mix** (completa com o próximo SKU do Plano); **residual** (não há mais demanda de estufa).
 - KPI **Quantidade de Estufadas** = nº de ciclos (`estufaBatchId`). Gantt: um bloco vermelho agrupado com tags dos SKUs do lote.

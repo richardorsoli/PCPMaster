@@ -717,8 +717,12 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
       return true;
     }
 
+    function getProjectNameInputEl() {
+      return document.getElementById('projeto_nome_topo') || document.getElementById('project-name-input');
+    }
+
     function getProjectNameFromInput() {
-      const el = document.getElementById('project-name-input');
+      const el = getProjectNameInputEl();
       return (el ? el.value : currentProjectName || '').trim();
     }
 
@@ -757,7 +761,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
       const name = getProjectNameFromInput();
       if (!name) {
         alert('Informe o Nome do Projeto / SKU para salvar.');
-        const el = document.getElementById('project-name-input');
+        const el = getProjectNameInputEl();
         if (el) el.focus();
         return;
       }
@@ -813,6 +817,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         if (boxesEl) boxesEl.value = proj.boxesQty;
       }
       persistBaseCatalog();
+      if (typeof resetSimEstufaCycleOverride === 'function') resetSimEstufaCycleOverride();
       if (typeof syncProjectNameUI === 'function') syncProjectNameUI({ syncInput: true });
     }
 

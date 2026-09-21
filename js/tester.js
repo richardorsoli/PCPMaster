@@ -114,6 +114,8 @@
         startDate: startDateStr || '',
         sku: sku,
         projectName: projectName,
+        estufaQueimaOverride: (typeof readSimEstufaCycleOverride === 'function' ? readSimEstufaCycleOverride().queima : null),
+        estufaResfrioOverride: (typeof readSimEstufaCycleOverride === 'function' ? readSimEstufaCycleOverride().resfrio : null),
         maxIterations: testerMaxIterations(),
         searchMode: testerSearchMode,
         seedTop3: typeof getOptimizationSeedsForProject === 'function'

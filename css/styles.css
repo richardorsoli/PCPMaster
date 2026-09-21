@@ -216,6 +216,48 @@
       flex-wrap: wrap;
     }
     .config-topbar h1 { margin: 0; }
+    .config-topbar-title { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+    .project-title-badge {
+      display: inline-flex;
+      align-items: center;
+      max-width: min(420px, 100%);
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid #0284c7;
+      background: #0f172a;
+      color: #7dd3fc;
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .app-nav-brand-wrap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; flex: 1 1 auto; }
+    .app-nav-project {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex: 1 1 280px;
+      max-width: 520px;
+    }
+    .app-nav-project input {
+      flex: 1 1 180px;
+      min-width: 160px;
+      height: 40px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #f8fafc;
+      font-size: 0.9rem;
+    }
+    .app-nav-project input:focus {
+      outline: none;
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 1px #38bdf8;
+    }
+    #btn_salvar_projeto_topo { flex: 0 0 auto; white-space: nowrap; }
     .config-save-row {
       display: flex;
       gap: 10px;
@@ -256,6 +298,15 @@
     }
     .modal-card h3 { color: #38bdf8; font-size: 1.1rem; margin-bottom: 10px; }
     .modal-card p { color: #cbd5e1; font-size: 0.95rem; line-height: 1.5; margin-bottom: 18px; }
+    .modal-card-wide { max-width: 560px; }
+    .estufa-validation-body {
+      white-space: pre-wrap;
+      font-family: inherit;
+      font-size: 0.9rem;
+      color: #cbd5e1;
+      line-height: 1.55;
+      margin: 0 0 18px;
+    }
     .modal-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
 
     .item-list { list-style: none; margin-top: 10px; }
@@ -347,6 +398,7 @@
     .badge-working { background: #22c55e; color: #0f172a; }
     .badge-queima { background: #ef4444; color: #fff7ed; }
     .badge-cooling { background: #38bdf8; color: #0f172a; }
+    .badge-descarregar { background: #22c55e; color: #052e16; }
     .badge-lunch { background: #94a3b8; color: #0f172a; }
     .badge-done { background: #334155; color: #cbd5e1; }
     .badge-maintenance { background: #a855f7; color: #faf5ff; }
@@ -357,6 +409,43 @@
     .timeline-full-clock { font-size: 0.95rem; color: #38bdf8; font-weight: 700; font-variant-numeric: tabular-nums; }
     .timeline-full-header .day-select-wrap { margin-top: 0; margin-left: auto; }
     .sim-controls input[type="time"] { width: 130px; min-width: 130px; }
+    .sim-estufa-cycle {
+      margin-top: 10px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px 14px 10px;
+    }
+    .sim-estufa-cycle[hidden] { display: none !important; }
+    .sim-estufa-cycle summary {
+      cursor: pointer;
+      color: #e2e8f0;
+      font-weight: 600;
+      font-size: 0.85rem;
+      list-style: none;
+    }
+    .sim-estufa-cycle summary::-webkit-details-marker { display: none; }
+    .sim-estufa-cycle summary::before {
+      content: '▸ ';
+      color: #38bdf8;
+    }
+    .sim-estufa-cycle[open] summary::before { content: '▾ '; }
+    .sim-estufa-cycle-body {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+      margin-top: 10px;
+    }
+    .sim-estufa-cycle-body .form-group { margin-bottom: 0; }
+    .sim-estufa-cycle-body input { width: 110px; }
+    .sim-estufa-cycle-indicator {
+      font-size: 0.78rem;
+      color: #4ade80;
+      font-weight: 600;
+      margin: 0 0 6px 0;
+    }
+    .sim-estufa-cycle-indicator.is-modified { color: #fbbf24; }
     .timeline-wrapper { position: relative; width: 100%; margin-top: 8px; }
     .timeline-wrapper-full { margin-top: 0; width: 100%; }
     .timeline-lunch-bg { position: absolute; top: 0; bottom: 0; background: rgba(148, 163, 184, 0.3); border-left: 2px dashed #cbd5e1; border-right: 2px dashed #cbd5e1; pointer-events: none; border-radius: 2px; }
@@ -378,6 +467,24 @@
     .analytics-kpi .kpi-hint { font-size: 0.75rem; color: #94a3b8; margin-top: 6px; line-height: 1.4; }
     .analytics-kpi-bottleneck .kpi-value { font-size: 1.02rem; color: #fbbf24; }
     .analytics-kpi-estufa .kpi-value { color: #f87171; }
+    #kpi-estufa-occ { color: #fecaca; font-weight: 600; }
+    #btn-nav-ajustar-roteiro {
+      border-color: #0ea5e9;
+      color: #7dd3fc;
+    }
+    .estufa-occ-badge {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #7f1d1d;
+      color: #fecaca;
+      font-size: 0.72rem;
+      font-weight: 700;
+      vertical-align: middle;
+    }
+    #kpi-estufa-occ:empty { display: none; }
+    #engineering-routes { scroll-margin-top: 76px; }
     .operator-hours-wrap { margin-top: 22px; overflow-x: auto; }
     .operator-hours-wrap[hidden] { display: none !important; }
     .operator-hours-wrap h3 { color: #38bdf8; font-size: 1.05rem; margin-bottom: 10px; font-weight: 700; }
@@ -433,7 +540,9 @@
     .gantt-block-maint { background: #a855f7; z-index: 3; }
     .gantt-block-setup { background: #f97316; z-index: 4; }
     .gantt-block-prod { background: #22c55e; z-index: 5; }
+    .gantt-block-unload { background: #16a34a; z-index: 5; }
     .gantt-block-estufa { background: #ef4444; z-index: 6; }
+    .gantt-block-cooling { background: #38bdf8; z-index: 5; }
     .gantt-now { position: absolute; top: 0; bottom: 0; width: 2px; background: #38bdf8; box-shadow: 0 0 6px rgba(56, 189, 248, 0.8); z-index: 6; pointer-events: none; }
     @media print {
       .pdf-keep-together, .chart-card, .gantt-card, .operator-hours-wrap, .analytics-kpis, table { page-break-inside: avoid; break-inside: avoid; }

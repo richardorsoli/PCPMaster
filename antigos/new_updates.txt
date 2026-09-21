@@ -1,59 +1,9 @@
 ==================================================
  PROJETO: PCPMaster
- VERSÃO ATUAL: v1.8.x (Sprint 12 Batch 1 — Estufa Module)
+ VERSÃO ATUAL: v1.8.0 (Sprint 7 Batch 4 — Gantt & Relatório PDF)
  REGRA DE VERSIONAMENTO: 
    - v1.5.x: Correções de bugs (Patch)
-   - v1.x.x: Sprints/Recursos (Minor)
-==================================================
-
-========================================
-      INICIAR NOVO CHAT NO CURSOR
-========================================
-
-1. Atualizar new_updates.txt
-2. git add .
-git commit -m "feat: conclui Sprint X e atualiza documentacao"
-3. Handover Prompt: Concluímos esta etapa. Gere um texto resumido de abertura para o meu próximo chat no Cursor, citando a versão atual, os arquivos que alteramos e o que faremos na próxima Sprint."
-
-Atue no SimulaFab v1.4.3 (árvore modular; a UI e o banco_dados.json ainda estão nessa versão; o new_updates.txt registra v1.5.0 em desenvolvimento).
-
-Arquitetura: scripts clássicos na ordem simulation.js → database.js → ui.js → app.js. Source of truth em runtime: localStorage (simulafab_projects_v4). Turno 07:30–17:18 (588 min), almoço 12:00–13:00, pula sábados, domingos e feriados. Não converter para ESM/bundler.
-
-Já concluído neste ciclo
-
-Sprint 5: salvar com confirmação de sobrescrita, lista/exclusão de projetos.
-Sprint 6: botão Novo Projeto na simulação; zera peças/roteiro/sessão e mantém o cadastro base de máquinas e funcionários (catálogo no wrapper do JSON).
-Sprint 1: agrupamento de corte com setups no mesmo horário inicial + botão Atualizar banco_dados.json.
-Arquivos alterados index.html, js/simulation.js, js/database.js, js/ui.js, new_updates.txt, .cursorrules
-
-Próxima etapa — Sprint 4 (new_updates.txt)
-
-Testador de trajetos: melhor ordem de start de peças para gerar menos tempo ocioso.
-Leia o .cursorrules e os módulos em /js antes de alterar regra de negócio. Não quebrar calendário, setup vs produção nem o schema do banco.
-
-------------------------------------------------------------
-Atue no SimulaFab v1.5.0 (Ambiente: Cursor IDE + Live Server).
-O projeto está sendo atualizado de v1.4.3 para v1.5.0 no topo da UI e nos arquivos de configuração.
-
-ARQUITETURA & REGRAS CRÍTICAS:
-- Ordem de scripts: simulation.js -> database.js -> ui.js -> app.js.
-- Runtime Source of Truth: localStorage ('simulafab_projects_v4').
-- Turno base: 07:30–17:18 (588 min útil/dia), Almoço: 12:00–13:00. Pula finais de semana e feriados.
-- NUNCA converter para ESM/bundler (manter Vanilla JS modular).
-- Ler o .cursorrules e os módulos em /js antes de alterar qualquer regra de negócio.
-- Não quebrar o calendário, lógica de setup vs. produção nem o schema do banco (catálogo no wrapper + machines ativas no projeto).
-
-ESTADO ATUAL CONCLUÍDO (Working tree clean):
-1. Despacho Dinâmico (job-shop): ao zerar o tempo de uma etapa, a primeira peça entra em SETUP/EM PRODUÇÃO no minuto seguinte se a máquina estiver livre.
-2. Pausa de Almoço: congelamento rigoroso do 'Tempo Restante' na janela [12:00, 13:00).
-3. Catálogo Global Infinito: projetos armazenam e exibem apenas máquinas/funcionários ATIVOS no roteiro. O catálogo completo permanece protegido em banco_dados.json/localStorage.
-4. Sincronização: função de download/merge de banco_dados.json via Live Server 100% operacional.
-
-PRÓXIMAS TAREFAS DESTE CHAT:
-1. Atualizar visivelmente a versão do sistema de v1.4.3 para v1.5.0 na UI (index.html), no topo do app.js e no new_updates.txt.
-2. Iniciar a Sprint 4: Implementação do Testador de Trajetos (Analisador de melhor ordem de start das peças para minimizar ociosidade e setup).
-==================================================
- HISTÓRICO DE VERSÕES (CONCLUÍDAS)
+   - v1.6.x: Sprints/Recursos (Minor)
 ==================================================
 
 [v1.6.4] - Sprint 7 Batch 4 (CONCLUÍDO)
@@ -73,6 +23,10 @@ Arquivos: index.html, css/styles.css, js/simulation.js, js/ui.js, js/app.js, js/
 - Cálculos derivados do motor (caixas, hora de início, almoço). Recursos v1.6.1/v1.6.2 preservados.
 
 Arquivos: index.html, css/styles.css, js/simulation.js, js/ui.js, js/app.js, js/database.js, banco_dados.json, .cursorrules
+
+==================================================
+ HISTÓRICO DE VERSÕES (CONCLUÍDAS)
+==================================================
 
 [v1.4.2] - Banco de Dados (CONCLUÍDO)
 - Sincronização via localStorage configurada.
@@ -557,57 +511,3 @@ A. HOME
 2. Simulação parar quando finalizar a expedição (última)
 3. Ordens dinâmicas, de acordo com as entradas anteriores e atuais.
 4. Fim da atividade -movimentação-
-**CORREÇÃO DE SPRINT 12: DIMENSÕES DA PEÇA INDIVIDUAL, MARGEM ANTI-COLISÃO E FORMALIZAÇÃO DO FARDO**
-
-Ajuste a interface da Engenharia e o motor 3D da ESTUFA para tratar Altura, Largura e Comprimento como propriedades da PEÇA INDIVIDUAL.
-
----
-
-### 1. Atualização do Formulário de Engenharia (`index.html` / `js/ui.js`):
-- Altere os rótulos e os inputs no bloco de dimensões para refletir os dados da **Peça Individual**:
-  - `Altura da Peça (m)` (`id="peca_altura_m"`, step="0.01")
-  - `Largura da Peça (m)` (`id="peca_largura_m"`, step="0.01")
-  - `Comprimento da Peça (m)` (`id="peca_comprimento_m"`, step="0.01")
-  - `Máx. Peças por Fardo/Gancheira` (`id="peca_max_fardo"`, default="1", min="1")
-  - `Espaçamento / Folga de Segurança (mm)` (`id="peca_espacamento_mm"`, default="0", min="0")
-
----
-
-### 2. Lógica Matemática do Fardo e Empacotamento 3D (`js/simulation.js`):
-- **Dimensões Efetivas da Peça com Folga:**
-  - `altura_efetiva = peca_altura_m + (espacamento_mm / 1000)`
-  - `largura_efetiva = peca_largura_m + (espacamento_mm / 1000)`
-  - `comprimento_efetivo = peca_comprimento_m + (espacamento_mm / 1000)`
-  - `volume_unitario_com_folga = altura_efetiva * largura_efetiva * comprimento_efetivo`
-
-- **Cálculo do Fardo/Gancheira:**
-  - `volume_fardo = volume_unitario_com_folga * peca_max_fardo`
-  - `total_fardos = Math.ceil(quantidade_total_pecas / peca_max_fardo)`
-
-- **Ocupação da Estufa:**
-  - O motor deve empacotar os fardos baseando-se no `volume_fardo` dentro da capacidade física da Estufa ($13{,}475\text{ m}^3$).
-
----
-
-### 3. Exibição Dinâmica (Feedback Visual na Tela):
-- Ao digitar as dimensões da peça e a quantidade por fardo, atualize o texto dinâmico `Volume útil:` exibindo:
-  `Volume Peça: X.XXX m³ | Volume Fardo (N pcs): Y.YYY m³`
-
----
-
-### 4. Persistência (`tb_projetos_pecas`):
-- Salve `peca_altura_m`, `peca_largura_m`, `peca_comprimento_m`, `peca_max_fardo` e `peca_espacamento_mm` na estrutura da peça no localStorage.
-
-EXTRA
-**AJUSTE GLOBAL: SUPORTE A VÍRGULA E PONTO EM CAMPOS DE TEMPO (PCPMaster)**
-
-Aplique uma normalização global em todos os campos de entrada de tempo do sistema (`Setup`, `Tempo Prod/Peça`, tempos de ciclo, etc.):
-
-1. **Normalização de Entrada (Parse Flexível):**
-   - Sempre que o sistema capturar um valor dos inputs de tempo, aplique `.replace(',', '.')` antes de chamar o `parseFloat()`.
-   - Permita que o usuário digite tanto `0,25` quanto `0.25` (fração de minuto) sem que o sistema force arredondamentos para inteiros ou caia no valor padrão de `1 min`.
-
-2. **Formatação de Exibição (UI & Tags):**
-   - Nas tags de roteiro, tabelas e cards do Gantt, exiba o tempo com suporte a decimais (ex: `0.25m` ou `15s` caso seja menor que 1 minuto).
-   - Remova qualquer trava do tipo `Math.max(1, tempo)` ou `parseInt()` nos formulários de cadastro de peças e máquinas.
-   

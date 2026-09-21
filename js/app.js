@@ -25,6 +25,7 @@
       const simTime = document.getElementById('sim-start-time');
       if (simTime) simTime.disabled = false;
       syncStartTimeInputs(startTimeStr || DEFAULT_START_TIME);
+      if (typeof updateSimEstufaCycleIndicator === 'function') updateSimEstufaCycleIndicator();
     }
 
     function seekPlaybackToDayStart(dayIndex) {
@@ -54,8 +55,10 @@
         alert('Cadastre máquinas e peças nas etapas de engenharia.');
         return;
       }
+      if (typeof validateEstufaGeometryBeforeSimulation === 'function' && !validateEstufaGeometryBeforeSimulation()) return;
       selectedDayIndex = 0;
       if (!isPlanSimulationMode()) getStartTimeFromInput();
+      if (typeof syncSimEstufaCycleFields === 'function') syncSimEstufaCycleFields({ fillIfEmpty: true });
       calculateSimulationHistory();
       syncSimHeaderFields();
       if (isPlanSimulationMode()) {
@@ -88,7 +91,7 @@
 
     function recalculateSimulationLive(options) {
       if (!isSimScreenActive()) return;
-      if (typeof isPlanSimulationMode === 'function' && isPlanSimulationMode()) return;
+      if (typeof isPlanSimulationMode === 'function' && isPlanSimulationMode() && !(options && options.allowPlan)) return;
       if (machines.length === 0 || parts.length === 0) return;
       isPlaying = false;
       updatePlayButtonUI();
@@ -124,6 +127,27 @@
       clearTimeout(liveRecalcTimer);
       getStartTimeFromInput();
       recalculateSimulationLive({ seekToStart: true });
+    }
+
+    function onSimEstufaCycleInput() {
+      simEstufaCycleUserEdited = true;
+      if (typeof updateSimEstufaCycleIndicator === 'function') updateSimEstufaCycleIndicator();
+      const qEl = document.getElementById('sim_tempo_queima');
+      const rEl = document.getElementById('sim_tempo_resfriamento');
+      const qRaw = qEl && String(qEl.value).trim();
+      const rRaw = rEl && String(rEl.value).trim();
+      if (qRaw === '' || qRaw === '-' || rRaw === '' || rRaw === '-') return;
+      clearTimeout(liveRecalcTimer);
+      liveRecalcTimer = setTimeout(function () {
+        recalculateSimulationLive({ allowPlan: true });
+      }, 280);
+    }
+
+    function onSimEstufaCycleChange() {
+      simEstufaCycleUserEdited = true;
+      if (typeof updateSimEstufaCycleIndicator === 'function') updateSimEstufaCycleIndicator();
+      clearTimeout(liveRecalcTimer);
+      recalculateSimulationLive({ allowPlan: true });
     }
 
     function runLoop() {

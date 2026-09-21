@@ -143,49 +143,94 @@ function pcpmasterTesterWorkerBootstrap() {
     return String(name || '').toUpperCase().indexOf('ESTUFA') >= 0;
   }
 
+  function parseEstufaCycleMinutes(raw, fallback, minVal) {
+    const n = parseTimeMinutes(raw, NaN);
+    const floor = minVal == null ? 0 : minVal;
+    if (!isFinite(n) || n < floor) return fallback;
+    return n;
+  }
+
+  function getEstufaMachineCycleDefaults(machine) {
+    const queimaRaw = machine && (machine.tempo_queima_default != null ? machine.tempo_queima_default : machine.tempoQueimaDefault);
+    const resfrioRaw = machine && (machine.tempo_resfriamento_default != null ? machine.tempo_resfriamento_default : machine.tempoResfriamentoDefault);
+    return {
+      queima: parseEstufaCycleMinutes(queimaRaw, ESTUFA_QUEIMA_MIN, 1),
+      resfrio: parseEstufaCycleMinutes(resfrioRaw, ESTUFA_RESFRIO_MIN, 0)
+    };
+  }
+
+  function dimValueToMm(raw) {
+    const n = Number(raw);
+    if (!isFinite(n) || n <= 0) return 0;
+    return n < 10 ? n * 1000 : n;
+  }
+
+  function pickPartDimMm(src, mmKey, mKey, legacyKey) {
+    src = src || {};
+    const mm = Number(src[mmKey]);
+    if (isFinite(mm) && mm > 0) return dimValueToMm(mm);
+    const mNew = Number(src[mKey]);
+    if (isFinite(mNew) && mNew > 0) return dimValueToMm(mNew);
+    const mOld = Number(src[legacyKey]);
+    if (isFinite(mOld) && mOld > 0) return dimValueToMm(mOld);
+    return 0;
+  }
+
+  function formatVolumeM3(n) {
+    const v = Number(n);
+    if (!isFinite(v) || !(v > 0)) return '0';
+    const t = (v < 0.01)
+      ? v.toFixed(4)
+      : v.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
+    return String(t).replace('.', ',');
+  }
+
   function normalizePartDims(src) {
     src = src || {};
-    const alturaNew = Number(src.peca_altura_m);
-    const alturaOld = Number(src.altura_m);
-    const h = (isFinite(alturaNew) && alturaNew > 0) ? alturaNew : ((isFinite(alturaOld) && alturaOld > 0) ? alturaOld : 0);
-    const larguraNew = Number(src.peca_largura_m);
-    const larguraOld = Number(src.largura_m);
-    const w = (isFinite(larguraNew) && larguraNew > 0) ? larguraNew : ((isFinite(larguraOld) && larguraOld > 0) ? larguraOld : 0);
-    const comprimentoNew = Number(src.peca_comprimento_m);
-    const comprimentoOld = Number(src.comprimento_m);
-    const d = (isFinite(comprimentoNew) && comprimentoNew > 0) ? comprimentoNew : ((isFinite(comprimentoOld) && comprimentoOld > 0) ? comprimentoOld : 0);
+    const hMm = pickPartDimMm(src, 'peca_altura_mm', 'peca_altura_m', 'altura_m');
+    const wMm = pickPartDimMm(src, 'peca_largura_mm', 'peca_largura_m', 'largura_m');
+    const dMm = pickPartDimMm(src, 'peca_comprimento_mm', 'peca_comprimento_m', 'comprimento_m');
     const maxNew = Number(src.peca_max_fardo);
     const maxOld = Number(src.pecas_por_fardo);
     let maxFardo = 1;
     if (isFinite(maxNew) && maxNew >= 1) maxFardo = Math.round(maxNew);
     else if (isFinite(maxOld) && maxOld >= 1) maxFardo = Math.round(maxOld);
     const gapRaw = Number(src.peca_espacamento_mm);
-    const gap = (isFinite(gapRaw) && gapRaw >= 0) ? gapRaw : 0;
-    const gapM = gap / 1000;
-    const hEff = h > 0 ? h + gapM : 0;
-    const wEff = w > 0 ? w + gapM : 0;
-    const dEff = d > 0 ? d + gapM : 0;
-    const volUnit = hEff * wEff * dEff;
+    const gapMm = (isFinite(gapRaw) && gapRaw >= 0) ? gapRaw : 0;
+    const altura_m = hMm / 1000;
+    const largura_m = wMm / 1000;
+    const comprimento_m = dMm / 1000;
+    const espacamento_m = gapMm / 1000;
+    const hEff = altura_m > 0 ? altura_m + espacamento_m : 0;
+    const wEff = largura_m > 0 ? largura_m + espacamento_m : 0;
+    const dEff = comprimento_m > 0 ? comprimento_m + espacamento_m : 0;
+    const volume_peca_m3 = hEff * wEff * dEff;
+    const volume_fardo_m3 = volume_peca_m3 * maxFardo;
     return {
-      peca_altura_m: h,
-      peca_largura_m: w,
-      peca_comprimento_m: d,
+      peca_altura_mm: hMm,
+      peca_largura_mm: wMm,
+      peca_comprimento_mm: dMm,
+      peca_altura_m: altura_m,
+      peca_largura_m: largura_m,
+      peca_comprimento_m: comprimento_m,
       peca_max_fardo: maxFardo,
-      peca_espacamento_mm: gap,
-      altura_m: h,
-      largura_m: w,
-      comprimento_m: d,
+      peca_espacamento_mm: gapMm,
+      altura_m: altura_m,
+      largura_m: largura_m,
+      comprimento_m: comprimento_m,
       pecas_por_fardo: maxFardo,
       altura_efetiva: hEff,
       largura_efetiva: wEff,
       comprimento_efetivo: dEff,
-      volume_unitario_com_folga: volUnit,
-      volume_fardo: volUnit * maxFardo
+      volume_peca_m3: volume_peca_m3,
+      volume_unitario_com_folga: volume_peca_m3,
+      volume_fardo_m3: volume_fardo_m3,
+      volume_fardo: volume_fardo_m3
     };
   }
 
   function hasPhysicalPartDims(dims) {
-    return !!(dims && dims.peca_altura_m > 0 && dims.peca_largura_m > 0 && dims.peca_comprimento_m > 0);
+    return !!(dims && dims.peca_altura_mm > 0 && dims.peca_largura_mm > 0 && dims.peca_comprimento_mm > 0);
   }
 
   function fardoBoxDims(spec) {
@@ -224,7 +269,17 @@ function pcpmasterTesterWorkerBootstrap() {
       isEstufa: !!isEstufa,
       estufaAlturaM: isEstufa ? ((isFinite(h) && h > 0) ? h : ESTUFA_CABIN_H) : ((isFinite(h) && h > 0) ? h : 0),
       estufaLarguraM: isEstufa ? ((isFinite(w) && w > 0) ? w : ESTUFA_CABIN_W) : ((isFinite(w) && w > 0) ? w : 0),
-      estufaProfundidadeM: isEstufa ? ((isFinite(d) && d > 0) ? d : ESTUFA_CABIN_D) : ((isFinite(d) && d > 0) ? d : 0)
+      estufaProfundidadeM: isEstufa ? ((isFinite(d) && d > 0) ? d : ESTUFA_CABIN_D) : ((isFinite(d) && d > 0) ? d : 0),
+      tempo_queima_default: parseEstufaCycleMinutes(
+        m.tempo_queima_default != null ? m.tempo_queima_default : m.tempoQueimaDefault,
+        ESTUFA_QUEIMA_MIN,
+        1
+      ),
+      tempo_resfriamento_default: parseEstufaCycleMinutes(
+        m.tempo_resfriamento_default != null ? m.tempo_resfriamento_default : m.tempoResfriamentoDefault,
+        ESTUFA_RESFRIO_MIN,
+        0
+      )
     };
   }
 
@@ -258,7 +313,7 @@ function pcpmasterTesterWorkerBootstrap() {
     const machineId = rule.machineId || (rule.juncao && rule.juncao.maquina) || '';
     const resultName = String(rule.resultName || '').toUpperCase();
     const dims = normalizePartDims(rule);
-    return {
+    return Object.assign({
       machineId: machineId,
       resultName: resultName,
       requiredPartNames: requer,
@@ -266,17 +321,8 @@ function pcpmasterTesterWorkerBootstrap() {
       setup: parseTimeMinutes(rule.setup, 0),
       prodUnit: parseTimeMinutes(rule.prodUnit, 0),
       qty: Number(rule.qty) > 0 ? Number(rule.qty) : 1,
-      route: Array.isArray(rule.route) ? rule.route.map(normalizeRouteStep) : [],
-      peca_altura_m: dims.peca_altura_m,
-      peca_largura_m: dims.peca_largura_m,
-      peca_comprimento_m: dims.peca_comprimento_m,
-      peca_max_fardo: dims.peca_max_fardo,
-      peca_espacamento_mm: dims.peca_espacamento_mm,
-      altura_m: dims.altura_m,
-      largura_m: dims.largura_m,
-      comprimento_m: dims.comprimento_m,
-      pecas_por_fardo: dims.pecas_por_fardo
-    };
+      route: Array.isArray(rule.route) ? rule.route.map(normalizeRouteStep) : []
+    }, dims);
   }
 
   function joinRequerOf(stepOrRule) {
@@ -324,6 +370,14 @@ function pcpmasterTesterWorkerBootstrap() {
       assemblyRulesBase: ((snapshot && snapshot.assemblyRules) || []).map(normalizeAssemblyRule),
       boxesQty: Math.max(1, Math.min(999, Number(snapshot && snapshot.boxesQty) || 1)),
       startTimeOffsetMin: startNorm.offset,
+      estufaQueimaOverride: (function () {
+        const n = Number(snapshot && snapshot.estufaQueimaOverride);
+        return (isFinite(n) && n >= 1) ? n : null;
+      })(),
+      estufaResfrioOverride: (function () {
+        const n = Number(snapshot && snapshot.estufaResfrioOverride);
+        return (isFinite(n) && n >= 0) ? n : null;
+      })(),
       parts: [],
       assemblyRules: [],
       bomRuntimeParts: []
@@ -718,7 +772,10 @@ function pcpmasterTesterWorkerBootstrap() {
         requer: fields.requer || [],
         isEstufaBatch: !!fields.isEstufaBatch,
         estufaBatchId: fields.estufaBatchId || '',
-        estufaQueimaEnd: fields.estufaQueimaEnd != null ? fields.estufaQueimaEnd : null
+        estufaQueimaEnd: fields.estufaQueimaEnd != null ? fields.estufaQueimaEnd : null,
+        estufaResfrioEnd: fields.estufaResfrioEnd != null ? fields.estufaResfrioEnd : null,
+        estufaUnloadStart: fields.estufaUnloadStart != null ? fields.estufaUnloadStart : null,
+        estufaUnloadEnd: fields.estufaUnloadEnd != null ? fields.estufaUnloadEnd : null
       };
     }
 
@@ -843,7 +900,8 @@ function pcpmasterTesterWorkerBootstrap() {
         const stepIndex = nextStepIndex[part.name] || 0;
         if (stepIndex >= part.route.length) return;
         const step = part.route[stepIndex];
-        if (!step || step.machineId !== machineId || isJoinStep(step)) return;
+        if (!step || step.machineId !== machineId) return;
+        if (isJoinStep(step) && !joinInputsCompleted(joinRequerOf(step), nextStepIndex, getSimParts())) return;
         const baseArrival = partReady[part.name] != null ? partReady[part.name] : t0();
         const arrivalTime = (estufaHeldUntil && estufaHeldUntil[part.name] != null)
           ? Math.max(baseArrival, estufaHeldUntil[part.name])
@@ -931,25 +989,58 @@ function pcpmasterTesterWorkerBootstrap() {
       return candidates;
     }
 
+    function estufaUnloadMinutes(step, pieceCount) {
+      const unit = Number(step && step.prodUnit);
+      const n = Number(pieceCount);
+      const per = (isFinite(unit) && unit > 0) ? unit : 0;
+      const qty = (isFinite(n) && n > 0) ? n : 0;
+      return per * qty;
+    }
+
+    function resolveEstufaCycleMinutes(machine) {
+      const defs = getEstufaMachineCycleDefaults(machine);
+      const oq = sim.estufaQueimaOverride;
+      const or = sim.estufaResfrioOverride;
+      return {
+        queima: (oq != null && isFinite(oq) && oq >= 1) ? oq : defs.queima,
+        resfrio: (or != null && isFinite(or) && or >= 0) ? or : defs.resfrio
+      };
+    }
+
     function scheduleEstufaBatch(chosen, readyTimeOfParts, machineFreeUntil, machineOperated, events, maintEvents, partReady, nextStepIndex, packedFardosMap, cycleSeq, estufaHeldUntil) {
       const machineId = chosen.machineId;
       maybeInsertMaintenance(machineId, machineFreeUntil, machineOperated, maintEvents);
+      const mObj = sim.machines.find(x => x.id === machineId);
+      const cycle = resolveEstufaCycleMinutes(mObj);
+      const queimaMin = cycle.queima;
+      const resfrioMin = cycle.resfrio;
+      const thermalMin = queimaMin + resfrioMin;
       const start = snapToProductive(Math.max(machineFreeAt(machineFreeUntil, machineId), chosen.readyForMachine));
-      const queimaEnd = addProductiveMinutes(start, ESTUFA_QUEIMA_MIN);
-      const end = addProductiveMinutes(queimaEnd, ESTUFA_RESFRIO_MIN);
+      const queimaEnd = addProductiveMinutes(start, queimaMin);
+      const resfrioEnd = addProductiveMinutes(queimaEnd, resfrioMin);
       const batchId = 'estufa_' + machineId + '_' + cycleSeq.n;
       cycleSeq.n += 1;
       const byPart = {};
+      const partOrder = [];
       chosen.packedUnits.forEach(u => {
-        if (!byPart[u.part.name]) byPart[u.part.name] = { unit: u, fardos: 0, pieces: 0 };
+        if (!byPart[u.part.name]) {
+          byPart[u.part.name] = { unit: u, fardos: 0, pieces: 0 };
+          partOrder.push(u.part.name);
+        }
         byPart[u.part.name].fardos += 1;
         byPart[u.part.name].pieces += u.pieces;
       });
       let completed = 0;
-      Object.keys(byPart).forEach(name => {
+      let unloadCursor = resfrioEnd;
+      let totalUnload = 0;
+      partOrder.forEach(name => {
         const g = byPart[name];
         packedFardosMap[name] = (packedFardosMap[name] || 0) + g.fardos;
         const doneAll = packedFardosMap[name] >= partTotalFardos(g.unit.part, chosen.cabin);
+        const unloadMin = estufaUnloadMinutes(g.unit.step, g.pieces);
+        const unloadStart = unloadCursor;
+        const unloadEnd = addProductiveMinutes(unloadStart, unloadMin);
+        totalUnload += unloadMin;
         events.push(buildProcessEvent(g.unit.part, g.unit.step, g.unit.stepIndex, {
           qty: g.pieces,
           arrivalTime: g.unit.arrivalTime,
@@ -957,26 +1048,32 @@ function pcpmasterTesterWorkerBootstrap() {
           setupStart: start,
           setupEnd: start,
           prodStart: start,
-          end: end,
+          end: unloadEnd,
           setupTime: 0,
-          prodTime: ESTUFA_CICLO_MIN,
+          prodTime: thermalMin + unloadMin,
           waitingForAssembly: g.unit.asm.waitingForAssembly,
           isEstufaBatch: true,
           estufaBatchId: batchId,
-          estufaQueimaEnd: queimaEnd
+          estufaQueimaEnd: queimaEnd,
+          estufaResfrioEnd: resfrioEnd,
+          estufaUnloadStart: unloadStart,
+          estufaUnloadEnd: unloadEnd,
+          estufaQueimaMin: queimaMin,
+          estufaResfrioMin: resfrioMin
         }));
         if (doneAll) {
           nextStepIndex[name] = g.unit.stepIndex + 1;
-          partReady[name] = end;
-          readyTimeOfParts[name + '_' + machineId] = end;
+          partReady[name] = unloadEnd;
+          readyTimeOfParts[name + '_' + machineId] = unloadEnd;
           completed += 1;
           if (estufaHeldUntil) delete estufaHeldUntil[name];
         } else if (estufaHeldUntil) {
-          estufaHeldUntil[name] = end;
+          estufaHeldUntil[name] = unloadEnd;
         }
+        unloadCursor = unloadEnd;
       });
-      machineFreeUntil[machineId] = end;
-      machineOperated[machineId] = (machineOperated[machineId] || 0) + ESTUFA_CICLO_MIN;
+      machineFreeUntil[machineId] = unloadCursor;
+      machineOperated[machineId] = (machineOperated[machineId] || 0) + thermalMin + totalUnload;
       maybeInsertMaintenance(machineId, machineFreeUntil, machineOperated, maintEvents);
       return completed;
     }

@@ -533,6 +533,10 @@
     function startPlanSimulation() {
       const bundle = preparePlanRuntime();
       if (!bundle) return;
+      if (typeof validateEstufaGeometryBeforeSimulation === 'function' && !validateEstufaGeometryBeforeSimulation()) {
+        if (typeof restoreEngineeringSessionIfNeeded === 'function') restoreEngineeringSessionIfNeeded();
+        return;
+      }
       if (typeof ganttViewMode !== 'undefined') ganttViewMode = 'lot';
       if (typeof launchSimulationPlayback === 'function') {
         launchSimulationPlayback();
@@ -547,6 +551,10 @@
     function exportPlanPDFReport() {
       const bundle = preparePlanRuntime();
       if (!bundle) return;
+      if (typeof validateEstufaGeometryBeforeSimulation === 'function' && !validateEstufaGeometryBeforeSimulation()) {
+        if (typeof restoreEngineeringSessionIfNeeded === 'function') restoreEngineeringSessionIfNeeded();
+        return;
+      }
       calculateSimulationHistory();
       if (typeof syncProjectNameUI === 'function') syncProjectNameUI();
       if (typeof renderCharts === 'function') renderCharts();
