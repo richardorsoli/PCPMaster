@@ -22,6 +22,11 @@
 
     let appToastTimer = null;
 
+    function showBackupExportedToast(projectCount) {
+      const total = Math.max(0, Number(projectCount) || 0);
+      showAppToast('✅ Backup exportado com sucesso! ' + total + ' projetos incluídos.');
+    }
+
     function showAppToast(message) {
       const text = String(message || '').trim();
       if (!text) return;

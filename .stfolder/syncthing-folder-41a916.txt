@@ -1,0 +1,5 @@
+# This directory is a Syncthing folder marker.
+# Do not delete.
+
+folderID: lj7kk-tatav
+created: 2026-09-22T09:56:48-03:00

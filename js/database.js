@@ -140,6 +140,21 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
       return out;
     }
 
+    function readProjetosPecasTable(raw) {
+      const table = {};
+      const primary = raw && raw.tb_projetos_pecas;
+      const legacy = raw && raw.projects;
+      if (primary && typeof primary === 'object' && !Array.isArray(primary)) {
+        Object.keys(primary).forEach(key => { table[key] = primary[key]; });
+      }
+      if (legacy && typeof legacy === 'object' && !Array.isArray(legacy)) {
+        Object.keys(legacy).forEach(key => {
+          if (!Object.prototype.hasOwnProperty.call(table, key)) table[key] = legacy[key];
+        });
+      }
+      return table;
+    }
+
     function unwrapV2(raw) {
       const meta = (raw && raw.metadados && typeof raw.metadados === 'object')
         ? {
@@ -155,9 +170,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         holidays: normalizeHolidayList(raw && raw.tb_feriados),
         employees: (raw && Array.isArray(raw.tb_funcionarios) ? raw.tb_funcionarios : []).map(normalizeEmployee),
         machines: (raw && Array.isArray(raw.tb_maquinas) ? raw.tb_maquinas : []).map(normalizeMachine),
-        projects: (raw && raw.tb_projetos_pecas && typeof raw.tb_projetos_pecas === 'object' && !Array.isArray(raw.tb_projetos_pecas))
-          ? raw.tb_projetos_pecas
-          : {},
+        projects: readProjetosPecasTable(raw),
         turnos: turnosSrc.map(normalizeShiftRow),
         historicoOtimizacao: normalizeHistoricoOtimizacao(raw && raw.tb_historico_otimizacao),
         planosProducao: normalizePlanosProducao(raw && raw.tb_planos_producao),
@@ -411,15 +424,11 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
     }
 
     function persistDatabaseWrapper() {
-      const wrap = getDatabaseWrapper();
-      localStorage.setItem(
-        DB_STORAGE_KEY,
-        JSON.stringify(buildDatabasePayload(wrap.projects || {}, {
-          employees: typeof getCatalogEmployees === 'function' ? getCatalogEmployees() : employees,
-          machines: getCatalogMachines()
-        }))
-      );
-      if (typeof updateDbStatusIndicator === 'function') updateDbStatusIndicator();
+      const db = loadRawV2Database();
+      assignProjetosPecas(db.tb_projetos_pecas, {
+        employees: typeof getCatalogEmployees === 'function' ? getCatalogEmployees() : employees,
+        machines: getCatalogMachines()
+      });
     }
 
     function persistHolidays() {
@@ -526,8 +535,51 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
       return ordered;
     }
 
+    function loadRawV2Database() {
+      try {
+        migrateToSchemaV2();
+      } catch (e) { /* segue com a leitura direta */ }
+      let raw = readRawStorage(DB_STORAGE_KEY);
+      if (!raw || !isSchemaV2(raw)) {
+        raw = convertAnyToV2(raw || {});
+        try {
+          localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(raw));
+        } catch (err) { /* cota / modo privado */ }
+      }
+      raw.tb_projetos_pecas = readProjetosPecasTable(raw);
+      delete raw.projects;
+      return raw;
+    }
+
     function getProjectsDatabase() {
-      return getDatabaseWrapper().projects || {};
+      return loadRawV2Database().tb_projetos_pecas;
+    }
+
+    /** Grava o mapa completo em db.tb_projetos_pecas e persiste pcpmaster_db_v2. */
+    function assignProjetosPecas(table, catalog, options) {
+      const projects = (table && typeof table === 'object' && !Array.isArray(table)) ? table : {};
+      const payload = buildDatabasePayload(projects, catalog, options);
+      payload.tb_projetos_pecas = projects;
+      localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(payload));
+      if (typeof updateDbStatusIndicator === 'function') updateDbStatusIndicator();
+      return payload;
+    }
+
+    function mergeProjetosPecas(currentTable, importedTable) {
+      const merged = {};
+      const current = (currentTable && typeof currentTable === 'object' && !Array.isArray(currentTable))
+        ? currentTable
+        : {};
+      const incoming = (importedTable && typeof importedTable === 'object' && !Array.isArray(importedTable))
+        ? importedTable
+        : {};
+      Object.keys(current).forEach(key => {
+        merged[key] = current[key];
+      });
+      Object.keys(incoming).forEach(key => {
+        merged[key] = incoming[key];
+      });
+      return merged;
     }
 
     function getOptimizationHistory() {
@@ -646,8 +698,10 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
     }
 
     function setProjectsDatabase(projects, catalog, options) {
-      localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(buildDatabasePayload(projects || {}, catalog, options)));
-      if (typeof updateDbStatusIndicator === 'function') updateDbStatusIndicator();
+      const db = loadRawV2Database();
+      const incoming = (projects && typeof projects === 'object' && !Array.isArray(projects)) ? projects : {};
+      db.tb_projetos_pecas = incoming;
+      assignProjetosPecas(db.tb_projetos_pecas, catalog, options);
     }
 
     function deriveCatalogFromProjects(projects) {
@@ -707,10 +761,10 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
     function persistSavedProject(name) {
       const trimmed = String(name || '').trim();
       if (!trimmed) return false;
-      const saved = getProjectsDatabase();
-      saved[trimmed] = buildCurrentProjectData(trimmed, saved[trimmed]);
+      const db = loadRawV2Database();
+      db.tb_projetos_pecas[trimmed] = buildCurrentProjectData(trimmed, db.tb_projetos_pecas[trimmed]);
       currentProjectName = trimmed;
-      setProjectsDatabase(saved, catalogSnapshotForPersist());
+      assignProjetosPecas(db.tb_projetos_pecas, catalogSnapshotForPersist());
       if (typeof syncProjectNameUI === 'function') syncProjectNameUI({ syncInput: true });
       if (typeof refreshSavedProjectsUI === 'function') refreshSavedProjectsUI();
       if (typeof renderProductionPlanUI === 'function') renderProductionPlanUI();
@@ -849,13 +903,13 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
     function deleteSavedProject(name) {
       if (!name) return;
       if (!confirm(`Tem certeza que deseja apagar o projeto "${name}"?`)) return;
-      const saved = getProjectsDatabase();
-      if (!saved[name]) {
+      const db = loadRawV2Database();
+      if (!Object.prototype.hasOwnProperty.call(db.tb_projetos_pecas, name)) {
         alert('Projeto não encontrado.');
         return;
       }
-      delete saved[name];
-      setProjectsDatabase(saved, catalogSnapshotForPersist());
+      delete db.tb_projetos_pecas[name];
+      assignProjetosPecas(db.tb_projetos_pecas, catalogSnapshotForPersist());
       if (currentProjectName === name) currentProjectName = '';
       if (typeof syncProjectNameUI === 'function') syncProjectNameUI({ syncInput: true });
       if (typeof refreshSavedProjectsUI === 'function') refreshSavedProjectsUI();
@@ -904,11 +958,24 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
       nodes.forEach(el => { el.textContent = text; });
     }
 
-    function exportDatabaseJSON() {
-      persistDatabaseWrapper();
-      const payload = buildDatabasePayload(getProjectsDatabase());
+    function downloadStoredBackup() {
+      const db = loadRawV2Database();
+      const table = db.tb_projetos_pecas;
+      const meta = buildDbMetadata();
+      db.app = APP_NAME;
+      db.versao_app = meta.versao_app;
+      db.versao_schema = meta.versao_schema;
+      db.data_exportacao = meta.data_exportacao;
+      db.metadados = meta;
+      db.tb_projetos_pecas = table;
+      try {
+        localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(db));
+      } catch (err) { /* cota / modo privado */ }
+      if (typeof updateDbStatusIndicator === 'function') updateDbStatusIndicator();
+
       const filename = buildBackupFilename();
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+      const projectCount = Object.keys(table).length;
+      const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -917,19 +984,30 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      return { payload, filename };
+      return { payload: db, filename, projectCount };
+    }
+
+    function exportDatabaseJSON() {
+      const assigned = (currentProjectName || '').trim();
+      if (assigned) persistSavedProject(assigned);
+      else persistDatabaseWrapper();
+      return downloadStoredBackup();
+    }
+
+    function exportBackup() {
+      const result = exportDatabaseJSON();
+      const count = result ? result.projectCount : 0;
+      if (typeof showBackupExportedToast === 'function') showBackupExportedToast(count);
+      else if (typeof showAppToast === 'function') {
+        showAppToast('✅ Backup exportado com sucesso! ' + count + ' projetos incluídos.');
+      } else {
+        alert('✅ Backup exportado com sucesso! ' + count + ' projetos incluídos.');
+      }
+      return result && result.payload;
     }
 
     function exportDatabaseBackup() {
-      persistDatabaseWrapper();
-      const assigned = (currentProjectName || '').trim();
-      if (assigned) persistSavedProject(assigned);
-      const result = exportDatabaseJSON();
-      const payload = result && result.payload;
-      const filename = (result && result.filename) || buildBackupFilename();
-      const when = formatDbUpdatedLabel(payload && payload.data_exportacao);
-      alert('Backup gerado: ' + filename + '\nSchema ' + SCHEMA_VERSION + ' — ' + when);
-      return payload;
+      return exportBackup();
     }
 
     function updateDatabaseJSONFromStorage() {
@@ -979,7 +1057,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
       };
     }
 
-    function importDatabaseJSON(event) {
+    function importBackup(event) {
       const input = event.target;
       const file = input.files && input.files[0];
       if (!file) return;
@@ -998,12 +1076,14 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
             planosProducao: importedPlanos
           } = normalizeImportedDatabase(parsed);
           const count = Object.keys(projects).length;
-          const current = getProjectsDatabase();
+          const current = loadRawV2Database().tb_projetos_pecas;
           const currentCount = Object.keys(current).length;
+          const merged = mergeProjetosPecas(current, projects);
+          const added = Object.keys(merged).length - currentCount;
 
           const msg = currentCount > 0
-            ? `Restaurar backup "${file.name}"?\n\nIsso SUBSTITUIRÁ o banco atual (${currentCount} projeto(s)) por ${count} projeto(s) do arquivo.`
-            : `Restaurar backup "${file.name}" com ${count} projeto(s)?`;
+            ? `Importar backup "${file.name}"?\n\nFusão segura de tb_projetos_pecas: ${currentCount} projeto(s) já salvos serão mantidos e ${count} projeto(s) do arquivo serão incorporados.\nChaves com o mesmo nome são atualizadas pelo arquivo. Projetos que existem só neste navegador não são apagados.`
+            : `Importar backup "${file.name}" com ${count} projeto(s)?`;
 
           if (!confirm(msg)) {
             input.value = '';
@@ -1019,7 +1099,9 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
           editingEmployeeIndex = -1;
           editingGroupingIndex = -1;
           editingAssemblyIndex = -1;
-          setProjectsDatabase(projects, {
+          const db = loadRawV2Database();
+          db.tb_projetos_pecas = merged;
+          assignProjetosPecas(db.tb_projetos_pecas, {
             employees: importedEmployees || [],
             machines: importedMachines
           }, {
@@ -1029,8 +1111,8 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
             historicoOtimizacao: importedHistorico || [],
             planosProducao: importedPlanos || []
           });
-          if (currentProjectName && projects[currentProjectName]) {
-            applyProjectToState(currentProjectName, projects[currentProjectName]);
+          if (currentProjectName && merged[currentProjectName]) {
+            applyProjectToState(currentProjectName, merged[currentProjectName]);
           } else {
             currentProjectName = '';
           }
@@ -1040,7 +1122,7 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
           if (typeof renderConfigUI === 'function') renderConfigUI();
           renderHolidaysList();
           updateDbStatusIndicator();
-          alert('Backup restaurado com sucesso!\n' + count + ' projeto(s) | ' + holidays.length + ' feriado(s).\nSchema ' + SCHEMA_VERSION + '.');
+          alert('Backup importado com sucesso!\n' + Object.keys(merged).length + ' projeto(s) em tb_projetos_pecas (' + added + ' novo(s) do arquivo).\nSchema ' + SCHEMA_VERSION + '.');
         } catch (err) {
           alert('Falha ao restaurar o backup.\n' + (err.message || err));
         } finally {
@@ -1052,6 +1134,10 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         input.value = '';
       };
       reader.readAsText(file, 'UTF-8');
+    }
+
+    function importDatabaseJSON(event) {
+      return importBackup(event);
     }
 
 function loadPersistedHolidays() {
