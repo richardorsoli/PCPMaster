@@ -1,7 +1,7 @@
-/* PCPMaster v1.9.3 — Motor de simulação, calendário, manutenção, analytics, Gantt e jornada das peças */
+/* PCPMaster v1.10.0 — Motor de simulação, calendário, manutenção, analytics, Gantt, jornada e custos MOD */
 
 const APP_NAME = 'PCPMaster';
-const APP_VERSION = '1.9.3';
+const APP_VERSION = '1.10.0';
 const SCHEMA_VERSION = 'v2.0';
 
 // --- PARÂMETROS DO TURNO ---
@@ -74,6 +74,7 @@ const ESTUFA_FULL_EPS = 0.01;
     let maintenanceEvents = [];
     let workDays = [];
     let boxesQty = 1;
+    let custoDiarioFabrica = 0;
     let startDateStr = '';
     let startTimeStr = DEFAULT_START_TIME;
     let startTimeOffsetMin = 0;
@@ -115,6 +116,7 @@ const ESTUFA_FULL_EPS = 0.01;
       editingGroupingIndex = -1;
       editingAssemblyIndex = -1;
       boxesQty = 1;
+      custoDiarioFabrica = 0;
       startDateStr = todayISODate();
       startTimeStr = DEFAULT_START_TIME;
       startTimeOffsetMin = 0;
@@ -655,14 +657,16 @@ const ESTUFA_FULL_EPS = 0.01;
 
     function normalizeEmployee(e) {
       if (!e || typeof e !== 'object') {
-        return { id: '', name: '', matricula: '', setor: '', postoId: '' };
+        return { id: '', name: '', matricula: '', setor: '', postoId: '', valor_hora: 0 };
       }
+      const hora = parseFlexibleNumber(e.valor_hora != null ? e.valor_hora : e.valorHora, 0);
       return {
         id: e.id || '',
         name: e.name || '',
         matricula: e.matricula || '',
         setor: e.setor || e.setorNome || '',
-        postoId: e.postoId || e.defaultMachineId || e.machineId || ''
+        postoId: e.postoId || e.defaultMachineId || e.machineId || '',
+        valor_hora: (isFinite(hora) && hora > 0) ? hora : 0
       };
     }
 
@@ -1598,6 +1602,81 @@ const ESTUFA_FULL_EPS = 0.01;
       };
     }
 
+    function getCustoDiarioFabrica() {
+      return Math.max(0, Number(custoDiarioFabrica) || 0);
+    }
+
+    function syncCustoDiarioFabricaFromInput() {
+      const el = document.getElementById('custo-diario-fabrica');
+      if (!el) return getCustoDiarioFabrica();
+      const n = parseFlexibleNumber(el.value, 0);
+      custoDiarioFabrica = (isFinite(n) && n > 0) ? n : 0;
+      return custoDiarioFabrica;
+    }
+
+    function applyCustoDiarioFabrica(value) {
+      const n = parseFlexibleNumber(value, 0);
+      custoDiarioFabrica = (isFinite(n) && n > 0) ? n : 0;
+      const el = document.getElementById('custo-diario-fabrica');
+      if (el) el.value = custoDiarioFabrica > 0 ? String(custoDiarioFabrica) : '';
+      return custoDiarioFabrica;
+    }
+
+    /** R$/h da fábrica = custo diário / horas do turno (588 min = 9,8 h). */
+    function factoryHourlyCost() {
+      const hours = MINUTES_PER_DAY / 60;
+      return hours > 0 ? getCustoDiarioFabrica() / hours : 0;
+    }
+
+    /** R$/min da fábrica = custo diário / minutos do turno. */
+    function factoryMinuteCost() {
+      return MINUTES_PER_DAY > 0 ? getCustoDiarioFabrica() / MINUTES_PER_DAY : 0;
+    }
+
+    function operatorHourlyRate(machineId) {
+      const m = (machines || []).find(function (x) { return x && x.id === machineId; });
+      if (!m || !m.defaultOperatorId) return 0;
+      const emp = typeof getEmployeeById === 'function' ? getEmployeeById(m.defaultOperatorId) : null;
+      const rate = emp ? Number(emp.valor_hora) : 0;
+      return (isFinite(rate) && rate > 0) ? rate : 0;
+    }
+
+    function computePartLaborCosts(kpis, blocks) {
+      let mod = 0;
+      (blocks || []).forEach(function (b) {
+        if (!b || !(b.end > b.start)) return;
+        if (b.kind !== 'setup' && b.kind !== 'prod') return;
+        const hours = (b.end - b.start) / 60;
+        mod += hours * operatorHourlyRate(b.machineId);
+      });
+      const filaMin = (Number(kpis && kpis.filaTime) || 0) + (Number(kpis && kpis.unionTime) || 0);
+      const fila = (filaMin / 60) * factoryHourlyCost();
+      return { custoMod: mod, custoFilaJoin: fila };
+    }
+
+    function computeLaborCostSummary(makespanMin, boxes) {
+      syncCustoDiarioFabricaFromInput();
+      const rows = typeof buildPartJourneyRows === 'function' ? buildPartJourneyRows() : [];
+      let mod = 0;
+      let fila = 0;
+      rows.forEach(function (r) {
+        const k = r && r.kpis ? r.kpis : {};
+        mod += Number(k.custoMod) || 0;
+        fila += Number(k.custoFilaJoin) || 0;
+      });
+      const makespan = Math.max(0, Number(makespanMin) || 0);
+      const operacional = makespan * factoryMinuteCost();
+      const qty = Math.max(1, Number(boxes) || 1);
+      return {
+        custoModTotal: mod,
+        custoFilaJoin: fila,
+        custoOperacionalMakespan: operacional,
+        precoSugeridoCaixa: (operacional + mod) / qty,
+        custoMinuto: factoryMinuteCost(),
+        boxes: qty
+      };
+    }
+
     function countEstufaCycles() {
       const ids = {};
       (rawEvents || []).forEach(e => {
@@ -1986,9 +2065,7 @@ const ESTUFA_FULL_EPS = 0.01;
     function formatExactMinutes(mins) {
       const n = Number(mins);
       if (!isFinite(n) || n <= 0) return '0 min';
-      const rounded = Math.round(n * 100) / 100;
-      if (Math.abs(rounded - Math.round(rounded)) < 1e-9) return String(Math.round(rounded)) + ' min';
-      return String(rounded).replace('.', ',') + ' min';
+      return String(Math.round(n)) + ' min';
     }
 
     function productiveSpanMinutes(start, end) {
@@ -2147,6 +2224,13 @@ const ESTUFA_FULL_EPS = 0.01;
       };
     }
 
+    function attachPartLaborCosts(kpis, blocks) {
+      const costs = computePartLaborCosts(kpis, blocks);
+      kpis.custoMod = costs.custoMod;
+      kpis.custoFilaJoin = costs.custoFilaJoin;
+      return kpis;
+    }
+
     function collectPartJourneyBlocks(part) {
       const events = eventsForJourneyPart(part);
       const blocks = [];
@@ -2275,7 +2359,7 @@ const ESTUFA_FULL_EPS = 0.01;
           planProjectName: part.planProjectName || '',
           blocks: blocks,
           fullBlocks: fullBlocks,
-          kpis: computePartJourneyKpis(fullBlocks)
+          kpis: attachPartLaborCosts(computePartJourneyKpis(fullBlocks), fullBlocks)
         };
       }).filter(Boolean);
     }

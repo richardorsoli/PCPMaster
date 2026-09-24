@@ -1,4 +1,4 @@
-/* PCPMaster v1.9.3 — Inicialização, playback e integração dos módulos */
+/* PCPMaster v1.10.0 — Inicialização, playback e integração dos módulos */
 
     function syncSimHeaderFields() {
       const simBoxes = document.getElementById('sim-boxes-qty');

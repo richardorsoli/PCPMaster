@@ -1,0 +1,4229 @@
+{
+  "app": "PCPMaster",
+  "versao_app": "v1.9.3",
+  "versao_schema": "v2.0",
+  "data_exportacao": "2026-09-24T12:10:34.012Z",
+  "metadados": {
+    "data_exportacao": "2026-09-24T12:10:34.012Z",
+    "versao_app": "v1.9.3",
+    "versao_schema": "v2.0"
+  },
+  "tb_maquinas": [
+    {
+      "id": "m1789391560191",
+      "name": "CORTE LASER",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 3600,
+      "maintDurationHours": 4,
+      "defaultOperatorId": "e1789484379998",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789391570242",
+      "name": "MURATA",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 7200,
+      "maintDurationHours": 20,
+      "defaultOperatorId": "e1789484388430",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789391576850",
+      "name": "IMAG",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484414738",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789391638329",
+      "name": "SOLDA PONTO C30",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 7200,
+      "maintDurationHours": 4,
+      "defaultOperatorId": "e1789484578079",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789391581287",
+      "name": "CORDOB",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484388430",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789566946344",
+      "name": "SOLDA PONTO C10",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 13000,
+      "maintDurationHours": 4,
+      "defaultOperatorId": "e1789484402381",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789391662071",
+      "name": "BANHO",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484617258",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789391670237",
+      "name": "CABINE",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484506415",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789391695129",
+      "name": "ESTUFA",
+      "pop": "Procedimento Padrão.",
+      "x": 962.8888888888888,
+      "y": 120,
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": true,
+      "estufaAlturaM": 2,
+      "estufaLarguraM": 1.75,
+      "estufaProfundidadeM": 3.85,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789391701665",
+      "name": "MONTAGEM",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484537303",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789567576763",
+      "name": "GUILHOTINA",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 13000,
+      "maintDurationHours": 4,
+      "defaultOperatorId": "e1789484578079",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789567634601",
+      "name": "MÁQUINA DE CINTAR",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 3600,
+      "maintDurationHours": 4,
+      "defaultOperatorId": "e1789484578079",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789391725515",
+      "name": "EXPEDIÇÃO",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484578079",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789391604678",
+      "name": "SOLDA MIG",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 3600,
+      "maintDurationHours": 4,
+      "defaultOperatorId": "e1789484402381",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789391707261",
+      "name": "EMBALAGEM",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484578079",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789485676075",
+      "name": "MARTELAMENTO",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789485881615",
+      "name": "PRENSA HIDRAULICA",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484388430",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789391593505",
+      "name": "DOBRA NUCLEO",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484402381",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789391598762",
+      "name": "DOBRA DOBRADIÇA",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484537303",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789391647617",
+      "name": "LIXAMENTO",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484402381",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1789391652436",
+      "name": "PINO STUD",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484402381",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 0,
+      "estufaLarguraM": 0,
+      "estufaProfundidadeM": 0,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1790246779624",
+      "name": "REPUXO BATEDOR",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484402381",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 2,
+      "estufaLarguraM": 1.75,
+      "estufaProfundidadeM": 3.85,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1790247558443",
+      "name": "PUXADOR DE UNHA",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484388430",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 2,
+      "estufaLarguraM": 1.75,
+      "estufaProfundidadeM": 3.85,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    },
+    {
+      "id": "m1790248013582",
+      "name": "SELADORA",
+      "pop": "Procedimento Padrão.",
+      "maintIntervalHours": 0,
+      "maintDurationHours": 0,
+      "defaultOperatorId": "e1789484578079",
+      "lastMaintenanceDate": "",
+      "nextMaintenanceDate": "",
+      "isEstufa": false,
+      "estufaAlturaM": 2,
+      "estufaLarguraM": 1.75,
+      "estufaProfundidadeM": 3.85,
+      "tempo_queima_default": 30,
+      "tempo_resfriamento_default": 30
+    }
+  ],
+  "tb_funcionarios": [
+    {
+      "id": "e1789484369450",
+      "name": "Silvio Rodrigues",
+      "matricula": "001",
+      "setor": "",
+      "postoId": ""
+    },
+    {
+      "id": "e1789484379998",
+      "name": "Victor Medina",
+      "matricula": "002",
+      "setor": "CORTE LASER",
+      "postoId": "m1789391560191"
+    },
+    {
+      "id": "e1789484388430",
+      "name": "Wesley Rufino",
+      "matricula": "003",
+      "setor": "MURATA",
+      "postoId": "m1789391570242"
+    },
+    {
+      "id": "e1789484414738",
+      "name": "Sansão dos Santos",
+      "matricula": "005",
+      "setor": "IMAG",
+      "postoId": "m1789391576850"
+    },
+    {
+      "id": "e1789484506415",
+      "name": "Ivan Pereira",
+      "matricula": "006",
+      "setor": "CABINE",
+      "postoId": "m1789391670237"
+    },
+    {
+      "id": "e1789484537303",
+      "name": "José Medina",
+      "matricula": "007",
+      "setor": "MONTAGEM",
+      "postoId": "m1789391701665"
+    },
+    {
+      "id": "e1789484578079",
+      "name": "José Guilherme",
+      "matricula": "008",
+      "setor": "SOLDA PONTO C30",
+      "postoId": "m1789391638329"
+    },
+    {
+      "id": "e1789484402381",
+      "name": "Fernando Oliveira",
+      "matricula": "004",
+      "setor": "SOLDA PONTO C10",
+      "postoId": "m1789566946344"
+    },
+    {
+      "id": "e1789484589641",
+      "name": "Sabrina Blanc",
+      "matricula": "009",
+      "setor": "",
+      "postoId": ""
+    },
+    {
+      "id": "e1789484617258",
+      "name": "Oegena",
+      "matricula": "010",
+      "setor": "BANHO",
+      "postoId": "m1789391662071"
+    }
+  ],
+  "tb_projetos_pecas": {
+    "COMANDO MODELO 1": {
+      "name": "COMANDO MODELO 1",
+      "machines": [
+        {
+          "id": "m1789391560191",
+          "name": "CORTE LASER",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 3600,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484379998",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391570242",
+          "name": "MURATA",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 7200,
+          "maintDurationHours": 20,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391576850",
+          "name": "IMAG",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484414738",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391581287",
+          "name": "CORDOB",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391593505",
+          "name": "DOBRA NUCLEO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484402381",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391598762",
+          "name": "DOBRA DOBRADIÇA",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484537303",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391604678",
+          "name": "SOLDA MIG",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 3600,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484402381",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391638329",
+          "name": "SOLDA PONTO C30",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 7200,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391647617",
+          "name": "LIXAMENTO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484402381",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391652436",
+          "name": "PINO STUD",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484402381",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391662071",
+          "name": "BANHO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484617258",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391670237",
+          "name": "CABINE",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484506415",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391695129",
+          "name": "ESTUFA",
+          "pop": "Procedimento Padrão.",
+          "x": 962.8888888888888,
+          "y": 120,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": true,
+          "estufaAlturaM": 2,
+          "estufaLarguraM": 1.75,
+          "estufaProfundidadeM": 3.85,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391701665",
+          "name": "MONTAGEM",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484537303",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391707261",
+          "name": "EMBALAGEM",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391725515",
+          "name": "EXPEDIÇÃO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        }
+      ],
+      "parts": [
+        {
+          "name": "NUCLEO",
+          "thickness": 1.2,
+          "qty": 2,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391593505",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391604678",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        },
+        {
+          "name": "DOBRADIÇA",
+          "thickness": 1.2,
+          "qty": 2,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391598762",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391701665",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        },
+        {
+          "name": "CORPO",
+          "thickness": 0.65,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391604678",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391638329",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391647617",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391652436",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391662071",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391701665",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391707261",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391725515",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        },
+        {
+          "name": "TAMPA",
+          "thickness": 0.65,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391581287",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391604678",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391647617",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391662071",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391701665",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        },
+        {
+          "name": "ORGANIZADOR",
+          "thickness": 0.65,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391604678",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        },
+        {
+          "name": "FUNDO",
+          "thickness": 0.65,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391638329",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        },
+        {
+          "name": "PLACA",
+          "thickness": 0.65,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391581287",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391662071",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391701665",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        }
+      ],
+      "employees": [
+        {
+          "id": "e1789484369450",
+          "name": "Silvio Rodrigues",
+          "matricula": "001",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484379998",
+          "name": "Victor Medina",
+          "matricula": "002",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484388430",
+          "name": "Wesley Rufino",
+          "matricula": "003",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484402381",
+          "name": "Fernando Oliveira",
+          "matricula": "004",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484414738",
+          "name": "Sansão dos Santos",
+          "matricula": "005",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484506415",
+          "name": "Ivan Pereira",
+          "matricula": "006",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484537303",
+          "name": "José Medina",
+          "matricula": "007",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484578079",
+          "name": "José Guilherme",
+          "matricula": "008",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484589641",
+          "name": "Sabrina Blanc",
+          "matricula": "009",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484617258",
+          "name": "Oegena",
+          "matricula": "010",
+          "setor": "",
+          "postoId": ""
+        }
+      ],
+      "groupingRules": [
+        {
+          "machineId": "m1789391560191",
+          "partNames": [
+            "NUCLEO",
+            "DOBRADIÇA"
+          ]
+        },
+        {
+          "machineId": "m1789391560191",
+          "partNames": [
+            "CORPO",
+            "TAMPA"
+          ]
+        },
+        {
+          "machineId": "m1789391560191",
+          "partNames": [
+            "ORGANIZADOR",
+            "FUNDO"
+          ]
+        }
+      ],
+      "assemblyRules": [
+        {
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": "",
+          "machineId": "m1789391604678",
+          "resultName": "SOLDA TAMPA",
+          "requiredPartNames": [
+            "NUCLEO",
+            "TAMPA",
+            "ORGANIZADOR"
+          ],
+          "juncao": {
+            "requer": [
+              "NUCLEO",
+              "TAMPA",
+              "ORGANIZADOR"
+            ],
+            "maquina": "m1789391604678"
+          },
+          "setup": 0,
+          "prodUnit": 0,
+          "qty": 1,
+          "route": [],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0
+        },
+        {
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": "",
+          "machineId": "m1789391638329",
+          "resultName": "SOLDA CORPO",
+          "requiredPartNames": [
+            "CORPO",
+            "FUNDO"
+          ],
+          "juncao": {
+            "requer": [
+              "CORPO",
+              "FUNDO"
+            ],
+            "maquina": "m1789391638329"
+          },
+          "setup": 0,
+          "prodUnit": 0,
+          "qty": 1,
+          "route": [],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0
+        },
+        {
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": "",
+          "machineId": "m1789391701665",
+          "resultName": "COMANDO",
+          "requiredPartNames": [
+            "PLACA",
+            "SOLDA TAMPA",
+            "SOLDA CORPO"
+          ],
+          "juncao": {
+            "requer": [
+              "PLACA",
+              "SOLDA TAMPA",
+              "SOLDA CORPO"
+            ],
+            "maquina": "m1789391701665"
+          },
+          "setup": 0,
+          "prodUnit": 0,
+          "qty": 1,
+          "route": [],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0
+        }
+      ],
+      "startDate": "2026-09-15",
+      "boxesQty": 100
+    },
+    "DAE JUNDIAI": {
+      "name": "DAE JUNDIAI",
+      "machines": [
+        {
+          "id": "m1789391560191",
+          "name": "CORTE LASER",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 3600,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484379998",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391576850",
+          "name": "IMAG",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484414738",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391581287",
+          "name": "CORDOB",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391604678",
+          "name": "SOLDA MIG",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 3600,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484402381",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391638329",
+          "name": "SOLDA PONTO C30",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 7200,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391662071",
+          "name": "BANHO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484617258",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391670237",
+          "name": "CABINE",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484506415",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391695129",
+          "name": "ESTUFA",
+          "pop": "Procedimento Padrão.",
+          "x": 962.8888888888888,
+          "y": 120,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": true,
+          "estufaAlturaM": 2,
+          "estufaLarguraM": 1.75,
+          "estufaProfundidadeM": 3.85,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391701665",
+          "name": "MONTAGEM",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484537303",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391707261",
+          "name": "EMBALAGEM",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391725515",
+          "name": "EXPEDIÇÃO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789485676075",
+          "name": "MARTELAMENTO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789485881615",
+          "name": "PRENSA HIDRAULICA",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391570242",
+          "name": "MURATA",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 7200,
+          "maintDurationHours": 20,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        }
+      ],
+      "parts": [
+        {
+          "name": "BATEDOR",
+          "thickness": 1.2,
+          "qty": 4,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391581287",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        },
+        {
+          "name": "CORPO",
+          "thickness": 1.2,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        },
+        {
+          "name": "SUPORTE",
+          "thickness": 1.2,
+          "qty": 2,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        },
+        {
+          "name": "LATERAIS",
+          "thickness": 1.2,
+          "qty": 2,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391581287",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        },
+        {
+          "name": "TAMPA",
+          "thickness": 1.2,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391570242",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789485881615",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391662071",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ]
+        }
+      ],
+      "employees": [
+        {
+          "id": "e1789484369450",
+          "name": "Silvio Rodrigues",
+          "matricula": "001",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484379998",
+          "name": "Victor Medina",
+          "matricula": "002",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484388430",
+          "name": "Wesley Rufino",
+          "matricula": "003",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484402381",
+          "name": "Fernando Oliveira",
+          "matricula": "004",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484414738",
+          "name": "Sansão dos Santos",
+          "matricula": "005",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484506415",
+          "name": "Ivan Pereira",
+          "matricula": "006",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484537303",
+          "name": "José Medina",
+          "matricula": "007",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484578079",
+          "name": "José Guilherme",
+          "matricula": "008",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484589641",
+          "name": "Sabrina Blanc",
+          "matricula": "009",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484617258",
+          "name": "Oegena",
+          "matricula": "010",
+          "setor": "",
+          "postoId": ""
+        }
+      ],
+      "groupingRules": [
+        {
+          "machineId": "m1789391560191",
+          "partNames": [
+            "BATEDOR",
+            "CORPO",
+            "SUPORTE",
+            "LATERAIS"
+          ]
+        }
+      ],
+      "assemblyRules": [
+        {
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": "",
+          "machineId": "m1789485676075",
+          "resultName": "CORPO MARTELAMENTO",
+          "requiredPartNames": [
+            "CORPO",
+            "LATERAIS"
+          ],
+          "juncao": {
+            "requer": [
+              "CORPO",
+              "LATERAIS"
+            ],
+            "maquina": "m1789485676075"
+          },
+          "setup": 1,
+          "prodUnit": 1,
+          "qty": 1,
+          "route": [],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0
+        },
+        {
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": "",
+          "machineId": "m1789391604678",
+          "resultName": "SOLDA CORPO",
+          "requiredPartNames": [
+            "SUPORTE",
+            "CORPO MARTELAMENTO"
+          ],
+          "juncao": {
+            "requer": [
+              "SUPORTE",
+              "CORPO MARTELAMENTO"
+            ],
+            "maquina": "m1789391604678"
+          },
+          "setup": 1,
+          "prodUnit": 1,
+          "qty": 1,
+          "route": [],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0
+        },
+        {
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": "",
+          "machineId": "m1789391638329",
+          "resultName": "CORPO COMPLETO",
+          "requiredPartNames": [
+            "BATEDOR",
+            "SOLDA CORPO"
+          ],
+          "juncao": {
+            "requer": [
+              "BATEDOR",
+              "SOLDA CORPO"
+            ],
+            "maquina": "m1789391638329"
+          },
+          "setup": 1,
+          "prodUnit": 1,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391662071",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0
+        },
+        {
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": "",
+          "machineId": "m1789391701665",
+          "resultName": "DAE JUNDIAI",
+          "requiredPartNames": [
+            "TAMPA",
+            "CORPO COMPLETO"
+          ],
+          "juncao": {
+            "requer": [
+              "TAMPA",
+              "CORPO COMPLETO"
+            ],
+            "maquina": "m1789391701665"
+          },
+          "setup": 1,
+          "prodUnit": 1,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391707261",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391725515",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0
+        }
+      ],
+      "startDate": "2026-09-16",
+      "boxesQty": 280
+    },
+    "TELEFONE EMBUTIR": {
+      "id": "p1790085693810",
+      "name": "TELEFONE EMBUTIR",
+      "machines": [
+        {
+          "id": "m1789391560191",
+          "name": "CORTE LASER",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 3600,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484379998",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391570242",
+          "name": "MURATA",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 7200,
+          "maintDurationHours": 20,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391576850",
+          "name": "IMAG",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484414738",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391638329",
+          "name": "SOLDA PONTO C30",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 7200,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391581287",
+          "name": "CORDOB",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789566946344",
+          "name": "SOLDA PONTO C10",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 13000,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484402381",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391662071",
+          "name": "BANHO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484617258",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391670237",
+          "name": "CABINE",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484506415",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391695129",
+          "name": "ESTUFA",
+          "pop": "Procedimento Padrão.",
+          "x": 962.8888888888888,
+          "y": 120,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": true,
+          "estufaAlturaM": 2,
+          "estufaLarguraM": 1.75,
+          "estufaProfundidadeM": 3.85,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391701665",
+          "name": "MONTAGEM",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484537303",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789567576763",
+          "name": "GUILHOTINA",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 13000,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789567634601",
+          "name": "MÁQUINA DE CINTAR",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 3600,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391725515",
+          "name": "EXPEDIÇÃO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        }
+      ],
+      "parts": [
+        {
+          "name": "CORPO",
+          "thickness": 0.5,
+          "qty": 2,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 10,
+              "prodUnit": 2.5
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 10,
+              "prodUnit": 2.5
+            },
+            {
+              "machineId": "m1789391638329",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391662071",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ],
+          "peca_altura_mm": 300,
+          "peca_largura_mm": 300,
+          "peca_comprimento_mm": 120,
+          "peca_altura_m": 0.3,
+          "peca_largura_m": 0.3,
+          "peca_comprimento_m": 0.12,
+          "peca_max_fardo": 4,
+          "peca_espacamento_mm": 100,
+          "altura_m": 0.3,
+          "largura_m": 0.3,
+          "comprimento_m": 0.12,
+          "pecas_por_fardo": 4,
+          "altura_efetiva": 0.4,
+          "largura_efetiva": 0.4,
+          "comprimento_efetivo": 0.22,
+          "volume_peca_m3": 0.03520000000000001,
+          "volume_unitario_com_folga": 0.03520000000000001,
+          "volume_fardo_m3": 0.14080000000000004,
+          "volume_fardo": 0.14080000000000004,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "MOLDURA",
+          "thickness": 0.5,
+          "qty": 2,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 10,
+              "prodUnit": 2.5
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 10,
+              "prodUnit": 2.5
+            },
+            {
+              "machineId": "m1789391638329",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391662071",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "TAMPA",
+          "thickness": 0.5,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 10,
+              "prodUnit": 2.5
+            },
+            {
+              "machineId": "m1789391570242",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391581287",
+              "setup": 10,
+              "prodUnit": 2.5
+            },
+            {
+              "machineId": "m1789391662071",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391701665",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "BATEDOR",
+          "thickness": 1.2,
+          "qty": 2,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "MADEIRITE",
+          "thickness": 0.5,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391701665",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        }
+      ],
+      "employees": [
+        {
+          "id": "e1789484369450",
+          "name": "Silvio Rodrigues",
+          "matricula": "001",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484379998",
+          "name": "Victor Medina",
+          "matricula": "002",
+          "setor": "CORTE LASER",
+          "postoId": "m1789391560191"
+        },
+        {
+          "id": "e1789484388430",
+          "name": "Wesley Rufino",
+          "matricula": "003",
+          "setor": "MURATA",
+          "postoId": "m1789391570242"
+        },
+        {
+          "id": "e1789484402381",
+          "name": "Fernando Oliveira",
+          "matricula": "004",
+          "setor": "SOLDA PONTO C10",
+          "postoId": "m1789566946344"
+        },
+        {
+          "id": "e1789484414738",
+          "name": "Sansão dos Santos",
+          "matricula": "005",
+          "setor": "IMAG",
+          "postoId": "m1789391576850"
+        },
+        {
+          "id": "e1789484506415",
+          "name": "Ivan Pereira",
+          "matricula": "006",
+          "setor": "CABINE",
+          "postoId": "m1789391670237"
+        },
+        {
+          "id": "e1789484537303",
+          "name": "José Medina",
+          "matricula": "007",
+          "setor": "MONTAGEM",
+          "postoId": "m1789391701665"
+        },
+        {
+          "id": "e1789484578079",
+          "name": "José Guilherme",
+          "matricula": "008",
+          "setor": "SOLDA PONTO C30",
+          "postoId": "m1789391638329"
+        },
+        {
+          "id": "e1789484589641",
+          "name": "Sabrina Blanc",
+          "matricula": "009",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484617258",
+          "name": "Oegena",
+          "matricula": "010",
+          "setor": "BANHO",
+          "postoId": "m1789391662071"
+        }
+      ],
+      "groupingRules": [
+        {
+          "machineId": "m1789391560191",
+          "partNames": [
+            "CORPO",
+            "MOLDURA",
+            "TAMPA"
+          ]
+        }
+      ],
+      "assemblyRules": [
+        {
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": "",
+          "machineId": "m1789391701665",
+          "resultName": "TELEFONE EMBUTIR",
+          "requiredPartNames": [
+            "BATEDOR",
+            "CORPO",
+            "MOLDURA",
+            "TAMPA",
+            "MADEIRITE"
+          ],
+          "juncao": {
+            "requer": [
+              "BATEDOR",
+              "CORPO",
+              "MOLDURA",
+              "TAMPA",
+              "MADEIRITE"
+            ],
+            "maquina": "m1789391701665"
+          },
+          "setup": 1,
+          "prodUnit": 1,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391701665",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789567576763",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789567634601",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391725515",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0
+        }
+      ],
+      "startDate": "2026-09-16",
+      "startTime": "07:30",
+      "boxesQty": 10
+    },
+    "TEL SOB 30x30x12": {
+      "id": "p1790086072860",
+      "name": "TEL SOB 30x30x12",
+      "machines": [
+        {
+          "id": "m1789391560191",
+          "name": "CORTE LASER",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 3600,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484379998",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391570242",
+          "name": "MURATA",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 7200,
+          "maintDurationHours": 20,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391576850",
+          "name": "IMAG",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484414738",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391638329",
+          "name": "SOLDA PONTO C30",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 7200,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391581287",
+          "name": "CORDOB",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789566946344",
+          "name": "SOLDA PONTO C10",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 13000,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484402381",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391662071",
+          "name": "BANHO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484617258",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391670237",
+          "name": "CABINE",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484506415",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391695129",
+          "name": "ESTUFA",
+          "pop": "Procedimento Padrão.",
+          "x": 962.8888888888888,
+          "y": 120,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": true,
+          "estufaAlturaM": 2,
+          "estufaLarguraM": 1.75,
+          "estufaProfundidadeM": 3.85,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391701665",
+          "name": "MONTAGEM",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484537303",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789567576763",
+          "name": "GUILHOTINA",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 13000,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789567634601",
+          "name": "MÁQUINA DE CINTAR",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 3600,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391725515",
+          "name": "EXPEDIÇÃO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        }
+      ],
+      "parts": [
+        {
+          "name": "CORPO",
+          "thickness": 0.5,
+          "qty": 2,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 10,
+              "prodUnit": 2.5
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 10,
+              "prodUnit": 2.5
+            },
+            {
+              "machineId": "m1789391638329",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391662071",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ],
+          "peca_altura_mm": 300,
+          "peca_largura_mm": 300,
+          "peca_comprimento_mm": 120,
+          "peca_altura_m": 0.3,
+          "peca_largura_m": 0.3,
+          "peca_comprimento_m": 0.12,
+          "peca_max_fardo": 4,
+          "peca_espacamento_mm": 100,
+          "altura_m": 0.3,
+          "largura_m": 0.3,
+          "comprimento_m": 0.12,
+          "pecas_por_fardo": 4,
+          "altura_efetiva": 0.4,
+          "largura_efetiva": 0.4,
+          "comprimento_efetivo": 0.22,
+          "volume_peca_m3": 0.03520000000000001,
+          "volume_unitario_com_folga": 0.03520000000000001,
+          "volume_fardo_m3": 0.14080000000000004,
+          "volume_fardo": 0.14080000000000004,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "MOLDURA",
+          "thickness": 0.5,
+          "qty": 2,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 10,
+              "prodUnit": 2.5
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 10,
+              "prodUnit": 2.5
+            },
+            {
+              "machineId": "m1789391638329",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391662071",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "TAMPA",
+          "thickness": 0.5,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 10,
+              "prodUnit": 2.5
+            },
+            {
+              "machineId": "m1789391570242",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391581287",
+              "setup": 10,
+              "prodUnit": 2.5
+            },
+            {
+              "machineId": "m1789391662071",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391701665",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "BATEDOR",
+          "thickness": 1.2,
+          "qty": 2,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "MADEIRITE",
+          "thickness": 0.5,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391701665",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        }
+      ],
+      "employees": [
+        {
+          "id": "e1789484369450",
+          "name": "Silvio Rodrigues",
+          "matricula": "001",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484379998",
+          "name": "Victor Medina",
+          "matricula": "002",
+          "setor": "CORTE LASER",
+          "postoId": "m1789391560191"
+        },
+        {
+          "id": "e1789484388430",
+          "name": "Wesley Rufino",
+          "matricula": "003",
+          "setor": "MURATA",
+          "postoId": "m1789391570242"
+        },
+        {
+          "id": "e1789484402381",
+          "name": "Fernando Oliveira",
+          "matricula": "004",
+          "setor": "SOLDA PONTO C10",
+          "postoId": "m1789566946344"
+        },
+        {
+          "id": "e1789484414738",
+          "name": "Sansão dos Santos",
+          "matricula": "005",
+          "setor": "IMAG",
+          "postoId": "m1789391576850"
+        },
+        {
+          "id": "e1789484506415",
+          "name": "Ivan Pereira",
+          "matricula": "006",
+          "setor": "CABINE",
+          "postoId": "m1789391670237"
+        },
+        {
+          "id": "e1789484537303",
+          "name": "José Medina",
+          "matricula": "007",
+          "setor": "MONTAGEM",
+          "postoId": "m1789391701665"
+        },
+        {
+          "id": "e1789484578079",
+          "name": "José Guilherme",
+          "matricula": "008",
+          "setor": "SOLDA PONTO C30",
+          "postoId": "m1789391638329"
+        },
+        {
+          "id": "e1789484589641",
+          "name": "Sabrina Blanc",
+          "matricula": "009",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484617258",
+          "name": "Oegena",
+          "matricula": "010",
+          "setor": "BANHO",
+          "postoId": "m1789391662071"
+        }
+      ],
+      "groupingRules": [
+        {
+          "machineId": "m1789391560191",
+          "partNames": [
+            "CORPO",
+            "MOLDURA",
+            "TAMPA"
+          ]
+        }
+      ],
+      "assemblyRules": [
+        {
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": "",
+          "machineId": "m1789391701665",
+          "resultName": "TELEFONE EMBUTIR",
+          "requiredPartNames": [
+            "BATEDOR",
+            "CORPO",
+            "MOLDURA",
+            "TAMPA",
+            "MADEIRITE"
+          ],
+          "juncao": {
+            "requer": [
+              "BATEDOR",
+              "CORPO",
+              "MOLDURA",
+              "TAMPA",
+              "MADEIRITE"
+            ],
+            "maquina": "m1789391701665"
+          },
+          "setup": 1,
+          "prodUnit": 1,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391701665",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789567576763",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789567634601",
+              "setup": 1,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391725515",
+              "setup": 1,
+              "prodUnit": 1
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0
+        }
+      ],
+      "startDate": "2026-09-16",
+      "startTime": "07:30",
+      "boxesQty": 10
+    },
+    "SABESP": {
+      "id": "p1790247173795",
+      "name": "SABESP",
+      "machines": [
+        {
+          "id": "m1789391560191",
+          "name": "CORTE LASER",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 3600,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484379998",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391570242",
+          "name": "MURATA",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 7200,
+          "maintDurationHours": 20,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391576850",
+          "name": "IMAG",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484414738",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391581287",
+          "name": "CORDOB",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391638329",
+          "name": "SOLDA PONTO C30",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 7200,
+          "maintDurationHours": 4,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789485676075",
+          "name": "MARTELAMENTO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391662071",
+          "name": "BANHO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484617258",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391670237",
+          "name": "CABINE",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484506415",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391695129",
+          "name": "ESTUFA",
+          "pop": "Procedimento Padrão.",
+          "x": 962.8888888888888,
+          "y": 120,
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": true,
+          "estufaAlturaM": 2,
+          "estufaLarguraM": 1.75,
+          "estufaProfundidadeM": 3.85,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391701665",
+          "name": "MONTAGEM",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484537303",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1790246779624",
+          "name": "REPUXO BATEDOR",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484402381",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 2,
+          "estufaLarguraM": 1.75,
+          "estufaProfundidadeM": 3.85,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1790247558443",
+          "name": "PUXADOR DE UNHA",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484388430",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 2,
+          "estufaLarguraM": 1.75,
+          "estufaProfundidadeM": 3.85,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1790248013582",
+          "name": "SELADORA",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 2,
+          "estufaLarguraM": 1.75,
+          "estufaProfundidadeM": 3.85,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391707261",
+          "name": "EMBALAGEM",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        },
+        {
+          "id": "m1789391725515",
+          "name": "EXPEDIÇÃO",
+          "pop": "Procedimento Padrão.",
+          "maintIntervalHours": 0,
+          "maintDurationHours": 0,
+          "defaultOperatorId": "e1789484578079",
+          "lastMaintenanceDate": "",
+          "nextMaintenanceDate": "",
+          "isEstufa": false,
+          "estufaAlturaM": 0,
+          "estufaLarguraM": 0,
+          "estufaProfundidadeM": 0,
+          "tempo_queima_default": 30,
+          "tempo_resfriamento_default": 30
+        }
+      ],
+      "parts": [
+        {
+          "name": "BATEDOR CORPO",
+          "thickness": 0.95,
+          "qty": 6,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 5,
+              "prodUnit": 0.25
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 5,
+              "prodUnit": 0.25
+            },
+            {
+              "machineId": "m1790246779624",
+              "setup": 5,
+              "prodUnit": 0.25
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "PINO",
+          "thickness": 0.95,
+          "qty": 4,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 5,
+              "prodUnit": 0.25
+            },
+            {
+              "machineId": "m1789391581287",
+              "setup": 5,
+              "prodUnit": 0.25
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "BATEDOR TAMPA",
+          "thickness": 0.95,
+          "qty": 2,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 5,
+              "prodUnit": 0.25
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 5,
+              "prodUnit": 0.25
+            },
+            {
+              "machineId": "m1790246779624",
+              "setup": 5,
+              "prodUnit": 0.25
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "DIVISÓRIA",
+          "thickness": 0.5,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 5,
+              "prodUnit": 0.5
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "LATERAL SAIDA",
+          "thickness": 0.5,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391581287",
+              "setup": 5,
+              "prodUnit": 0.5
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "LATERAL ENTRADA",
+          "thickness": 0.5,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 5,
+              "prodUnit": 0.5
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "CORPO",
+          "thickness": 0.5,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 5,
+              "prodUnit": 0.5
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "TAMPA COMPARTIMENTO FRONTAL",
+          "thickness": 0.5,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1790247558443",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391581287",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1790246779624",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391662071",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391701665",
+              "setup": 5,
+              "prodUnit": 0.5
+            }
+          ],
+          "peca_altura_mm": 125,
+          "peca_largura_mm": 370,
+          "peca_comprimento_mm": 15,
+          "peca_altura_m": 0.125,
+          "peca_largura_m": 0.37,
+          "peca_comprimento_m": 0.015,
+          "peca_max_fardo": 7,
+          "peca_espacamento_mm": 50,
+          "altura_m": 0.125,
+          "largura_m": 0.37,
+          "comprimento_m": 0.015,
+          "pecas_por_fardo": 7,
+          "altura_efetiva": 0.175,
+          "largura_efetiva": 0.42,
+          "comprimento_efetivo": 0.065,
+          "volume_peca_m3": 0.0047775,
+          "volume_unitario_com_folga": 0.0047775,
+          "volume_fardo_m3": 0.0334425,
+          "volume_fardo": 0.0334425,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "TAMPA COMPARTIMENTO TRASEIRO",
+          "thickness": 0.5,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1790247558443",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391638329",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391662071",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 5,
+              "prodUnit": 0.5
+            }
+          ],
+          "peca_altura_mm": 125,
+          "peca_largura_mm": 360,
+          "peca_comprimento_mm": 15,
+          "peca_altura_m": 0.125,
+          "peca_largura_m": 0.36,
+          "peca_comprimento_m": 0.015,
+          "peca_max_fardo": 7,
+          "peca_espacamento_mm": 50,
+          "altura_m": 0.125,
+          "largura_m": 0.36,
+          "comprimento_m": 0.015,
+          "pecas_por_fardo": 7,
+          "altura_efetiva": 0.175,
+          "largura_efetiva": 0.41,
+          "comprimento_efetivo": 0.065,
+          "volume_peca_m3": 0.0046637499999999995,
+          "volume_unitario_com_folga": 0.0046637499999999995,
+          "volume_fardo_m3": 0.032646249999999995,
+          "volume_fardo": 0.032646249999999995,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        },
+        {
+          "name": "TAMPA PRINCIPAL",
+          "thickness": 0.5,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391560191",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391570242",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391576850",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1790246779624",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391662071",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 5,
+              "prodUnit": 0.5
+            },
+            {
+              "machineId": "m1789391701665",
+              "setup": 5,
+              "prodUnit": 0.5
+            }
+          ],
+          "peca_altura_mm": 345,
+          "peca_largura_mm": 364,
+          "peca_comprimento_mm": 15,
+          "peca_altura_m": 0.345,
+          "peca_largura_m": 0.364,
+          "peca_comprimento_m": 0.015,
+          "peca_max_fardo": 4,
+          "peca_espacamento_mm": 50,
+          "altura_m": 0.345,
+          "largura_m": 0.364,
+          "comprimento_m": 0.015,
+          "pecas_por_fardo": 4,
+          "altura_efetiva": 0.39499999999999996,
+          "largura_efetiva": 0.414,
+          "comprimento_efetivo": 0.065,
+          "volume_peca_m3": 0.010629449999999999,
+          "volume_unitario_com_folga": 0.010629449999999999,
+          "volume_fardo_m3": 0.042517799999999994,
+          "volume_fardo": 0.042517799999999994,
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": ""
+        }
+      ],
+      "employees": [
+        {
+          "id": "e1789484369450",
+          "name": "Silvio Rodrigues",
+          "matricula": "001",
+          "setor": "",
+          "postoId": ""
+        },
+        {
+          "id": "e1789484379998",
+          "name": "Victor Medina",
+          "matricula": "002",
+          "setor": "CORTE LASER",
+          "postoId": "m1789391560191"
+        },
+        {
+          "id": "e1789484388430",
+          "name": "Wesley Rufino",
+          "matricula": "003",
+          "setor": "MURATA",
+          "postoId": "m1789391570242"
+        },
+        {
+          "id": "e1789484414738",
+          "name": "Sansão dos Santos",
+          "matricula": "005",
+          "setor": "IMAG",
+          "postoId": "m1789391576850"
+        },
+        {
+          "id": "e1789484506415",
+          "name": "Ivan Pereira",
+          "matricula": "006",
+          "setor": "CABINE",
+          "postoId": "m1789391670237"
+        },
+        {
+          "id": "e1789484537303",
+          "name": "José Medina",
+          "matricula": "007",
+          "setor": "MONTAGEM",
+          "postoId": "m1789391701665"
+        },
+        {
+          "id": "e1789484578079",
+          "name": "José Guilherme",
+          "matricula": "008",
+          "setor": "SOLDA PONTO C30",
+          "postoId": "m1789391638329"
+        }
+      ],
+      "groupingRules": [
+        {
+          "machineId": "m1789391560191",
+          "partNames": [
+            "BATEDOR CORPO",
+            "PINO",
+            "BATEDOR TAMPA"
+          ]
+        },
+        {
+          "machineId": "m1789391560191",
+          "partNames": [
+            "DIVISÓRIA",
+            "LATERAL SAIDA",
+            "LATERAL ENTRADA",
+            "CORPO",
+            "TAMPA COMPARTIMENTO FRONTAL",
+            "TAMPA COMPARTIMENTO TRASEIRO",
+            "TAMPA PRINCIPAL"
+          ]
+        }
+      ],
+      "assemblyRules": [
+        {
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": "",
+          "machineId": "m1789391638329",
+          "resultName": "DIVISORIA SOLDADA",
+          "requiredPartNames": [
+            "BATEDOR CORPO",
+            "DIVISÓRIA"
+          ],
+          "juncao": {
+            "requer": [
+              "BATEDOR CORPO",
+              "DIVISÓRIA"
+            ],
+            "maquina": "m1789391638329"
+          },
+          "setup": 5,
+          "prodUnit": 1,
+          "qty": 1,
+          "route": [],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0
+        },
+        {
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": "",
+          "machineId": "m1789391638329",
+          "resultName": "LATERAL ENTRADA SOLDADA",
+          "requiredPartNames": [
+            "BATEDOR CORPO",
+            "LATERAL ENTRADA"
+          ],
+          "juncao": {
+            "requer": [
+              "BATEDOR CORPO",
+              "LATERAL ENTRADA"
+            ],
+            "maquina": "m1789391638329"
+          },
+          "setup": 5,
+          "prodUnit": 1,
+          "qty": 1,
+          "route": [],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0
+        },
+        {
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": "",
+          "machineId": "m1789485676075",
+          "resultName": "CORPO MATERLADO",
+          "requiredPartNames": [
+            "LATERAL SAIDA",
+            "CORPO",
+            "DIVISORIA SOLDADA",
+            "LATERAL ENTRADA SOLDADA"
+          ],
+          "juncao": {
+            "requer": [
+              "LATERAL SAIDA",
+              "CORPO",
+              "DIVISORIA SOLDADA",
+              "LATERAL ENTRADA SOLDADA"
+            ],
+            "maquina": "m1789485676075"
+          },
+          "setup": 5,
+          "prodUnit": 1,
+          "qty": 1,
+          "route": [],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0
+        },
+        {
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": "",
+          "machineId": "m1789391638329",
+          "resultName": "CORPO SOLDADO",
+          "requiredPartNames": [
+            "BATEDOR CORPO",
+            "PINO",
+            "BATEDOR TAMPA",
+            "CORPO MATERLADO"
+          ],
+          "juncao": {
+            "requer": [
+              "BATEDOR CORPO",
+              "PINO",
+              "BATEDOR TAMPA",
+              "CORPO MATERLADO"
+            ],
+            "maquina": "m1789391638329"
+          },
+          "setup": 5,
+          "prodUnit": 1,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391662071",
+              "setup": 5,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391670237",
+              "setup": 5,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391695129",
+              "setup": 5,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391701665",
+              "setup": 5,
+              "prodUnit": 1
+            }
+          ],
+          "peca_altura_mm": 505,
+          "peca_largura_mm": 400,
+          "peca_comprimento_mm": 120,
+          "peca_altura_m": 0.505,
+          "peca_largura_m": 0.4,
+          "peca_comprimento_m": 0.12,
+          "peca_max_fardo": 4,
+          "peca_espacamento_mm": 100,
+          "altura_m": 0.505,
+          "largura_m": 0.4,
+          "comprimento_m": 0.12,
+          "pecas_por_fardo": 4,
+          "altura_efetiva": 0.605,
+          "largura_efetiva": 0.5,
+          "comprimento_efetivo": 0.22,
+          "volume_peca_m3": 0.06655,
+          "volume_unitario_com_folga": 0.06655,
+          "volume_fardo_m3": 0.2662,
+          "volume_fardo": 0.2662
+        },
+        {
+          "planOrder": 0,
+          "notBeforeAbsMin": 0,
+          "planChainMode": "",
+          "planProjectName": "",
+          "planItemId": "",
+          "machineId": "m1789391701665",
+          "resultName": "SABESP",
+          "requiredPartNames": [
+            "TAMPA COMPARTIMENTO FRONTAL",
+            "TAMPA COMPARTIMENTO TRASEIRO",
+            "TAMPA PRINCIPAL",
+            "CORPO SOLDADO"
+          ],
+          "juncao": {
+            "requer": [
+              "TAMPA COMPARTIMENTO FRONTAL",
+              "TAMPA COMPARTIMENTO TRASEIRO",
+              "TAMPA PRINCIPAL",
+              "CORPO SOLDADO"
+            ],
+            "maquina": "m1789391701665"
+          },
+          "setup": 1,
+          "prodUnit": 1,
+          "qty": 1,
+          "route": [
+            {
+              "machineId": "m1789391707261",
+              "setup": 5,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1790248013582",
+              "setup": 5,
+              "prodUnit": 1
+            },
+            {
+              "machineId": "m1789391725515",
+              "setup": 5,
+              "prodUnit": 1
+            }
+          ],
+          "peca_altura_mm": 0,
+          "peca_largura_mm": 0,
+          "peca_comprimento_mm": 0,
+          "peca_altura_m": 0,
+          "peca_largura_m": 0,
+          "peca_comprimento_m": 0,
+          "peca_max_fardo": 1,
+          "peca_espacamento_mm": 0,
+          "altura_m": 0,
+          "largura_m": 0,
+          "comprimento_m": 0,
+          "pecas_por_fardo": 1,
+          "altura_efetiva": 0,
+          "largura_efetiva": 0,
+          "comprimento_efetivo": 0,
+          "volume_peca_m3": 0,
+          "volume_unitario_com_folga": 0,
+          "volume_fardo_m3": 0,
+          "volume_fardo": 0
+        }
+      ],
+      "startDate": "2026-09-24",
+      "startTime": "07:35",
+      "boxesQty": 90
+    }
+  },
+  "tb_feriados": [
+    "2026-10-12",
+    "2026-11-02",
+    "2026-11-20"
+  ],
+  "tb_turnos": [
+    {
+      "id": "turno_padrao",
+      "nome": "Turno diurno",
+      "inicio": "07:30",
+      "fim": "17:18",
+      "almocoInicio": "12:00",
+      "almocoFim": "13:00",
+      "minutosDia": 588,
+      "ativo": true
+    }
+  ],
+  "tb_historico_otimizacao": [],
+  "tb_planos_producao": []
+}

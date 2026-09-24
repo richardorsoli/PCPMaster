@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PCPMaster v1.9.3</title>
+  <title>PCPMaster v1.10.0</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=1.9.3-jornada-pdf">
+  <link rel="stylesheet" href="css/styles.css?v=1.10.0-custos">
 </head>
 <body>
 
@@ -31,7 +31,7 @@
   <!-- TELA 1: INICIAL -->
   <div id="screen-welcome" class="screen active">
     <div style="background: #1e293b; padding: 40px; border-radius: 12px; border: 1px solid #334155; text-align: center; max-width: 780px; margin: 40px auto;">
-      <h1 style="color: #38bdf8; font-size: 2.3rem; margin-bottom: 15px;">PCPMaster v1.9.3</h1>
+      <h1 style="color: #38bdf8; font-size: 2.3rem; margin-bottom: 15px;">PCPMaster v1.10.0</h1>
       <p style="color: #94a3b8; font-size: 1.05rem; line-height: 1.6; margin-bottom: 30px;">
         Simulação multi-dia com Gantt, plano de produção multiprojeto, relatórios PDF, indicadores de eficiência, hora de início flexível, recálculo por caixas e manutenção preventiva.
       </p>
@@ -107,6 +107,10 @@
           <select id="new-employee-posto">
             <option value="">— Sem setor —</option>
           </select>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Valor Hora (R$)</label>
+          <input type="number" id="new-employee-valor-hora" min="0" step="0.01" inputmode="decimal" placeholder="0,00">
         </div>
         <div class="form-group" style="flex:1; display:flex; align-items:flex-end;">
           <button class="btn" style="width:100%;" id="btn-save-employee" onclick="addEmployee()">Adicionar Funcionário</button>
@@ -434,6 +438,11 @@
         <label>Hora de Início</label>
         <input type="time" id="start-time" value="07:30" min="07:30" max="17:18" step="60" list="shift-start-presets">
       </div>
+      <div class="form-group">
+        <label title="Ex: Faturamento mensal R$ 250.000 / 22 dias = R$ 11.363,64/dia">7. Custo Diário de Operação da Fábrica (R$)</label>
+        <input type="number" id="custo-diario-fabrica" min="0" step="0.01" inputmode="decimal" placeholder="0,00" title="Ex: Faturamento mensal R$ 250.000 / 22 dias = R$ 11.363,64/dia">
+        <p style="font-size:0.75rem; color:#94a3b8; margin-top:4px; max-width:280px;">Ex: Faturamento mensal R$ 250.000 / 22 dias = R$ 11.363,64/dia</p>
+      </div>
       <div style="font-size:0.85rem; color:#94a3b8; max-width:480px; line-height:1.4; padding-bottom:6px;">
         Multiplica a quantidade de peças e o tempo de produção. Setup permanece igual. Turno 07:30–17:18 com almoço 12:00–13:00. A alocação começa no horário escolhido.
       </div>
@@ -457,7 +466,7 @@
     <div class="dashboard">
       <div>
         <div class="sim-header-row">
-          <div id="sim-project-title" style="color:#f8fafc; font-size:1.15rem; font-weight:700;">PCPMaster v1.9.3 - Controle de Chão de Fábrica</div>
+          <div id="sim-project-title" style="color:#f8fafc; font-size:1.15rem; font-weight:700;">PCPMaster v1.10.0 - Controle de Chão de Fábrica</div>
           <div class="sim-header-actions">
             <button type="button" class="btn btn-secondary" onclick="openTesterScreen()">Otimizador TESTER</button>
             <button type="button" class="btn btn-secondary" id="btn-new-project-sim" onclick="startNewProject(true)">Novo Projeto</button>
@@ -607,10 +616,12 @@
                 <th>Lead Time Total</th>
                 <th>Tempo de Produção</th>
                 <th>Eficiência do Ciclo</th>
+                <th>Custo MOD (R$)</th>
+                <th>Custo de Fila/JOIN (R$)</th>
               </tr>
             </thead>
             <tbody id="part-journey-kpi-body">
-              <tr><td colspan="4" style="color:#64748b;">Gere a simulação para ver o lead time por peça.</td></tr>
+              <tr><td colspan="6" style="color:#64748b;">Gere a simulação para ver o lead time por peça.</td></tr>
             </tbody>
           </table>
         </div>
@@ -637,6 +648,21 @@
           <div class="kpi-title" id="kpi-bottleneck-title">Gargalo Identificado</div>
           <div class="kpi-value" id="kpi-bottleneck">—</div>
           <div class="kpi-hint" id="kpi-bottleneck-hint">Posto com maior ocupação (e fila)</div>
+        </div>
+        <div class="analytics-kpi">
+          <div class="kpi-title">Custo Total de MOD</div>
+          <div class="kpi-value" id="kpi-custo-mod">—</div>
+          <div class="kpi-hint" id="kpi-custo-mod-hint">Mão de obra direta (setup + produção)</div>
+        </div>
+        <div class="analytics-kpi">
+          <div class="kpi-title">Custo de Fila/Gargalo</div>
+          <div class="kpi-value" id="kpi-custo-fila">—</div>
+          <div class="kpi-hint" id="kpi-custo-fila-hint">Custo de oportunidade do tempo parado</div>
+        </div>
+        <div class="analytics-kpi">
+          <div class="kpi-title">Preço Sugerido por Caixa</div>
+          <div class="kpi-value" id="kpi-preco-caixa">—</div>
+          <div class="kpi-hint" id="kpi-preco-caixa-hint">Cobre o custo operacional e a meta de faturamento</div>
         </div>
         <div class="analytics-kpi analytics-kpi-estufa">
           <div class="kpi-title" id="kpi-estufa-title">Quantidade de Estufadas</div>
@@ -917,16 +943,16 @@
     </div>
   </div>
 
-  <script src="js/simulation.js?v=1.9.3-jornada-pdf"></script>
-  <script src="js/database.js?v=1.9.3-jornada"></script>
-  <script src="js/ui.js?v=1.9.3-jornada-pdf"></script>
+  <script src="js/simulation.js?v=1.10.0-custos"></script>
+  <script src="js/database.js?v=1.10.0-custos"></script>
+  <script src="js/ui.js?v=1.10.0-custos"></script>
   <script src="js/tester-worker.js?v=1.9.3-jornada"></script>
   <script src="js/tester.js?v=1.9.3-jornada"></script>
   <script src="js/plan.js?v=1.9.3-jornada"></script>
   <script src="js/app.js?v=1.9.3-jornada"></script>
   <footer class="app-footer">
     <span class="db-status-text">Banco ativo: v2.0</span>
-    <span>PCPMaster v1.9.3</span>
+    <span>PCPMaster v1.10.0</span>
   </footer>
 </body>
 </html>

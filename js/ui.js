@@ -1,4 +1,4 @@
-/* PCPMaster v1.9.3 — Manipulação de DOM, timeline, relógio, tabelas, Gantt, jornada das peças, analytics e PDF */
+/* PCPMaster v1.10.0 — Manipulação de DOM, timeline, relógio, tabelas, Gantt, jornada das peças, custos MOD e PDF */
 
     function readFlexibleNumber(id, fallback) {
       const el = document.getElementById(id);
@@ -18,6 +18,41 @@
 
     function fmtStepTime(mins) {
       return typeof formatDurationMinutes === 'function' ? formatDurationMinutes(mins) : (mins + 'm');
+    }
+
+    /** Exibição de relatório: minutos inteiros, sem alterar o evento simulado. */
+    function formatCurrency(valor) {
+      const n = Number(valor);
+      const v = isFinite(n) ? n : 0;
+      return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function formatReportMinutes(mins) {
+      const n = Number(mins);
+      if (!isFinite(n) || n <= 0) return '0';
+      return String(Math.round(n));
+    }
+
+    /** Horário de relatório em HH:mm (minuto arredondado; sem segundos). */
+    function formatReportClock(absMin) {
+      if (typeof absMin === 'string') {
+        const raw = absMin.trim();
+        if (!raw || raw === '—') return raw || '—';
+        return raw.replace(/(\d{1,2}):(\d+(?:\.\d+)?)/g, function (_, hh, mm) {
+          let total = (Number(hh) * 60) + Number(mm);
+          if (!isFinite(total)) return hh + ':' + mm;
+          total = Math.round(total);
+          const h = Math.floor(total / 60) % 24;
+          const m = ((total % 60) + 60) % 60;
+          return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+        });
+      }
+      const n = Number(absMin);
+      if (!isFinite(n)) return '—';
+      const label = typeof absMinuteToTimeLabel === 'function'
+        ? absMinuteToTimeLabel(Math.round(n))
+        : String(Math.round(n));
+      return formatReportClock(label);
     }
 
     let appToastTimer = null;
@@ -77,9 +112,9 @@
     // --- EXEMPLO ---
     function loadExampleAndNavigate() {
       employees = [
-        { id: 'e1', name: 'Carlos Operador', matricula: '1001' },
-        { id: 'e2', name: 'Ana Soldadora', matricula: '1002' },
-        { id: 'e3', name: 'Pedro Montagem', matricula: '1003' }
+        { id: 'e1', name: 'Carlos Operador', matricula: '1001', valor_hora: 28.5 },
+        { id: 'e2', name: 'Ana Soldadora', matricula: '1002', valor_hora: 32 },
+        { id: 'e3', name: 'Pedro Montagem', matricula: '1003', valor_hora: 25 }
       ];
 
       machines = [
@@ -155,6 +190,7 @@
       document.getElementById('start-date').value = startDateStr;
       applyStartTimeToState(DEFAULT_START_TIME);
       document.getElementById('boxes-qty').value = 1;
+      if (typeof applyCustoDiarioFabrica === 'function') applyCustoDiarioFabrica(11363.64);
       currentProjectName = '';
       if (!holidays.includes('2026-11-02')) holidays.push('2026-11-02');
       const catalogBefore = getBaseCatalogFromDatabase();
@@ -241,8 +277,11 @@
       if (btnMach) btnMach.innerText = 'Adicionar Máquina';
       document.getElementById('new-employee-name').value = '';
       document.getElementById('new-employee-matricula').value = '';
+      const horaReset = document.getElementById('new-employee-valor-hora');
+      if (horaReset) horaReset.value = '';
       const postoSel = document.getElementById('new-employee-posto');
       if (postoSel) postoSel.value = '';
+      if (typeof applyCustoDiarioFabrica === 'function') applyCustoDiarioFabrica(0);
       document.getElementById('new-machine-name').value = '';
       document.getElementById('new-machine-pop').value = '';
       document.getElementById('new-machine-maint-interval').value = '0';
@@ -432,12 +471,14 @@
       if (duplicate) { alert('Já existe um funcionário com esta matrícula no Catálogo Global.'); return; }
 
       const posto = employeePostoFromForm();
+      const horaEl = document.getElementById('new-employee-valor-hora');
       const data = normalizeEmployee({
         id: editingEmployeeIndex >= 0 ? employees[editingEmployeeIndex].id : ('e' + Date.now()),
         name,
         matricula,
         setor: posto.setor,
-        postoId: posto.postoId
+        postoId: posto.postoId,
+        valor_hora: horaEl ? horaEl.value : 0
       });
 
       if (editingEmployeeIndex >= 0) {
@@ -450,6 +491,8 @@
 
       document.getElementById('new-employee-name').value = '';
       document.getElementById('new-employee-matricula').value = '';
+      const horaClear = document.getElementById('new-employee-valor-hora');
+      if (horaClear) horaClear.value = '';
       const postoSel = document.getElementById('new-employee-posto');
       if (postoSel) postoSel.value = '';
       persistBaseCatalog();
@@ -461,6 +504,8 @@
       editingEmployeeIndex = idx;
       document.getElementById('new-employee-name').value = e.name;
       document.getElementById('new-employee-matricula').value = e.matricula;
+      const horaEdit = document.getElementById('new-employee-valor-hora');
+      if (horaEdit) horaEdit.value = (Number(e.valor_hora) > 0) ? String(e.valor_hora) : '';
       fillEmployeePostoSelect(e.postoId || '');
       document.getElementById('btn-save-employee').innerText = 'Salvar Alterações';
     }
@@ -481,6 +526,8 @@
         document.getElementById('btn-save-employee').innerText = 'Adicionar Funcionário';
         document.getElementById('new-employee-name').value = '';
         document.getElementById('new-employee-matricula').value = '';
+        const horaClear = document.getElementById('new-employee-valor-hora');
+        if (horaClear) horaClear.value = '';
         const postoSel = document.getElementById('new-employee-posto');
         if (postoSel) postoSel.value = '';
       } else if (editingEmployeeIndex > idx) {
@@ -1411,11 +1458,12 @@
         } else {
           employees.forEach((e, idx) => {
             const setorTxt = e.setor ? ` · Setor: ${e.setor}` : '';
+            const horaTxt = formatCurrency(e.valor_hora || 0) + '/h';
             eList.innerHTML += `
               <li>
                 <div>
                   <strong>${e.name}</strong>
-                  <div style="font-size:0.8rem; color:#94a3b8;">Matrícula: ${e.matricula}${setorTxt}</div>
+                  <div style="font-size:0.8rem; color:#94a3b8;">Matrícula: ${e.matricula}${setorTxt} · Valor hora: ${horaTxt}</div>
                 </div>
                 <div>
                   <button class="btn btn-warning" onclick="editEmployee(${idx})">Editar</button>
@@ -1795,6 +1843,7 @@
       if (estufaOcc) estufaOcc.textContent = '';
       const estufaHint = document.getElementById('kpi-estufa-hint');
       if (estufaHint) estufaHint.textContent = estufaCycleHintText();
+      paintCostKpis(null);
 
       const tbody = document.getElementById('operator-hours-body');
       if (tbody) {
@@ -1833,6 +1882,7 @@
         if (estufaOccEmpty) estufaOccEmpty.textContent = '';
         const estufaHintEmpty = document.getElementById('kpi-estufa-hint');
         if (estufaHintEmpty) estufaHintEmpty.textContent = 'Sem ciclos de estufa neste lote';
+        paintCostKpis(null);
         return;
       }
 
@@ -1844,7 +1894,7 @@
         const lastDay = Math.floor(lastMin / MINUTES_PER_DAY);
         const days = Math.max(1, lastDay - firstDay + 1);
         const dayTxt = days > 1 ? `${days} dias úteis` : '1 dia útil';
-        const doneLabel = absMinuteToTimeLabel(doneAbs);
+        const doneLabel = formatReportClock(doneAbs);
         makespanHint.textContent = planMode
           ? `Do disparo do 1º SKU até a última caixa: ${doneLabel} · ${dayTxt} · líquido (sem almoço): ${formatMinutesWithHours(analytics.makespanNet)}`
           : `Conclusão: ${doneLabel} · ${dayTxt} · líquido (sem almoço): ${formatMinutesWithHours(analytics.makespanNet)}`;
@@ -1900,6 +1950,39 @@
         estufaHint.textContent = estufaN > 0
           ? (estufaN + ' ciclo(s) · ' + estufaCycleHintText())
           : 'Sem ciclos de estufa neste lote';
+      }
+      paintCostKpis(analytics);
+    }
+
+    function paintCostKpis(analytics) {
+      const modEl = document.getElementById('kpi-custo-mod');
+      const filaEl = document.getElementById('kpi-custo-fila');
+      const precoEl = document.getElementById('kpi-preco-caixa');
+      const modHint = document.getElementById('kpi-custo-mod-hint');
+      const filaHint = document.getElementById('kpi-custo-fila-hint');
+      const precoHint = document.getElementById('kpi-preco-caixa-hint');
+      const hasLot = analytics && analytics.makespanElapsed > 0;
+      const boxes = typeof getPdfReportMeta === 'function' ? getPdfReportMeta().boxes : (boxesQty || 1);
+      const costs = (hasLot && typeof computeLaborCostSummary === 'function')
+        ? computeLaborCostSummary(analytics.makespanElapsed, boxes)
+        : null;
+      if (modEl) modEl.textContent = costs ? formatCurrency(costs.custoModTotal) : '—';
+      if (filaEl) filaEl.textContent = costs ? formatCurrency(costs.custoFilaJoin) : '—';
+      if (precoEl) precoEl.textContent = costs ? formatCurrency(costs.precoSugeridoCaixa) : '—';
+      if (modHint) {
+        modHint.textContent = costs
+          ? ('Setup + produção × valor hora do operador · ' + boxes + ' caixa(s)')
+          : 'Soma da mão de obra direta no lote';
+      }
+      if (filaHint) {
+        filaHint.textContent = costs
+          ? ('Fila + JOIN × (custo diário / 9,8 h) · ' + formatCurrency(typeof getCustoDiarioFabrica === 'function' ? getCustoDiarioFabrica() : 0) + '/dia')
+          : 'Custo de oportunidade do tempo parado';
+      }
+      if (precoHint) {
+        precoHint.textContent = costs
+          ? ('(Makespan × R$/min + MOD) / caixas · operacional ' + formatCurrency(costs.custoOperacionalMakespan))
+          : 'Cobre o custo operacional do makespan e a MOD';
       }
     }
 
@@ -2336,7 +2419,7 @@
       if (label) label.textContent = 'Gere a simulação para ver a jornada de cada peça no turno.';
       const tbody = document.getElementById('part-journey-kpi-body');
       if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="4" style="color:#64748b;">Gere a simulação para ver o lead time por peça.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="color:#64748b;">Gere a simulação para ver o lead time por peça.</td></tr>';
       }
     }
 
@@ -2359,7 +2442,7 @@
       const tbody = document.getElementById('part-journey-kpi-body');
       if (!tbody) return;
       if (!rows || !rows.length) {
-        tbody.innerHTML = '<tr><td colspan="4" style="color:#64748b;">Nenhuma peça com jornada neste lote.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="color:#64748b;">Nenhuma peça com jornada neste lote.</td></tr>';
         return;
       }
       tbody.innerHTML = rows.map(function (row) {
@@ -2372,6 +2455,8 @@
           '<td>' + formatMinutesWithHours(k.leadTime) + '</td>' +
           '<td>' + formatMinutesWithHours(k.prodTime) + '</td>' +
           '<td><span class="part-journey-eff ' + partJourneyEfficiencyClass(eff) + '">' + effTxt + '</span></td>' +
+          '<td>' + formatCurrency(k.custoMod) + '</td>' +
+          '<td>' + formatCurrency(k.custoFilaJoin) + '</td>' +
           '</tr>';
       }).join('');
     }
@@ -2460,9 +2545,9 @@
           const bg = fill ? 'background:' + fill + ';' : '';
           const dur = typeof formatExactMinutes === 'function'
             ? formatExactMinutes(Math.max(0, b.end - b.start))
-            : (Math.max(0, b.end - b.start) + ' min');
-          const startLabel = absMinuteToTimeLabel(b.start);
-          const endLabel = absMinuteToTimeLabel(b.end);
+            : (Math.round(Math.max(0, b.end - b.start)) + ' min');
+          const startLabel = formatReportClock(b.start);
+          const endLabel = formatReportClock(b.end);
           const status = b.statusText || partJourneyKindLabel(b.kind);
           return '<div class="gantt-block ' + partJourneyKindClass(b.kind) + '"' +
             ' style="left:' + left.toFixed(2) + '%;width:' + width.toFixed(2) + '%;' + bg + '"' +
@@ -2593,7 +2678,7 @@
           title: planMode ? 'Makespan Total do Plano' : 'Makespan Total',
           value: analytics && analytics.makespanElapsed > 0 ? formatMinutesWithHours(analytics.makespanElapsed) : '—',
           hint: analytics && analytics.makespanElapsed > 0
-            ? ('Conclusão ' + absMinuteToTimeLabel(analytics.completionAbs) + ' · líquido ' + formatMinutesWithHours(analytics.makespanNet))
+            ? ('Conclusão ' + formatReportClock(analytics.completionAbs) + ' · líquido ' + formatMinutesWithHours(analytics.makespanNet))
             : 'Sem eventos'
         },
         {
@@ -2640,15 +2725,40 @@
         doc.setTextColor(90);
         doc.text(doc.splitTextToSize(item.hint, boxW - 6), x + 3, y + 17);
       });
+      y = y + boxH + 4;
+      y = pdfEnsureSpace(doc, y, 22);
+      const cost = (analytics && typeof computeLaborCostSummary === 'function')
+        ? computeLaborCostSummary(analytics.makespanElapsed, (typeof getPdfReportMeta === 'function' ? getPdfReportMeta().boxes : 1))
+        : null;
+      const costItems = [
+        { title: 'Custo Total de MOD', value: cost ? formatCurrency(cost.custoModTotal) : '—', hint: 'Mão de obra direta (setup + produção)' },
+        { title: 'Custo de Fila/Gargalo', value: cost ? formatCurrency(cost.custoFilaJoin) : '—', hint: 'Oportunidade do tempo parado (fila + JOIN)' },
+        { title: 'Preço Sugerido por Caixa', value: cost ? formatCurrency(cost.precoSugeridoCaixa) : '—', hint: 'Custo operacional do makespan + MOD / caixas' }
+      ];
+      const costW = (pageW - 28 - gap * 2) / 3;
+      costItems.forEach(function (item, i) {
+        const x = 14 + i * (costW + gap);
+        doc.setFillColor(15, 23, 42);
+        doc.setDrawColor(2, 132, 199);
+        doc.roundedRect(x, y, costW, boxH, 1.5, 1.5, 'FD');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(148, 163, 184);
+        doc.text(item.title.toUpperCase(), x + 3, y + 5);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(56, 189, 248);
+        doc.text(doc.splitTextToSize(item.value, costW - 6), x + 3, y + 12);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(148, 163, 184);
+        doc.text(doc.splitTextToSize(item.hint, costW - 6), x + 3, y + 18);
+      });
       return y + boxH + 6;
     }
 
     function formatPdfJourneyMinutes(mins) {
-      const n = Number(mins);
-      if (!isFinite(n) || n <= 0) return '0';
-      const rounded = Math.round(n * 10) / 10;
-      if (Math.abs(rounded - Math.round(rounded)) < 1e-9) return String(Math.round(rounded));
-      return String(rounded).replace('.', ',');
+      return formatReportMinutes(mins);
     }
 
     function formatPdfJourneyEfficiency(pct) {
@@ -2698,10 +2808,12 @@
             formatPdfJourneyMinutes(k.prodTime),
             formatPdfJourneyMinutes(k.filaTime != null ? k.filaTime : k.waitTime),
             formatPdfJourneyMinutes(k.unionTime),
-            formatPdfJourneyEfficiency(k.efficiency)
+            formatPdfJourneyEfficiency(k.efficiency),
+            formatCurrency(k.custoMod),
+            formatCurrency(k.custoFilaJoin)
           ];
         })
-        : [['—', '—', '—', '—', '—', '—']];
+        : [['—', '—', '—', '—', '—', '—', '—', '—']];
 
       doc.autoTable({
         startY: y,
@@ -2711,7 +2823,9 @@
           'Tempo de Produção (min)',
           'Tempo em Fila/Espera (min)',
           'Tempo no JOIN (min)',
-          'Eficiência do Ciclo (%)'
+          'Eficiência do Ciclo (%)',
+          'Custo MOD (R$)',
+          'Custo de Fila/JOIN (R$)'
         ]],
         body: kpiBody,
         theme: 'striped',
@@ -2762,8 +2876,8 @@
       const detailBody = rows.length
         ? rows.map(function (r) {
           const k = r.kpis || {};
-          const startLbl = k.startAbs != null ? absMinuteToTimeLabel(k.startAbs) : '—';
-          const endLbl = k.endAbs != null ? absMinuteToTimeLabel(k.endAbs) : '—';
+          const startLbl = k.startAbs != null ? formatReportClock(k.startAbs) : '—';
+          const endLbl = k.endAbs != null ? formatReportClock(k.endAbs) : '—';
           return [
             r.name + (r.kindLabel ? ' (' + r.kindLabel + ')' : ''),
             startLbl,
@@ -3051,10 +3165,10 @@
         r.kind,
         String(r.qty),
         r.route,
-        String(r.setup),
-        String(r.prod),
-        r.startLabel,
-        r.endLabel,
+        formatReportMinutes(r.setup),
+        formatReportMinutes(r.prod),
+        formatReportClock(r.startLabel),
+        formatReportClock(r.endLabel),
         r.requer
       ]);
       doc.autoTable({
@@ -3121,11 +3235,11 @@
             kind: 0,
             seq: evtIdx,
             cells: [
-              absMinuteToTimeLabel(evt.setupStart),
+              formatReportClock(evt.setupStart),
               evt.partName,
               String(qty),
-              fmtStepTime(evt.setupUnit),
-              fmtStepTime(evt.setupTime),
+              formatReportMinutes(evt.setupUnit),
+              formatReportMinutes(evt.setupTime),
               sector,
               operador,
               'Em Ajuste / Setup',
@@ -3147,11 +3261,11 @@
             kind: 1,
             seq: evtIdx,
             cells: [
-              absMinuteToTimeLabel(evt.prodStart),
+              formatReportClock(evt.prodStart),
               evt.partName,
               String(qty),
-              String(queimaMin),
-              fmtStepTime(queimaMin),
+              formatReportMinutes(queimaMin),
+              formatReportMinutes(queimaMin),
               sector,
               operador,
               'QUEIMA',
@@ -3165,11 +3279,11 @@
             kind: 1,
             seq: evtIdx,
             cells: [
-              absMinuteToTimeLabel(queimaEnd),
+              formatReportClock(queimaEnd),
               evt.partName,
               String(qty),
-              String(resfrioMin),
-              fmtStepTime(resfrioMin),
+              formatReportMinutes(resfrioMin),
+              formatReportMinutes(resfrioMin),
               sector,
               operador,
               'RESFRIAMENTO',
@@ -3184,11 +3298,11 @@
               kind: 1,
               seq: evtIdx,
               cells: [
-                absMinuteToTimeLabel(unloadStart),
+                formatReportClock(unloadStart),
                 evt.partName,
                 String(qty),
-                fmtStepTime(evt.prodUnit),
-                fmtStepTime(unloadMin),
+                formatReportMinutes(evt.prodUnit),
+                formatReportMinutes(unloadMin),
                 sector,
                 operador,
                 'DESCARREGAR',
@@ -3204,11 +3318,11 @@
             kind: 1,
             seq: evtIdx,
             cells: [
-              absMinuteToTimeLabel(evt.prodStart),
+              formatReportClock(evt.prodStart),
               evt.partName,
               String(qty),
-              fmtStepTime(evt.prodUnit),
-              fmtStepTime(evt.prodTime),
+              formatReportMinutes(evt.prodUnit),
+              formatReportMinutes(evt.prodTime),
               sector,
               operador,
               'Em Processamento / Produção',
@@ -3226,11 +3340,11 @@
           kind: 2,
           seq: 100000,
           cells: [
-            absMinuteToTimeLabel(me.start),
+            formatReportClock(me.start),
             '—',
             '—',
             '—',
-            String(me.duration),
+            formatReportMinutes(me.duration),
             mObj ? mObj.name : '-',
             getMachineOperatorLabel(mObj),
             'Manutenção Preventiva',

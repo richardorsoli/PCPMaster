@@ -754,7 +754,10 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         assemblyRules: (assemblyRules || []).map(normalizeAssemblyRule),
         startDate: document.getElementById('start-date').value || startDateStr || todayISODate(),
         startTime: startTimeStr || DEFAULT_START_TIME,
-        boxesQty: getBoxesQtyFromInput()
+        boxesQty: getBoxesQtyFromInput(),
+        custo_diario_fabrica: typeof syncCustoDiarioFabricaFromInput === 'function'
+          ? syncCustoDiarioFabricaFromInput()
+          : (Number(custoDiarioFabrica) || 0)
       };
     }
 
@@ -866,6 +869,9 @@ const DB_STORAGE_KEY = 'pcpmaster_db_v2';
         if (startEl) startEl.value = proj.startDate;
       }
       applyStartTimeToState(proj.startTime || DEFAULT_START_TIME);
+      if (typeof applyCustoDiarioFabrica === 'function') {
+        applyCustoDiarioFabrica(proj.custo_diario_fabrica);
+      }
       if (proj.boxesQty) {
         const boxesEl = document.getElementById('boxes-qty');
         if (boxesEl) boxesEl.value = proj.boxesQty;
