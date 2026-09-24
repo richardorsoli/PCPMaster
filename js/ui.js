@@ -1,4 +1,4 @@
-/* PCPMaster v1.10.0 — Manipulação de DOM, timeline, relógio, tabelas, Gantt, jornada das peças, custos MOD e PDF */
+/* PCPMaster v2.2 — Manipulação de DOM, timeline, relógio, tabelas, Gantt, jornada das peças, custos MOD e PDF */
 
     function readFlexibleNumber(id, fallback) {
       const el = document.getElementById(id);
@@ -1698,6 +1698,7 @@
       if (status === 'waiting') return { text: 'Aguardando Outras Peças para União', cls: 'badge-waiting' };
       if (status === 'ready') return { text: 'PRONTA PARA PROGRAMAR', cls: 'badge-fila' };
       if (status === 'fila') return { text: 'FILA', cls: 'badge-fila' };
+      if (status === 'operator') return { text: 'Aguardando Operador', cls: 'badge-fila' };
       if (status === 'setup') return { text: 'SETUP', cls: 'badge-setup' };
       if (status === 'working') return { text: 'EM PRODUÇÃO', cls: 'badge-working' };
       if (status === 'queima') return { text: 'QUEIMA', cls: 'badge-queima' };
@@ -1709,11 +1710,34 @@
       return { text: status, cls: 'badge-fila' };
     }
 
+    function enforceMonotarefaFloorRows(rows) {
+      const isMonotarefa = document.getElementById('operadorMonotarefa')?.checked ?? false;
+      if (!isMonotarefa || !rows) return rows || [];
+      const busy = {};
+      return rows.map(row => {
+        if (row.status !== 'working' && row.status !== 'setup') return row;
+        const key = String(row.operator || '').trim();
+        if (!key || key === '-' || key === 'Sem operador') return row;
+        const nest = String(row.groupId || '');
+        const sector = String(row.sector || '');
+        const held = busy[key];
+        if (held) {
+          const sameNest = nest && held.groupId === nest && held.sector === sector;
+          if (!sameNest) {
+            return Object.assign({}, row, { status: 'operator', remaining: '-' });
+          }
+          return row;
+        }
+        busy[key] = { groupId: nest, sector };
+        return row;
+      });
+    }
+
     function renderFloorTable(state) {
       const tbody = document.getElementById('floor-status-body');
       if (!tbody || !state) return;
       tbody.innerHTML = '';
-      state.floorRows.forEach(row => {
+      enforceMonotarefaFloorRows(state.floorRows).forEach(row => {
         const badge = statusLabel(row.status);
         tbody.innerHTML += `
           <tr>
@@ -1978,8 +2002,15 @@
         filaHint.textContent = 'Fila + JOIN × TCF/min (apenas indicativo)';
       }
       if (precoHint) {
-        precoHint.textContent = '(MOD + Custo Fixo Absorvido) / caixas';
+        precoHint.textContent = (typeof PRECO_SUGERIDO_FORMULA_HINT === 'string')
+          ? PRECO_SUGERIDO_FORMULA_HINT
+          : 'Fórmula: [(MOD + Custo Fixo Absorvido) / caixas × (1 + Margem)] / (1 - Imposto%)';
       }
+    }
+
+    function onImpostoPorcentagemInput() {
+      if (typeof computeEfficiencyAnalytics !== 'function') return;
+      paintCostKpis(computeEfficiencyAnalytics());
     }
 
     function renderPlanCompletionTable(rows) {
@@ -2729,7 +2760,7 @@
       const costItems = [
         { title: 'Custo Total de MOD', value: cost ? formatCurrency(cost.custoModTotal) : '—', hint: 'Mão de obra direta (setup + produção)' },
         { title: 'Custo de Oportunidade de Fila', value: cost ? formatCurrency(cost.custoFilaJoin) : '—', hint: 'Fila + JOIN × TCF/min (apenas indicativo)' },
-        { title: 'Preço Sugerido por Caixa', value: cost ? formatCurrency(cost.precoSugeridoCaixa) : '—', hint: '(MOD + Custo Fixo Absorvido) / caixas' }
+        { title: 'Preço Sugerido por Caixa', value: cost ? formatCurrency(cost.precoSugeridoCaixa) : '—', hint: (typeof PRECO_SUGERIDO_FORMULA_HINT === 'string' ? PRECO_SUGERIDO_FORMULA_HINT : 'Fórmula: [(MOD + Custo Fixo Absorvido) / caixas × (1 + Margem)] / (1 - Imposto%)') }
       ];
       const costW = (pageW - 28 - gap * 2) / 3;
       costItems.forEach(function (item, i) {

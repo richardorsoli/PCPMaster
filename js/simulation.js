@@ -1,7 +1,8 @@
-/* PCPMaster v1.10.0 — Motor de simulação, calendário, manutenção, analytics, Gantt, jornada e custos MOD */
+/* PCPMaster v2.2 — Motor de simulação, calendário, manutenção, analytics, Gantt, jornada e custos MOD */
 
 const APP_NAME = 'PCPMaster';
-const APP_VERSION = '1.10.0';
+const APP_VERSION = '2.2';
+const PRECO_SUGERIDO_FORMULA_HINT = 'Fórmula: [(MOD + Custo Fixo Absorvido) / caixas × (1 + Margem)] / (1 - Imposto%)';
 const SCHEMA_VERSION = 'v2.0';
 
 // --- PARÂMETROS DO TURNO ---
@@ -350,6 +351,75 @@ const ESTUFA_FULL_EPS = 0.01;
     function machineFreeAt(map, machineId) {
       if (map && map[machineId] != null) return map[machineId];
       return getSimulationStartAbsMin();
+    }
+
+    /** Operador exclusivo: no máximo uma operação (setup/produção) por vez, em FIFO. */
+    let operadorMonotarefaAtivo = false;
+    let operatorFreeUntil = {};
+
+    function readOperadorMonotarefa() {
+      const isMonotarefa = document.getElementById('operadorMonotarefa')?.checked ?? false;
+      return isMonotarefa;
+    }
+
+    function operatorIdForMachine(machineId) {
+      const m = typeof getMachineById === 'function' ? getMachineById(machineId) : null;
+      const src = m || (machines || []).find(x => x.id === machineId);
+      return src && src.defaultOperatorId ? String(src.defaultOperatorId) : '';
+    }
+
+    function groupingKey(partName, machineId) {
+      const idx = (groupingRules || []).findIndex(g =>
+        g && g.machineId === machineId &&
+        (g.partNames || []).some(n => namesEqual(n, partName))
+      );
+      if (idx < 0) return '';
+      return String(machineId) + '#' + idx;
+    }
+
+    function sameGroupedNest(slot, machineId, groupKey) {
+      return !!(slot && groupKey && slot.groupKey === groupKey && slot.machineId === machineId);
+    }
+
+    function operatorFreeAt(machineId, groupKey) {
+      if (!operadorMonotarefaAtivo) return 0;
+      const id = operatorIdForMachine(machineId);
+      if (!id) return 0;
+      const slot = operatorFreeUntil[id];
+      if (!slot) return 0;
+      if (sameGroupedNest(slot, machineId, groupKey)) return 0;
+      return slot.until != null ? slot.until : 0;
+    }
+
+    function occupyOperatorUntil(machineId, until, groupKey) {
+      if (!operadorMonotarefaAtivo) return;
+      const id = operatorIdForMachine(machineId);
+      if (!id) return;
+      const next = Number(until) || 0;
+      const prev = operatorFreeUntil[id];
+      if (sameGroupedNest(prev, machineId, groupKey)) {
+        operatorFreeUntil[id] = {
+          until: Math.max(prev.until || 0, next),
+          machineId,
+          groupKey
+        };
+        return;
+      }
+      operatorFreeUntil[id] = {
+        until: Math.max(prev && prev.until ? prev.until : 0, next),
+        machineId,
+        groupKey: groupKey || ''
+      };
+    }
+
+    function gateSetupStart(machineId, readyForMachine, machineFreeMap, groupKey) {
+      const machineAt = machineFreeAt(machineFreeMap, machineId);
+      const opAt = operatorFreeAt(machineId, groupKey || '');
+      const earliest = Math.max(readyForMachine, machineAt, opAt);
+      return {
+        setupStart: snapToProductive(earliest),
+        waitingForOperator: operadorMonotarefaAtivo && opAt > Math.max(readyForMachine, machineAt) + 1e-9
+      };
     }
 
     /**
@@ -1606,6 +1676,14 @@ const ESTUFA_FULL_EPS = 0.01;
       return Math.max(0, Number(custoDiarioFabrica) || 0);
     }
 
+    /** Alíquota estimada sobre o faturamento (0–99). */
+    function getImpostoPorcentagem() {
+      const impostoPct = parseFloat(document.getElementById('impostoPorcentagem')?.value) || 0;
+      if (!isFinite(impostoPct) || impostoPct < 0) return 0;
+      if (impostoPct > 99) return 99;
+      return impostoPct;
+    }
+
     function syncCustoDiarioFabricaFromInput() {
       const el = document.getElementById('custo-diario-fabrica');
       if (!el) return getCustoDiarioFabrica();
@@ -1691,6 +1769,12 @@ const ESTUFA_FULL_EPS = 0.01;
       const margemLucro = 0;
       const custoTotalLote = mod + custoMateriaPrima + custoFixoAbsorvido + custoEnergiaEstufa;
       const qty = Math.max(1, Number(boxes) || 1);
+      const impostoPct = getImpostoPorcentagem();
+      const custoBasePorCaixa = (custoTotalLote / qty) * (1 + margemLucro);
+      const aliquotaDecimal = impostoPct / 100;
+      const precoSugeridoPorCaixa = aliquotaDecimal < 1
+        ? custoBasePorCaixa / (1 - aliquotaDecimal)
+        : custoBasePorCaixa;
       return {
         custoModTotal: mod,
         custoFilaJoin: fila,
@@ -1700,9 +1784,10 @@ const ESTUFA_FULL_EPS = 0.01;
         custoMateriaPrima: custoMateriaPrima,
         custoEnergiaEstufa: custoEnergiaEstufa,
         margemLucro: margemLucro,
+        impostoPct: impostoPct,
         custoTotalLote: custoTotalLote,
         custoOperacionalMakespan: custoFixoAbsorvido,
-        precoSugeridoCaixa: (custoTotalLote / qty) * (1 + margemLucro),
+        precoSugeridoCaixa: precoSugeridoPorCaixa,
         custoMinuto: tcf,
         boxes: qty,
         postos: countPostosOuLinhas()
@@ -2601,12 +2686,14 @@ const ESTUFA_FULL_EPS = 0.01;
         waitingForAssembly: !!fields.waitingForAssembly,
         isLastStep: fields.isLastStep != null ? !!fields.isLastStep : (stepIndex === part.route.length - 1),
         grouped: !!fields.grouped,
+        groupKey: fields.groupKey || '',
         isJoin: !!fields.isJoin,
         skuName: fields.skuName || part.name,
         requer: fields.requer || [],
         planProjectName: part.planProjectName || '',
         planItemId: part.planItemId || '',
         planOrder: Number(part.planOrder) || 0,
+        waitingForOperator: !!fields.waitingForOperator,
         isEstufaBatch: !!fields.isEstufaBatch,
         estufaBatchId: fields.estufaBatchId || '',
         estufaTrigger: fields.estufaTrigger || '',
@@ -2689,10 +2776,10 @@ const ESTUFA_FULL_EPS = 0.01;
 
       maybeInsertMaintenance(machineId, machineFreeUntil, machineOperated, passMaint);
 
-      const sharedSetupStart = snapToProductive(Math.max(
-        machineFreeAt(machineFreeUntil, machineId),
-        ...members.map(m => m.readyForMachine)
-      ));
+      const readyForMachine = members.reduce((max, m) => Math.max(max, m.readyForMachine), getSimulationStartAbsMin());
+      const groupKey = groupingKey(members[0].part.name, machineId);
+      const gated = gateSetupStart(machineId, readyForMachine, machineFreeUntil, groupKey);
+      const sharedSetupStart = gated.setupStart;
       const sharedSetupDur = members.reduce((max, m) => Math.max(max, m.setupTime), 0);
       const sharedProdStart = addProductiveMinutes(sharedSetupStart, sharedSetupDur);
       const maxProdTime = members.reduce((max, m) => Math.max(max, m.prodTime), 0);
@@ -2710,7 +2797,9 @@ const ESTUFA_FULL_EPS = 0.01;
           setupTime: m.setupTime,
           prodTime: m.prodTime,
           waitingForAssembly: m.waitingForAssembly,
-          grouped: true
+          waitingForOperator: gated.waitingForOperator,
+          grouped: true,
+          groupKey
         });
         passEvents.push(evt);
         groupedScheduled[`${m.part.name}_${machineId}`] = evt;
@@ -2724,6 +2813,7 @@ const ESTUFA_FULL_EPS = 0.01;
       });
 
       machineFreeUntil[machineId] = batchEnd;
+      occupyOperatorUntil(machineId, batchEnd, groupKey);
       machineOperated[machineId] = (machineOperated[machineId] || 0) + sharedSetupDur + maxProdTime;
       maybeInsertMaintenance(machineId, machineFreeUntil, machineOperated, passMaint);
     }
@@ -3165,7 +3255,8 @@ const ESTUFA_FULL_EPS = 0.01;
         if (skuTags.length > 1) trigger = 'mix';
 
         const lastArrival = fill.packed.reduce((max, u) => Math.max(max, u.arrivalTime), getSimulationStartAbsMin());
-        const setupStart = snapToProductive(Math.max(machineFreeAt(machineFreeUntil, step.machineId), lastArrival));
+        const gated = gateSetupStart(step.machineId, lastArrival, machineFreeUntil);
+        const setupStart = gated.setupStart;
         candidates.push({
           type: 'estufa',
           machineId: step.machineId,
@@ -3193,7 +3284,8 @@ const ESTUFA_FULL_EPS = 0.01;
       const queimaMin = cycle.queima;
       const resfrioMin = cycle.resfrio;
       const thermalMin = queimaMin + resfrioMin;
-      const start = snapToProductive(Math.max(machineFreeAt(machineFreeUntil, machineId), chosen.readyForMachine));
+      const gatedEstufa = gateSetupStart(machineId, chosen.readyForMachine, machineFreeUntil);
+      const start = gatedEstufa.setupStart;
       const queimaEnd = addProductiveMinutes(start, queimaMin);
       const resfrioEnd = addProductiveMinutes(queimaEnd, resfrioMin);
       const batchId = 'estufa_' + machineId + '_' + cycleSeq.n;
@@ -3236,6 +3328,7 @@ const ESTUFA_FULL_EPS = 0.01;
           setupTime: 0,
           prodTime: thermalMin + unloadMin,
           waitingForAssembly: g.unit.asm.waitingForAssembly,
+          waitingForOperator: gatedEstufa.waitingForOperator,
           isJoin: !!isJoinStep(step),
           skuName: part.planProjectName || part.name,
           requer: g.unit.asm.requer || [],
@@ -3268,6 +3361,7 @@ const ESTUFA_FULL_EPS = 0.01;
       });
 
       machineFreeUntil[machineId] = unloadCursor;
+      occupyOperatorUntil(machineId, unloadCursor);
       machineOperated[machineId] = (machineOperated[machineId] || 0) + thermalMin + totalUnload;
       maybeInsertMaintenance(machineId, machineFreeUntil, machineOperated, maintEvents);
       return completedSteps;
@@ -3283,11 +3377,13 @@ const ESTUFA_FULL_EPS = 0.01;
       maybeInsertMaintenance(step.machineId, machineFreeUntil, machineOperated, maintEvents);
 
       const readyForMachine = Math.max(arrivalTime, assemblyGate);
-      const setupStart = snapToProductive(Math.max(readyForMachine, machineFreeAt(machineFreeUntil, step.machineId)));
+      const gated = gateSetupStart(step.machineId, readyForMachine, machineFreeUntil);
+      const setupStart = gated.setupStart;
       const prodStart = addProductiveMinutes(setupStart, setupTime);
       const end = addProductiveMinutes(prodStart, prodTime);
 
       machineFreeUntil[step.machineId] = end;
+      occupyOperatorUntil(step.machineId, end);
       machineOperated[step.machineId] = (machineOperated[step.machineId] || 0) + setupTime + prodTime;
       partReady[part.name] = end;
       // Avanço de etapa: se ainda há roteiro, a próxima máquina entra em FILA/PRODUÇÃO.
@@ -3314,6 +3410,7 @@ const ESTUFA_FULL_EPS = 0.01;
         setupTime,
         prodTime,
         waitingForAssembly,
+        waitingForOperator: gated.waitingForOperator,
         isJoin: isJoinStep(step),
         skuName: part.name,
         requer: joinRequerOf(step)
@@ -3349,7 +3446,7 @@ const ESTUFA_FULL_EPS = 0.01;
           if (!ignoreAssembly && members.some(m => !assemblyDependenciesMet(m.part, m.step, readyTimeOfParts, partReady, nextStepIndex))) return;
 
           const readyForMachine = members.reduce((max, m) => Math.max(max, m.readyForMachine), getSimulationStartAbsMin());
-          const setupStart = snapToProductive(Math.max(machineFreeAt(machineFreeUntil, step.machineId), readyForMachine));
+          const setupStart = gateSetupStart(step.machineId, readyForMachine, machineFreeUntil).setupStart;
           candidates.push({
             type: 'group',
             groupRule,
@@ -3369,7 +3466,7 @@ const ESTUFA_FULL_EPS = 0.01;
           const asm = resolveAssemblyWait(part, step, arrivalTime, readyTimeOfParts, partReady, nextStepIndex);
           const readyForMachine = Math.max(arrivalTime, asm.assemblyGate);
           const firstArrival = (requer || []).reduce((min, n) => Math.min(min, partReady[n] != null ? partReady[n] : min), readyForMachine);
-          const setupStart = snapToProductive(Math.max(readyForMachine, machineFreeAt(machineFreeUntil, step.machineId)));
+          const setupStart = gateSetupStart(step.machineId, readyForMachine, machineFreeUntil).setupStart;
           candidates.push({
             type: 'single',
             part,
@@ -3389,7 +3486,7 @@ const ESTUFA_FULL_EPS = 0.01;
         const arrivalTime = partReady[part.name] != null ? partReady[part.name] : getSimulationStartAbsMin();
         const asm = resolveAssemblyWait(part, step, arrivalTime, readyTimeOfParts, partReady, nextStepIndex);
         const readyForMachine = Math.max(arrivalTime, asm.assemblyGate);
-        const setupStart = snapToProductive(Math.max(readyForMachine, machineFreeAt(machineFreeUntil, step.machineId)));
+        const setupStart = gateSetupStart(step.machineId, readyForMachine, machineFreeUntil).setupStart;
         candidates.push({
           type: 'single',
           part,
@@ -3409,6 +3506,8 @@ const ESTUFA_FULL_EPS = 0.01;
     }
 
     function scheduleProductionEvents() {
+      operadorMonotarefaAtivo = readOperadorMonotarefa();
+      operatorFreeUntil = {};
       const machineFreeUntil = {};
       const machineOperated = {};
       const simParts = buildBomRuntimeParts();
@@ -3456,12 +3555,17 @@ const ESTUFA_FULL_EPS = 0.01;
           if (candidates.length === 0) break;
         }
         ignoreAssembly = false;
-        candidates.sort((a, b) =>
-          (a.setupStart - b.setupStart) ||
-          ((Number(a.part && a.part.planOrder) || 0) - (Number(b.part && b.part.planOrder) || 0)) ||
-          (a.readyForMachine - b.readyForMachine) ||
-          (a.partIdx - b.partIdx)
-        );
+        candidates.sort((a, b) => {
+          const byStart = a.setupStart - b.setupStart;
+          if (byStart) return byStart;
+          if (operadorMonotarefaAtivo) {
+            const fifo = (a.readyForMachine - b.readyForMachine) || (a.partIdx - b.partIdx);
+            if (fifo) return fifo;
+          }
+          return ((Number(a.part && a.part.planOrder) || 0) - (Number(b.part && b.part.planOrder) || 0)) ||
+            (a.readyForMachine - b.readyForMachine) ||
+            (a.partIdx - b.partIdx);
+        });
         const chosen = candidates[0];
 
         if (chosen.type === 'group') {
@@ -3665,6 +3769,8 @@ const ESTUFA_FULL_EPS = 0.01;
                 remaining = remainingMinutesLabel(absMin, setupEnd);
               } else if (evt.isJoin && evt.waitingForAssembly && absMin < evt.assemblyGate) {
                 status = isLunchTime ? 'lunch' : 'waiting';
+              } else if (evt.waitingForOperator && absMin < evt.setupStart) {
+                status = isLunchTime ? 'lunch' : 'operator';
               } else if (evt.isJoin && absMin < evt.setupStart) {
                 status = isLunchTime ? 'lunch' : 'ready';
               } else {
@@ -3680,7 +3786,8 @@ const ESTUFA_FULL_EPS = 0.01;
                 sector,
                 operator: getMachineOperatorLabel(mObj),
                 status,
-                remaining
+                remaining,
+                groupId: evt.groupKey || groupingKey(part.name, evt.machineId)
               };
               break;
             }
@@ -3797,6 +3904,8 @@ function getMaxAbsSecond() {
 }
 
 function absMinuteToTimeLabel(absMin) {
-  const p = absMinuteToParts(absMin);
-  return `${formatDisplayDate(p.dateIso)} ${pad2(p.hours)}:${pad2(p.minutes)}`;
+  const rounded = Math.round(Number(absMin) || 0);
+  const p = absMinuteToParts(rounded);
+  const minutes = Math.round(Number(p.minutes) || 0);
+  return `${formatDisplayDate(p.dateIso)} ${pad2(p.hours)}:${pad2(minutes)}`;
 }
