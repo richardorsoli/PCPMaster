@@ -655,14 +655,14 @@
           <div class="kpi-hint" id="kpi-custo-mod-hint">Mão de obra direta (setup + produção)</div>
         </div>
         <div class="analytics-kpi">
-          <div class="kpi-title">Custo de Fila/Gargalo</div>
+          <div class="kpi-title">Custo de Oportunidade de Fila</div>
           <div class="kpi-value" id="kpi-custo-fila">—</div>
-          <div class="kpi-hint" id="kpi-custo-fila-hint">Custo de oportunidade do tempo parado</div>
+          <div class="kpi-hint" id="kpi-custo-fila-hint">Fila + JOIN × TCF/min (apenas indicativo)</div>
         </div>
         <div class="analytics-kpi">
           <div class="kpi-title">Preço Sugerido por Caixa</div>
           <div class="kpi-value" id="kpi-preco-caixa">—</div>
-          <div class="kpi-hint" id="kpi-preco-caixa-hint">Cobre o custo operacional e a meta de faturamento</div>
+          <div class="kpi-hint" id="kpi-preco-caixa-hint">(MOD + Custo Fixo Absorvido) / caixas</div>
         </div>
         <div class="analytics-kpi analytics-kpi-estufa">
           <div class="kpi-title" id="kpi-estufa-title">Quantidade de Estufadas</div>
@@ -878,6 +878,17 @@
       <h3 class="tester-top3-title">Top 3 cenários</h3>
       <div id="tester-top3"><p class="tester-empty">Nenhum cenário ranqueado ainda.</p></div>
     </div>
+
+    <div class="card tester-results-card" id="gemini-advisor-card">
+      <h2>Diagnóstico Prescritivo Gemini IA</h2>
+      <p id="gemini-active-model" class="gemini-model-label" hidden></p>
+      <p class="tester-hint">Envia makespan, custos de MOD e fila, jornada das peças e ocupação dos postos da simulação atual. A chave fica só neste navegador. Se um modelo estiver indisponível, o próximo da lista é testado automaticamente.</p>
+      <div class="tester-controls">
+        <button type="button" class="btn btn-success" id="btn-gemini-analyze" onclick="runGeminiPrescriptiveAnalysis()">Analisar Oportunidades com IA (Gemini)</button>
+        <button type="button" class="btn btn-secondary" onclick="openGeminiKeyModal()">Chave API</button>
+      </div>
+      <div id="gemini-diagnosis-body"><p class="tester-empty">Nenhuma análise ainda.</p></div>
+    </div>
   </div>
 
   <aside id="tester-fab" class="tester-fab" hidden onclick="onTesterFabClick(event)" aria-expanded="true">
@@ -933,6 +944,21 @@
     </div>
   </div>
 
+  <div id="gemini-key-modal" class="modal-overlay" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="gemini-key-title">
+      <h3 id="gemini-key-title">Chave da API Gemini</h3>
+      <p>Cole a chave do Google AI Studio. Ela é salva em localStorage neste navegador e não entra no backup do projeto.</p>
+      <div class="form-group">
+        <label for="gemini-api-key-input">API key</label>
+        <input type="password" id="gemini-api-key-input" autocomplete="off" placeholder="AIza...">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-success" onclick="saveGeminiKeyFromModal()">Salvar</button>
+        <button type="button" class="btn btn-secondary" onclick="closeGeminiKeyModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="estufa-validation-modal" class="modal-overlay" hidden>
     <div class="modal-card modal-card-wide" role="alertdialog" aria-modal="true" aria-labelledby="estufa-validation-title" aria-describedby="estufa-validation-message">
       <h3 id="estufa-validation-title">Validação da Estufa</h3>
@@ -948,6 +974,7 @@
   <script src="js/ui.js?v=1.10.0-custos"></script>
   <script src="js/tester-worker.js?v=1.9.3-jornada"></script>
   <script src="js/tester.js?v=1.9.3-jornada"></script>
+  <script src="js/ai_advisor.js?v=1.10.0-gemini"></script>
   <script src="js/plan.js?v=1.9.3-jornada"></script>
   <script src="js/app.js?v=1.9.3-jornada"></script>
   <footer class="app-footer">

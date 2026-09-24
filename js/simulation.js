@@ -1622,15 +1622,27 @@ const ESTUFA_FULL_EPS = 0.01;
       return custoDiarioFabrica;
     }
 
-    /** R$/h da fábrica = custo diário / horas do turno (588 min = 9,8 h). */
-    function factoryHourlyCost() {
-      const hours = MINUTES_PER_DAY / 60;
-      return hours > 0 ? getCustoDiarioFabrica() / hours : 0;
+    /** Postos do layout atual. Sem cadastro, usa 5 (capacidade de referência). */
+    function countPostosOuLinhas() {
+      const postosTrabalho = {};
+      (machines || []).forEach(function (m) {
+        if (m && m.id) postosTrabalho[m.id] = m;
+      });
+      return Object.keys(postosTrabalho).length || 5;
     }
 
-    /** R$/min da fábrica = custo diário / minutos do turno. */
+    /**
+     * TCF/min = custo diário / (jornada em minutos × quantidade de postos).
+     * O dia inteiro da fábrica não é debitado de um lote curto.
+     */
+    function custoFixoPorMinuto() {
+      const denom = MINUTES_PER_DAY * countPostosOuLinhas();
+      return denom > 0 ? getCustoDiarioFabrica() / denom : 0;
+    }
+
+    /** R$/min de capacidade = TCF/min. */
     function factoryMinuteCost() {
-      return MINUTES_PER_DAY > 0 ? getCustoDiarioFabrica() / MINUTES_PER_DAY : 0;
+      return custoFixoPorMinuto();
     }
 
     function operatorHourlyRate(machineId) {
@@ -1650,8 +1662,14 @@ const ESTUFA_FULL_EPS = 0.01;
         mod += hours * operatorHourlyRate(b.machineId);
       });
       const filaMin = (Number(kpis && kpis.filaTime) || 0) + (Number(kpis && kpis.unionTime) || 0);
-      const fila = (filaMin / 60) * factoryHourlyCost();
-      return { custoMod: mod, custoFilaJoin: fila };
+      const procMin = (Number(kpis && kpis.prodTime) || 0) + (Number(kpis && kpis.setupTime) || 0);
+      const tcf = custoFixoPorMinuto();
+      return {
+        custoMod: mod,
+        custoFilaJoin: filaMin * tcf,
+        tempoProcessamentoMin: procMin,
+        custoFixoAbsorvido: procMin * tcf
+      };
     }
 
     function computeLaborCostSummary(makespanMin, boxes) {
@@ -1659,21 +1677,35 @@ const ESTUFA_FULL_EPS = 0.01;
       const rows = typeof buildPartJourneyRows === 'function' ? buildPartJourneyRows() : [];
       let mod = 0;
       let fila = 0;
+      let tempoProc = 0;
       rows.forEach(function (r) {
         const k = r && r.kpis ? r.kpis : {};
         mod += Number(k.custoMod) || 0;
         fila += Number(k.custoFilaJoin) || 0;
+        tempoProc += (Number(k.prodTime) || 0) + (Number(k.setupTime) || 0);
       });
-      const makespan = Math.max(0, Number(makespanMin) || 0);
-      const operacional = makespan * factoryMinuteCost();
+      const tcf = custoFixoPorMinuto();
+      const custoFixoAbsorvido = tempoProc * tcf;
+      const custoMateriaPrima = 0;
+      const custoEnergiaEstufa = 0;
+      const margemLucro = 0;
+      const custoTotalLote = mod + custoMateriaPrima + custoFixoAbsorvido + custoEnergiaEstufa;
       const qty = Math.max(1, Number(boxes) || 1);
       return {
         custoModTotal: mod,
         custoFilaJoin: fila,
-        custoOperacionalMakespan: operacional,
-        precoSugeridoCaixa: (operacional + mod) / qty,
-        custoMinuto: factoryMinuteCost(),
-        boxes: qty
+        tempoProcessamentoMin: tempoProc,
+        custoFixoPorMinuto: tcf,
+        custoFixoAbsorvido: custoFixoAbsorvido,
+        custoMateriaPrima: custoMateriaPrima,
+        custoEnergiaEstufa: custoEnergiaEstufa,
+        margemLucro: margemLucro,
+        custoTotalLote: custoTotalLote,
+        custoOperacionalMakespan: custoFixoAbsorvido,
+        precoSugeridoCaixa: (custoTotalLote / qty) * (1 + margemLucro),
+        custoMinuto: tcf,
+        boxes: qty,
+        postos: countPostosOuLinhas()
       };
     }
 

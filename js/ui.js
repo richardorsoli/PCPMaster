@@ -1975,14 +1975,10 @@
           : 'Soma da mão de obra direta no lote';
       }
       if (filaHint) {
-        filaHint.textContent = costs
-          ? ('Fila + JOIN × (custo diário / 9,8 h) · ' + formatCurrency(typeof getCustoDiarioFabrica === 'function' ? getCustoDiarioFabrica() : 0) + '/dia')
-          : 'Custo de oportunidade do tempo parado';
+        filaHint.textContent = 'Fila + JOIN × TCF/min (apenas indicativo)';
       }
       if (precoHint) {
-        precoHint.textContent = costs
-          ? ('(Makespan × R$/min + MOD) / caixas · operacional ' + formatCurrency(costs.custoOperacionalMakespan))
-          : 'Cobre o custo operacional do makespan e a MOD';
+        precoHint.textContent = '(MOD + Custo Fixo Absorvido) / caixas';
       }
     }
 
@@ -2732,8 +2728,8 @@
         : null;
       const costItems = [
         { title: 'Custo Total de MOD', value: cost ? formatCurrency(cost.custoModTotal) : '—', hint: 'Mão de obra direta (setup + produção)' },
-        { title: 'Custo de Fila/Gargalo', value: cost ? formatCurrency(cost.custoFilaJoin) : '—', hint: 'Oportunidade do tempo parado (fila + JOIN)' },
-        { title: 'Preço Sugerido por Caixa', value: cost ? formatCurrency(cost.precoSugeridoCaixa) : '—', hint: 'Custo operacional do makespan + MOD / caixas' }
+        { title: 'Custo de Oportunidade de Fila', value: cost ? formatCurrency(cost.custoFilaJoin) : '—', hint: 'Fila + JOIN × TCF/min (apenas indicativo)' },
+        { title: 'Preço Sugerido por Caixa', value: cost ? formatCurrency(cost.precoSugeridoCaixa) : '—', hint: '(MOD + Custo Fixo Absorvido) / caixas' }
       ];
       const costW = (pageW - 28 - gap * 2) / 3;
       costItems.forEach(function (item, i) {
