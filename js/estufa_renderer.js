@@ -87,17 +87,14 @@ function calculateEstufa3DLayout(packed, cabin) {
   const pieces = [];
   (packed || []).filter(u => u && u.box && !u.box.forced).forEach(u => {
     const pose = estufaPiecePose(u.spec);
-    const count = Math.max(1, Number(u.pieces) || 1);
-    for (let n = 0; n < count; n++) {
-      pieces.push({
-        unit: u,
-        seq: (Number(u.arrivalTime) || 0) + n * 0.0001,
-        solidX: pose.solidX,
-        solidY: pose.solidY,
-        solidZ: pose.solidZ,
-        gap: pose.gap
-      });
-    }
+    pieces.push({
+      unit: u,
+      seq: Number(u.arrivalTime) || 0,
+      solidX: pose.solidX,
+      solidY: pose.solidY,
+      solidZ: pose.solidZ,
+      gap: pose.gap
+    });
   });
   pieces.sort((a, b) => a.seq - b.seq);
   if (!pieces.length) return packed || [];
@@ -163,10 +160,9 @@ function estufaLoadBounds(packed) {
     maxZ = Math.max(maxZ, b.z + b.d);
   });
   if (!isFinite(minX)) return null;
-  const pad = 0.03;
   return {
-    x0: minX - pad, y0: minY - pad, z0: minZ - pad,
-    x1: maxX + pad, y1: maxY + pad, z1: maxZ + pad
+    x0: minX, y0: minY, z0: minZ,
+    x1: maxX, y1: maxY, z1: maxZ
   };
 }
 
@@ -225,8 +221,12 @@ function buildEstufaMapLayout() {
   const fill = fillEstufaCabin(units, cabin);
   const packed = calculateEstufa3DLayout(fill.packed || [], cabin);
   const countByName = {};
+  const seenFardo = {};
   packed.forEach(u => {
     const n = u.name || (u.part && (u.part.name || u.part.resultName)) || '';
+    const key = n + '#' + (u.fardoIndex != null ? u.fardoIndex : '');
+    if (seenFardo[key]) return;
+    seenFardo[key] = true;
     countByName[n] = (countByName[n] || 0) + 1;
   });
   const skuByName = {};
@@ -282,18 +282,6 @@ function captureEstufaOrthographicViews(layout) {
   const altura = (Number(cabin.h) > 0 ? Number(cabin.h) : parseFloat(inputA && inputA.value)) || 2.0;
   const largura = (Number(cabin.w) > 0 ? Number(cabin.w) : parseFloat(inputL && inputL.value)) || 1.75;
   const profundidade = (Number(cabin.d) > 0 ? Number(cabin.d) : parseFloat(inputP && inputP.value)) || 3.85;
-  const bounds = estufaLoadBounds(layout.packed) || {
-    x0: 0, y0: 0, z0: 0, x1: largura, y1: altura, z1: profundidade
-  };
-  const foco = {
-    x: (bounds.x0 + bounds.x1) / 2,
-    y: (bounds.y0 + bounds.y1) / 2,
-    z: (bounds.z0 + bounds.z1) / 2
-  };
-  const spanX = Math.max(0.05, bounds.x1 - bounds.x0);
-  const spanY = Math.max(0.05, bounds.y1 - bounds.y0);
-  const spanZ = Math.max(0.05, bounds.z1 - bounds.z0);
-
   const scene = new THREE.Scene();
   const estufaGeo = new THREE.BoxGeometry(largura, altura, profundidade);
   const cabinEdges = new THREE.LineSegments(
@@ -360,15 +348,29 @@ function captureEstufaOrthographicViews(layout) {
     scene.add(sprite);
   });
 
-  const dist = Math.max(largura, altura, profundidade) * 3;
-  function shoot(spanW, spanH, position, up) {
+  const dist = 5;
+  const margin = 1.02;
+  const pad = 0.05;
+  const zMid = profundidade / 2;
+  const yMid = altura / 2;
+  const xMid = largura / 2;
+  const halfW = (largura / 2) * margin;
+  const halfH = (altura / 2) * margin;
+  const load = estufaLoadBounds(layout.packed) || {
+    x0: 0, y0: 0, z0: 0, x1: largura, y1: altura, z1: profundidade
+  };
+  function shoot(left, right, top, bottom, position, up, target) {
+    const spanW = Math.max(0.05, right - left);
+    const spanH = Math.max(0.05, top - bottom);
     const pxH = H;
     const pxW = Math.max(64, Math.round(pxH * (spanW / spanH)));
     renderer.setSize(pxW, pxH, false);
-    const cam = new THREE.OrthographicCamera(-spanW / 2, spanW / 2, spanH / 2, -spanH / 2, 0.01, 80);
+    const cam = new THREE.OrthographicCamera(left, right, top, bottom, 0.01, 50);
+    cam.zoom = 1;
     cam.position.set(position.x, position.y, position.z);
     cam.up.set(up.x, up.y, up.z);
-    cam.lookAt(foco.x, foco.y, foco.z);
+    cam.lookAt(target.x, target.y, target.z);
+    cam.updateProjectionMatrix();
     renderer.render(scene, cam);
     return renderer.domElement.toDataURL('image/png');
   }
@@ -376,9 +378,32 @@ function captureEstufaOrthographicViews(layout) {
   let images = null;
   try {
     images = {
-      top: shoot(spanX, spanZ, { x: foco.x, y: Math.max(bounds.y1, altura) + dist, z: foco.z }, { x: 0, y: 0, z: -1 }),
-      front: shoot(spanX, spanY, { x: foco.x, y: foco.y, z: profundidade + dist }, { x: 0, y: 1, z: 0 }),
-      side: shoot(spanZ, spanY, { x: -dist, y: foco.y, z: foco.z }, { x: 0, y: 1, z: 0 })
+      front: shoot(
+        -halfW, halfW, halfH, -halfH,
+        { x: xMid, y: yMid, z: profundidade + dist },
+        { x: 0, y: 1, z: 0 },
+        { x: xMid, y: yMid, z: 0 }
+      ),
+      top: shoot(
+        (load.x0 - xMid) - pad, (load.x1 - xMid) + pad,
+        (zMid - load.z0) + pad, (zMid - load.z1) - pad,
+        { x: xMid, y: altura + dist, z: zMid },
+        { x: 0, y: 0, z: -1 },
+        { x: xMid, y: 0, z: zMid }
+      ),
+      side: shoot(
+        (load.z0 - zMid) - pad, (load.z1 - zMid) + pad,
+        (load.y1 - yMid) + pad, (load.y0 - yMid) - pad,
+        { x: -dist, y: yMid, z: zMid },
+        { x: 0, y: 1, z: 0 },
+        { x: largura, y: yMid, z: zMid }
+      ),
+      back: shoot(
+        -halfW, halfW, halfH, -halfH,
+        { x: xMid, y: yMid, z: -dist },
+        { x: 0, y: 1, z: 0 },
+        { x: xMid, y: yMid, z: profundidade }
+      )
     };
   } catch (err) {
     images = null;

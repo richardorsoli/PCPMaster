@@ -3421,6 +3421,10 @@
       doc.setTextColor(90);
       doc.text('Cronoanálise: preencha Tempo Registrado e Descrição/Como foi feito à mão. Use Desempenho (Reg. vs Sim.) para premiação.', 14, y);
 
+      if (typeof appendEstufaLoadingPlanPage === 'function') {
+        appendEstufaLoadingPlanPage(doc);
+      }
+
       doc.save(meta.filename);
     }
 
