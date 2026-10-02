@@ -1,4 +1,4 @@
-/* PCPMaster — Análise prescritiva Gemini no Otimizador TESTER */
+/* PCPMaster v2.2 — Análise prescritiva Gemini no Otimizador TESTER */
 
 const GEMINI_API_KEY_STORAGE = 'pcpmaster_gemini_api_key';
 const GEMINI_MODELS_FALLBACK = [
@@ -54,6 +54,7 @@ function buildGeminiSimulationPayload() {
     : sku;
   const boxes = typeof boxesQty !== 'undefined' ? Math.max(1, Number(boxesQty) || 1) : 1;
   const custoDiario = typeof getCustoDiarioFabrica === 'function' ? getCustoDiarioFabrica() : 0;
+  const impostoPct = parseFloat(document.getElementById('impostoPorcentagem')?.value) || 0;
   const analytics = typeof computeEfficiencyAnalytics === 'function' ? computeEfficiencyAnalytics() : null;
   const makespan = analytics ? Number(analytics.makespanElapsed) || 0 : 0;
   const costs = (typeof computeLaborCostSummary === 'function' && makespan > 0)
@@ -94,6 +95,7 @@ function buildGeminiSimulationPayload() {
     sku: sku || project || 'SKU',
     quantidade_caixas: boxes,
     custo_diario_fabrica: roundMoney(custoDiario),
+    imposto_pct: roundMin(isFinite(impostoPct) ? impostoPct : 0),
     makespan_total_min: roundMin(makespan),
     custo_total_mod: costs ? roundMoney(costs.custoModTotal) : 0,
     custo_oportunidade_fila: costs ? roundMoney(costs.custoFilaJoin) : 0,

@@ -1,4 +1,4 @@
-/* PCPMaster v1.10.0 — Inicialização, playback e integração dos módulos */
+/* PCPMaster v2.2 — Inicialização, playback e integração dos módulos */
 
     function syncSimHeaderFields() {
       const simBoxes = document.getElementById('sim-boxes-qty');
@@ -116,6 +116,13 @@
       if (raw === '' || raw === '-') return;
       clearTimeout(liveRecalcTimer);
       liveRecalcTimer = setTimeout(recalculateSimulationLive, 280);
+    }
+
+    function onOperadorMonotarefaChange() {
+      clearTimeout(liveRecalcTimer);
+      if (document.getElementById('screen-sim') && document.getElementById('screen-sim').classList.contains('active') && simulationHistory.length) {
+        recalculateSimulationLive({ allowPlan: true });
+      }
     }
 
     function onSimBoxesQtyChange() {
@@ -244,4 +251,5 @@ window.onload = () => {
   if (typeof setTesterSearchMode === 'function') setTesterSearchMode('quick');
   if (typeof renderProductionPlanUI === 'function') renderProductionPlanUI();
   if (typeof syncAppNav === 'function') syncAppNav('screen-welcome');
+  if (typeof initGoogleAuth === 'function') initGoogleAuth();
 };

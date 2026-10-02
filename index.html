@@ -3,13 +3,60 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PCPMaster v1.10.0</title>
+  <title>PCPMaster v2.3</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-  <link rel="stylesheet" href="css/styles.css?v=1.10.0-custos">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="stylesheet" href="css/styles.css?v=2.3">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
+
+  <div id="auth-session-bar" class="auth-session-bar" hidden>
+    <span id="auth-user-email" class="auth-user-email"></span>
+    <button type="button" class="btn btn-secondary" id="btn-logout-google" onclick="logoutGoogle()">Sair</button>
+  </div>
+
+  <div id="login-overlay" class="login-overlay">
+    <div class="login-card">
+      <h1>PCPMaster</h1>
+      <p id="login-lead">Entre com e-mail e senha, ou use a conta Google, para usar o simulador e enviar a cronoanálise à planilha.</p>
+      <form id="form-login" class="native-auth-form" autocomplete="on" novalidate>
+        <div class="form-group">
+          <label for="login-email">E-mail</label>
+          <input type="email" id="login-email" name="email" maxlength="120" placeholder="usuario@dominio.com" autocomplete="username" required>
+        </div>
+        <div class="form-group">
+          <label for="login-senha">Senha</label>
+          <input type="password" id="login-senha" name="senha" maxlength="80" placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn native-auth-submit" id="btn-entrar">Entrar</button>
+      </form>
+      <form id="form-cadastro" class="native-auth-form" autocomplete="on" novalidate hidden>
+        <div class="form-group">
+          <label for="cadastro-nome">Nome</label>
+          <input type="text" id="cadastro-nome" name="nome" maxlength="80" placeholder="Seu nome completo" autocomplete="name" required>
+        </div>
+        <div class="form-group">
+          <label for="cadastro-email">E-mail</label>
+          <input type="email" id="cadastro-email" name="email" maxlength="120" placeholder="usuario@dominio.com" autocomplete="email" required>
+        </div>
+        <div class="form-group">
+          <label for="cadastro-senha">Senha</label>
+          <input type="password" id="cadastro-senha" name="senha" maxlength="80" placeholder="••••••••" autocomplete="new-password" required>
+        </div>
+        <button type="button" class="btn native-auth-submit" id="btn-cadastrar">Cadastrar</button>
+      </form>
+      <button type="button" class="native-auth-toggle" id="native-auth-toggle">Inscreva-se</button>
+      <div class="login-divider" aria-hidden="true"><span>OU</span></div>
+      <div id="google-login-container">
+        <div id="google-signin-btn"></div>
+      </div>
+      <p id="login-status" class="login-status mensagem-erro"></p>
+    </div>
+  </div>
 
   <nav id="app-nav" class="app-nav" hidden>
     <div class="app-nav-brand-wrap">
@@ -25,13 +72,14 @@
       <button type="button" class="btn btn-secondary" data-nav="screen-sim" onclick="navigateTo('screen-sim')">Simulação</button>
       <button type="button" class="btn btn-secondary" data-nav="screen-plan" onclick="openPlanScreen()">Plano de Produção</button>
       <button type="button" class="btn btn-secondary" data-nav="screen-tester" onclick="openTesterScreen()">Otimizador TESTER</button>
+      <button type="button" class="btn btn-secondary" onclick="logoutGoogle()">Sair</button>
     </div>
   </nav>
 
   <!-- TELA 1: INICIAL -->
   <div id="screen-welcome" class="screen active">
     <div style="background: #1e293b; padding: 40px; border-radius: 12px; border: 1px solid #334155; text-align: center; max-width: 780px; margin: 40px auto;">
-      <h1 style="color: #38bdf8; font-size: 2.3rem; margin-bottom: 15px;">PCPMaster v1.10.0</h1>
+      <h1 style="color: #38bdf8; font-size: 2.3rem; margin-bottom: 15px;">PCPMaster v2.3</h1>
       <p style="color: #94a3b8; font-size: 1.05rem; line-height: 1.6; margin-bottom: 30px;">
         Simulação multi-dia com Gantt, plano de produção multiprojeto, relatórios PDF, indicadores de eficiência, hora de início flexível, recálculo por caixas e manutenção preventiva.
       </p>
@@ -188,15 +236,15 @@
           </label>
         </div>
         <div class="form-group" style="flex:1;">
-          <label>Cabine A (m)</label>
+          <label>Estufa A (m)</label>
           <input type="number" id="new-machine-estufa-h" min="0" step="0.01" value="2.00" title="Altura útil da cabine" oninput="updateEstufaMachineVolumeHint()">
         </div>
         <div class="form-group" style="flex:1;">
-          <label>Cabine L (m)</label>
+          <label>Estufa L (m)</label>
           <input type="number" id="new-machine-estufa-w" min="0" step="0.01" value="1.75" title="Largura útil da cabine" oninput="updateEstufaMachineVolumeHint()">
         </div>
         <div class="form-group" style="flex:1;">
-          <label>Cabine P (m)</label>
+          <label>Estufa P (m)</label>
           <input type="number" id="new-machine-estufa-d" min="0" step="0.01" value="3.85" title="Profundidade útil da cabine" oninput="updateEstufaMachineVolumeHint()">
         </div>
         <div class="form-group" style="flex:1.4; display:flex; align-items:flex-end;">
@@ -439,9 +487,22 @@
         <input type="time" id="start-time" value="07:30" min="07:30" max="17:18" step="60" list="shift-start-presets">
       </div>
       <div class="form-group">
+        <label for="operadorMonotarefa" title="Quando ativado, o operador executa apenas 1 máquina/operação por vez. Se houver concorrência (ex: Wesley Rufino em CORDOB, PUXADOR e MURATA), respeita a ordem FIFO da fila de produção.">Operador Exclusivo / Monotarefa (FIFO)</label>
+        <label style="display:flex; align-items:center; gap:8px; color:#e2e8f0; font-size:0.9rem;">
+          <input type="checkbox" id="operadorMonotarefa" onchange="onOperadorMonotarefaChange(this)">
+          <span>1 atividade por vez</span>
+        </label>
+        <p style="font-size:0.75rem; color:#94a3b8; margin-top:4px; max-width:320px;">Quando ativado, o operador executa apenas 1 máquina/operação por vez. Se houver concorrência (ex: Wesley Rufino em CORDOB, PUXADOR e MURATA), respeita a ordem FIFO da fila de produção.</p>
+      </div>
+      <div class="form-group">
         <label title="Ex: Faturamento mensal R$ 250.000 / 22 dias = R$ 11.363,64/dia">7. Custo Diário de Operação da Fábrica (R$)</label>
         <input type="number" id="custo-diario-fabrica" min="0" step="0.01" inputmode="decimal" placeholder="0,00" title="Ex: Faturamento mensal R$ 250.000 / 22 dias = R$ 11.363,64/dia">
         <p style="font-size:0.75rem; color:#94a3b8; margin-top:4px; max-width:280px;">Ex: Faturamento mensal R$ 250.000 / 22 dias = R$ 11.363,64/dia</p>
+      </div>
+      <div class="form-group">
+        <label for="impostoPorcentagem" title="Alíquota estimada sobre o faturamento (ex: Simples Nacional, ICMS, PIS/COFINS)">Impostos / Tributos (%)</label>
+        <input type="number" id="impostoPorcentagem" min="0" max="99" step="0.1" value="0" placeholder="ex: 12" title="Alíquota estimada sobre o faturamento (ex: Simples Nacional, ICMS, PIS/COFINS)" oninput="onImpostoPorcentagemInput()">
+        <p style="font-size:0.75rem; color:#94a3b8; margin-top:4px; max-width:280px;">Alíquota estimada sobre o faturamento (ex: Simples Nacional, ICMS, PIS/COFINS)</p>
       </div>
       <div style="font-size:0.85rem; color:#94a3b8; max-width:480px; line-height:1.4; padding-bottom:6px;">
         Multiplica a quantidade de peças e o tempo de produção. Setup permanece igual. Turno 07:30–17:18 com almoço 12:00–13:00. A alocação começa no horário escolhido.
@@ -466,7 +527,7 @@
     <div class="dashboard">
       <div>
         <div class="sim-header-row">
-          <div id="sim-project-title" style="color:#f8fafc; font-size:1.15rem; font-weight:700;">PCPMaster v1.10.0 - Controle de Chão de Fábrica</div>
+          <div id="sim-project-title" style="color:#f8fafc; font-size:1.15rem; font-weight:700;">PCPMaster v2.2 - Controle de Chão de Fábrica</div>
           <div class="sim-header-actions">
             <button type="button" class="btn btn-secondary" onclick="openTesterScreen()">Otimizador TESTER</button>
             <button type="button" class="btn btn-secondary" id="btn-new-project-sim" onclick="startNewProject(true)">Novo Projeto</button>
@@ -563,6 +624,7 @@
       </div>
       <div>
         <button class="btn btn-success" id="btn-export-pdf" onclick="generatePDFReport()">📄 Gerar Relatório PDF</button>
+        <button class="btn btn-secondary" id="btn-exportar-cronoanalise" type="button" onclick="exportarCronoanaliseDrive()">📊 Exportar para Cronoanálise (Drive)</button>
         <button class="btn btn-secondary" onclick="goToEngineeringRoutes()">Ajustar Roteiro</button>
       </div>
     </div>
@@ -662,7 +724,7 @@
         <div class="analytics-kpi">
           <div class="kpi-title">Preço Sugerido por Caixa</div>
           <div class="kpi-value" id="kpi-preco-caixa">—</div>
-          <div class="kpi-hint" id="kpi-preco-caixa-hint">(MOD + Custo Fixo Absorvido) / caixas</div>
+          <div class="kpi-hint" id="kpi-preco-caixa-hint">Fórmula: [(MOD + Custo Fixo Absorvido) / caixas × (1 + Margem)] / (1 - Imposto%)</div>
         </div>
         <div class="analytics-kpi analytics-kpi-estufa">
           <div class="kpi-title" id="kpi-estufa-title">Quantidade de Estufadas</div>
@@ -969,17 +1031,19 @@
     </div>
   </div>
 
-  <script src="js/simulation.js?v=1.10.0-custos"></script>
-  <script src="js/database.js?v=1.10.0-custos"></script>
-  <script src="js/ui.js?v=1.10.0-custos"></script>
-  <script src="js/tester-worker.js?v=1.9.3-jornada"></script>
-  <script src="js/tester.js?v=1.9.3-jornada"></script>
-  <script src="js/ai_advisor.js?v=1.10.0-gemini"></script>
-  <script src="js/plan.js?v=1.9.3-jornada"></script>
-  <script src="js/app.js?v=1.9.3-jornada"></script>
+  <script src="js/config.js?v=2.3"></script>
+  <script src="js/simulation.js?v=2.2"></script>
+  <script src="js/database.js?v=2.2"></script>
+  <script src="js/estufa_renderer.js?v=2.2"></script>
+  <script src="js/ui.js?v=2.3.8"></script>
+  <script src="js/tester-worker.js?v=2.2"></script>
+  <script src="js/tester.js?v=2.2"></script>
+  <script src="js/ai_advisor.js?v=2.2"></script>
+  <script src="js/plan.js?v=2.2"></script>
+  <script src="js/app.js?v=2.2"></script>
   <footer class="app-footer">
     <span class="db-status-text">Banco ativo: v2.0</span>
-    <span>PCPMaster v1.10.0</span>
+    <span>PCPMaster v2.2</span>
   </footer>
 </body>
 </html>

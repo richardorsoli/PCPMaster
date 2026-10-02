@@ -1,4 +1,4 @@
-/* PCPMaster v2.2 — Manipulação de DOM, timeline, relógio, tabelas, Gantt, jornada das peças, custos MOD e PDF */
+﻿/* PCPMaster v2.3 — Manipulação de DOM, timeline, relógio, tabelas, Gantt, jornada das peças, custos MOD e PDF */
 
     function readFlexibleNumber(id, fallback) {
       const el = document.getElementById(id);
@@ -3428,6 +3428,847 @@
       doc.save(meta.filename);
     }
 
+    function buildCronoanaliseDrivePayload() {
+      const machine = typeof getPrimaryEstufaMachine === 'function' ? getPrimaryEstufaMachine() : null;
+      const cycle = typeof resolveEstufaCycleMinutes === 'function'
+        ? resolveEstufaCycleMinutes(machine)
+        : { queima: 30, resfrio: 30 };
+      const sheet = typeof readEstufaSheetParams === 'function' ? readEstufaSheetParams(machine) : null;
+      const cabin = (machine && typeof getEstufaCabin === 'function') ? getEstufaCabin(machine.id) : null;
+      const fromEstufa = typeof collectEstufaMapEntities === 'function' ? collectEstufaMapEntities() : [];
+      const source = fromEstufa.length ? fromEstufa : (typeof parts !== 'undefined' ? parts : []);
+      const skus = source.map(part => {
+        const spec = typeof partFardoSpec === 'function'
+          ? partFardoSpec(part, cabin)
+          : (typeof normalizePartDims === 'function' ? normalizePartDims(part) : {});
+        const qtyPecas = typeof partEffectiveQty === 'function'
+          ? partEffectiveQty(part)
+          : (Number(part && part.qty) || 1) * (typeof boxesQty !== 'undefined' ? (boxesQty || 1) : 1);
+        const porFardo = Number(spec.peca_max_fardo || spec.pecas_por_fardo) || 1;
+        const fardos = typeof partTotalFardos === 'function'
+          ? partTotalFardos(part, cabin)
+          : Math.ceil(qtyPecas / porFardo);
+        return {
+          sku: (part && (part.name || part.resultName)) || '',
+          altura_mm: Number(spec.peca_altura_mm) || 0,
+          largura_mm: Number(spec.peca_largura_mm) || 0,
+          comprimento_mm: Number(spec.peca_comprimento_mm) || 0,
+          pecasPorFardo: porFardo,
+          quantidadeFardos: fardos,
+          quantidadePecas: qtyPecas
+        };
+      });
+      const meta = typeof getPdfReportMeta === 'function' ? getPdfReportMeta() : {};
+      const projeto = meta.project || (typeof currentProjectName !== 'undefined' ? currentProjectName : '') || 'OP';
+      const caixas = meta.boxes != null ? meta.boxes : (typeof boxesQty !== 'undefined' ? boxesQty : 1);
+      const opId = [projeto, meta.startDate || '', String(caixas) + 'cx'].filter(Boolean).join('_').replace(/\s+/g, '_');
+      const queima = Number(cycle.queima);
+      const resfrio = Number(cycle.resfrio);
+      return {
+        opId: opId,
+        skus: skus,
+        tempoMetaQueima: (sheet && sheet.permanencia)
+          ? sheet.permanencia
+          : ((isFinite(queima) ? queima : 30) + ' min queima + ' + (isFinite(resfrio) ? resfrio : 30) + ' min resfriamento'),
+        temperaturaAlvo: (sheet && sheet.temperatura) ? sheet.temperatura : 'Conforme Processo',
+        dataGeracao: new Date().toISOString()
+      };
+    }
+
+    const GOOGLE_AUTH_STORAGE_KEY = 'pcpmaster_google_session';
+    const NATIVE_AUTH_STORAGE_KEY = 'pcpmaster_native_session';
+    const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    let nativeAuthMode = 'login';
+
+    function decodeJwtPayload(token) {
+      const part = String(token || '').split('.')[1] || '';
+      const b64 = part.replace(/-/g, '+').replace(/_/g, '/');
+      const pad = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+      const json = decodeURIComponent(Array.prototype.map.call(atob(pad), function (c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(json);
+    }
+
+    function googleClientId() {
+      return (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.GOOGLE_CLIENT_ID) ? String(CONFIG.GOOGLE_CLIENT_ID).trim() : '';
+    }
+
+    function isAuthorizedGoogleEmail(email) {
+      return EMAIL_FORMAT.test(String(email || '').trim().toLowerCase());
+    }
+
+    function readGoogleSession() {
+      try {
+        const raw = localStorage.getItem(GOOGLE_AUTH_STORAGE_KEY);
+        if (!raw) return null;
+        const session = JSON.parse(raw);
+        if (!session || !session.accessToken || !session.email) return null;
+        if (session.expiresAt && Date.now() >= Number(session.expiresAt)) return null;
+        if (!isAuthorizedGoogleEmail(session.email)) return null;
+        return session;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function writeGoogleSession(session) {
+      localStorage.setItem(GOOGLE_AUTH_STORAGE_KEY, JSON.stringify({
+        email: session.email,
+        accessToken: session.accessToken,
+        expiresAt: session.expiresAt
+      }));
+    }
+
+    function showLoginOverlay(message) {
+      const overlay = document.getElementById('login-overlay');
+      const bar = document.getElementById('auth-session-bar');
+      const status = document.getElementById('login-status');
+      if (overlay) overlay.hidden = false;
+      if (bar) bar.hidden = true;
+      if (status) status.textContent = message || '';
+    }
+
+    function readNativeSession() {
+      try {
+        const raw = localStorage.getItem(NATIVE_AUTH_STORAGE_KEY);
+        if (!raw) return null;
+        const session = JSON.parse(raw);
+        if (!session || !session.email || !session.token) return null;
+        if (!isAuthorizedGoogleEmail(session.email)) return null;
+        return session;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function writeNativeSession(usuario) {
+      localStorage.setItem(NATIVE_AUTH_STORAGE_KEY, JSON.stringify({
+        name: usuario.name || '',
+        email: usuario.email,
+        token: usuario.token
+      }));
+    }
+
+    function activeAuthLabel() {
+      const native = readNativeSession();
+      if (native) return native.name ? (native.name + ' · ' + native.email) : native.email;
+      const google = readGoogleSession();
+      return google ? google.email : '';
+    }
+
+    function applyLoggedInUi(session) {
+      const overlay = document.getElementById('login-overlay');
+      const bar = document.getElementById('auth-session-bar');
+      const emailEl = document.getElementById('auth-user-email');
+      if (overlay) overlay.hidden = true;
+      if (bar) bar.hidden = false;
+      if (emailEl) emailEl.textContent = (session && session.email) ? (session.name ? session.name + ' · ' + session.email : session.email) : activeAuthLabel();
+    }
+
+    function logoutGoogle() {
+      const session = readGoogleSession();
+      if (session && session.accessToken && window.google && google.accounts && google.accounts.oauth2) {
+        google.accounts.oauth2.revoke(session.accessToken, function () {});
+      }
+      localStorage.removeItem(GOOGLE_AUTH_STORAGE_KEY);
+      localStorage.removeItem(NATIVE_AUTH_STORAGE_KEY);
+      showLoginOverlay('');
+      renderGoogleLoginButton();
+    }
+
+    function promptGoogleLogin(message) {
+      const text = message || 'Entre com o Google para continuar.';
+      showLoginOverlay(text);
+      renderGoogleLoginButton();
+      alert(text);
+    }
+
+    function appsScriptUrl() {
+      return (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.APPS_SCRIPT_URL) ? String(CONFIG.APPS_SCRIPT_URL).trim() : '';
+    }
+
+    function postAppsScript(payload) {
+      const url = appsScriptUrl();
+      if (!url) return Promise.reject(new Error('Configure CONFIG.APPS_SCRIPT_URL em js/config.js com a URL do Web App.'));
+      return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body: JSON.stringify(payload)
+      }).then(function (res) {
+        return res.text().then(function (text) {
+          let data = {};
+          try { data = JSON.parse(text); } catch (e) { data = {}; }
+          if (!res.ok && !data.message) throw new Error('HTTP ' + res.status);
+          return data;
+        });
+      });
+    }
+
+    function setNativeAuthMode(mode) {
+      nativeAuthMode = mode === 'signup' ? 'signup' : 'login';
+      const loginForm = document.getElementById('form-login');
+      const signupForm = document.getElementById('form-cadastro');
+      const toggle = document.getElementById('native-auth-toggle');
+      const lead = document.getElementById('login-lead');
+      const signup = nativeAuthMode === 'signup';
+      if (loginForm) loginForm.hidden = signup;
+      if (signupForm) signupForm.hidden = !signup;
+      if (toggle) toggle.textContent = signup ? 'Já tenho conta' : 'Inscreva-se';
+      if (lead) {
+        lead.textContent = signup
+          ? 'Cadastre seu nome, e-mail corporativo ou autorizado e senha. O login com Google continua disponível abaixo.'
+          : 'Entre com e-mail e senha, ou use a conta Google, para usar o simulador e enviar a cronoanálise à planilha.';
+      }
+    }
+
+    function finishNativeAuth(data, status, submit, passwordEl) {
+      if (!data || !data.success || !data.usuario || !data.usuario.token) {
+        if (status) status.textContent = (data && data.message) || 'Não foi possível autenticar.';
+        if (submit) submit.disabled = false;
+        return;
+      }
+      writeNativeSession(data.usuario);
+      if (passwordEl) passwordEl.value = '';
+      applyLoggedInUi(data.usuario);
+      if (submit) submit.disabled = false;
+    }
+
+    function exibirMensagemErro(mensagem) {
+      const status = document.getElementById('login-status');
+      if (status) status.textContent = mensagem || '';
+    }
+
+    function limparMensagemErro() {
+      const statusEl = document.getElementById('mensagem-erro')
+        || document.querySelector('.mensagem-erro')
+        || document.getElementById('status-cadastro')
+        || document.getElementById('login-status');
+      if (statusEl) statusEl.textContent = '';
+    }
+
+    function executarLogin(dados) {
+      const url = (typeof API_CONFIG !== 'undefined' && API_CONFIG.url)
+        || (typeof CONFIG !== 'undefined' && CONFIG.APPS_SCRIPT_URL)
+        || (typeof CONFIG !== 'undefined' && CONFIG.url)
+        || 'https://script.google.com/macros/s/AKfycbxV-adnwHFAXe40Haz0aKhDnRX97UHOiipzWunTErfnL-hqoILg-Qj3z9Z5cGVZ_5r21A/exec';
+
+      return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(dados)
+      })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.success) {
+          if (data.usuario) {
+            localStorage.setItem('pcp_user', JSON.stringify(data.usuario));
+            if (data.usuario.token && typeof writeNativeSession === 'function') {
+              writeNativeSession(data.usuario);
+            }
+          }
+          if (typeof applyLoggedInUi === 'function') {
+            applyLoggedInUi(data.usuario || null);
+          } else if (typeof abrirSimulador === 'function') {
+            abrirSimulador();
+          } else {
+            window.location.reload();
+          }
+        } else if (typeof exibirMensagemErro === 'function') {
+          exibirMensagemErro(data.message || 'E-mail ou senha incorretos.');
+        }
+        return data;
+      })
+      .catch(function (err) {
+        console.error('Erro no login:', err);
+        if (typeof exibirMensagemErro === 'function') {
+          exibirMensagemErro('Erro de conexão com o servidor.');
+        }
+      });
+    }
+
+    function executarCadastro(dados) {
+      const url = (typeof API_CONFIG !== 'undefined' && API_CONFIG.url)
+        || (typeof CONFIG !== 'undefined' && (CONFIG.APPS_SCRIPT_URL || CONFIG.url))
+        || 'https://script.google.com/macros/s/AKfycbxV-adnwHFAXe40Haz0aKhDnRX97UHOiipzWunTErfnL-hqoILg-Qj3z9Z5cGVZ_5r21A/exec';
+
+      return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: typeof dados === 'string' ? dados : JSON.stringify(dados)
+      })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        const statusEl = document.getElementById('mensagem-erro') || document.querySelector('.mensagem-erro') || document.getElementById('status-cadastro');
+        if (data.success) {
+          if (statusEl) {
+            statusEl.style.color = '#4ade80';
+            statusEl.textContent = 'Cadastro realizado com sucesso!';
+          }
+          if (data.usuario) {
+            writeNativeSession(data.usuario);
+            applyLoggedInUi(data.usuario);
+          }
+        } else if (typeof exibirMensagemErro === 'function') {
+          exibirMensagemErro(data.message || 'Erro ao realizar cadastro.');
+        } else if (statusEl) {
+          statusEl.style.color = '#f87171';
+          statusEl.textContent = data.message || 'Erro ao realizar cadastro.';
+        }
+        return data;
+      })
+      .catch(function (err) {
+        console.error('Erro no cadastro:', err);
+        if (typeof exibirMensagemErro === 'function') {
+          exibirMensagemErro('Erro de conexão com o servidor.');
+        }
+      });
+    }
+
+    function camposDoFormulario(form) {
+      const campo = function (name) {
+        const el = form.elements.namedItem(name);
+        return el && typeof el.value === 'string' ? el.value : '';
+      };
+      return {
+        nome: String(campo('nome') || '').trim(),
+        email: String(campo('email') || '').trim(),
+        senha: String(campo('senha') || '')
+      };
+    }
+
+    function submitNativeAuth(event) {
+      if (event) event.preventDefault();
+      const campos = camposDoFormulario(event.currentTarget);
+      const email = campos.email;
+      const senha = campos.senha;
+      const status = document.getElementById('login-status');
+      const submit = document.getElementById('btn-entrar');
+      if (!email) {
+        if (status) status.textContent = 'Informe o e-mail.';
+        return;
+      }
+      if (!isAuthorizedGoogleEmail(email)) {
+        if (status) status.textContent = 'Informe um e-mail válido (usuario@dominio).';
+        return;
+      }
+      if (!senha.trim() || senha.length < 6) {
+        if (status) status.textContent = 'A senha precisa ter pelo menos 6 caracteres.';
+        return;
+      }
+      if (status) status.textContent = 'Entrando…';
+      if (submit) submit.disabled = true;
+      postAppsScript({ action: 'loginNativo', email: email, password: senha }).then(function (data) {
+        finishNativeAuth(data, status, submit, document.getElementById('login-senha'));
+      }).catch(function (error) {
+        if (status) status.textContent = error && error.message ? error.message : 'Falha de rede.';
+        if (submit) submit.disabled = false;
+      });
+    }
+
+    function bindNativeAuthForm() {
+      const form = document.getElementById('form-login');
+      const formCadastro = document.getElementById('form-cadastro');
+      const toggle = document.getElementById('native-auth-toggle');
+      if (form && !form.dataset.bound) {
+        form.dataset.bound = '1';
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+      }
+      const btnEntrar = document.getElementById('btn-entrar');
+      if (btnEntrar && !btnEntrar.dataset.bound) {
+        btnEntrar.dataset.bound = '1';
+        btnEntrar.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (typeof limparMensagemErro === 'function') limparMensagemErro();
+
+          const elEmail = document.getElementById('login-email') || document.querySelector('#form-login input[type="email"]');
+          const elSenha = document.getElementById('login-senha') || document.querySelector('#form-login input[type="password"]');
+
+          const email = elEmail ? elEmail.value.trim() : '';
+          const senha = elSenha ? elSenha.value : '';
+
+          if (!email || !senha) {
+            if (typeof exibirMensagemErro === 'function') {
+              exibirMensagemErro('Informe e-mail e senha.');
+            }
+            return;
+          }
+
+          executarLogin({ action: 'login', email: email, senha: senha });
+        });
+      }
+      const btnCadastrar = document.getElementById('btn-cadastrar');
+      if (btnCadastrar && !btnCadastrar.dataset.bound) {
+        btnCadastrar.dataset.bound = '1';
+        btnCadastrar.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (typeof limparMensagemErro === 'function') limparMensagemErro();
+
+          const elNome = document.getElementById('cadastro-nome') || document.querySelector('input[name="nome"]');
+          const elEmail = document.getElementById('cadastro-email') || document.querySelector('input[name="email"]');
+          const elSenha = document.getElementById('cadastro-senha') || document.querySelector('input[name="senha"]');
+
+          const nome = elNome ? elNome.value.trim() : '';
+          const email = elEmail ? elEmail.value.trim() : '';
+          const senha = elSenha ? elSenha.value : '';
+
+          console.log('Clique em Cadastrar - Valores lidos:', { nome: nome, email: email, temSenha: !!senha });
+
+          if (!nome || !email || !senha) {
+            if (typeof exibirMensagemErro === 'function') {
+              exibirMensagemErro('Preencha todos os campos obrigatórios.');
+            }
+            return;
+          }
+
+          const statusEl = document.getElementById('mensagem-erro') || document.querySelector('.mensagem-erro') || document.getElementById('status-cadastro');
+          if (statusEl) {
+            statusEl.style.color = '#38bdf8';
+            statusEl.textContent = 'Cadastrando...';
+          }
+
+          executarCadastro({
+            action: 'cadastrarUsuario',
+            nome: nome,
+            name: nome,
+            email: email,
+            senha: senha,
+            password: senha
+          });
+        });
+      }
+      if (formCadastro && !formCadastro.dataset.bound) {
+        formCadastro.dataset.bound = '1';
+        formCadastro.addEventListener('submit', function (e) {
+          e.preventDefault();
+        });
+      }
+      if (toggle && !toggle.dataset.bound) {
+        toggle.dataset.bound = '1';
+        toggle.addEventListener('click', function () {
+          setNativeAuthMode(nativeAuthMode === 'signup' ? 'login' : 'signup');
+          const status = document.getElementById('login-status');
+          if (status) status.textContent = '';
+        });
+      }
+      setNativeAuthMode(nativeAuthMode);
+    }
+
+    function initGoogleAuth() {
+      bindNativeAuthForm();
+      const googleSession = readGoogleSession();
+      const nativeSession = readNativeSession();
+      if (googleSession || nativeSession) {
+        applyLoggedInUi(nativeSession || googleSession);
+        return;
+      }
+      showLoginOverlay('');
+      renderGoogleLoginButton();
+    }
+
+    let googleLoginRenderTimer = null;
+
+    function renderGoogleLoginButton() {
+      if (googleLoginRenderTimer) clearInterval(googleLoginRenderTimer);
+      const started = Date.now();
+      googleLoginRenderTimer = setInterval(function () {
+        if (window.google && google.accounts && google.accounts.id && google.accounts.oauth2) {
+          clearInterval(googleLoginRenderTimer);
+          googleLoginRenderTimer = null;
+          mountGoogleSignIn();
+        } else if (Date.now() - started > 8000) {
+          clearInterval(googleLoginRenderTimer);
+          googleLoginRenderTimer = null;
+          showLoginOverlay('Não foi possível carregar o login do Google. Verifique a conexão.');
+        }
+      }, 150);
+    }
+
+    function mountGoogleSignIn() {
+      const host = document.getElementById('google-signin-btn');
+      if (!host) return;
+      const clientId = googleClientId();
+      if (!clientId) {
+        showLoginOverlay('Configure CONFIG.GOOGLE_CLIENT_ID em js/config.js com o Client ID OAuth do Google Cloud.');
+        return;
+      }
+      const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
+        callback: function (tokenResponse) {
+          if (!tokenResponse || tokenResponse.error) {
+            showLoginOverlay('Falha ao obter o acesso: ' + ((tokenResponse && tokenResponse.error) || 'sem token'));
+            return;
+          }
+          fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: 'Bearer ' + tokenResponse.access_token }
+          }).then(function (res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+          }).then(function (info) {
+            const email = String(info.email || '').trim();
+            if (!isAuthorizedGoogleEmail(email)) {
+              google.accounts.oauth2.revoke(tokenResponse.access_token, function () {});
+              showLoginOverlay('E-mail não autorizado: ' + (email || 'conta sem e-mail'));
+              return;
+            }
+            const expiresIn = Number(tokenResponse.expires_in) || 3600;
+            const session = {
+              email: email,
+              accessToken: tokenResponse.access_token,
+              expiresAt: Date.now() + Math.max(60, expiresIn - 60) * 1000
+            };
+            writeGoogleSession(session);
+            applyLoggedInUi(session);
+          }).catch(function (error) {
+            showLoginOverlay('Não foi possível ler o e-mail da conta: ' + error.message);
+          });
+        }
+      });
+      google.accounts.id.initialize({
+        client_id: clientId,
+        callback: function (response) {
+          let email = '';
+          try {
+            email = decodeJwtPayload(response && response.credential).email || '';
+          } catch (e) {
+            email = '';
+          }
+          if (!isAuthorizedGoogleEmail(email)) {
+            showLoginOverlay('E-mail não autorizado: ' + (email || 'conta sem e-mail'));
+            return;
+          }
+          tokenClient.requestAccessToken({ hint: email, prompt: '' });
+        }
+      });
+      host.innerHTML = '';
+      google.accounts.id.renderButton(host, {
+        type: 'standard',
+        theme: 'filled_blue',
+        size: 'large',
+        text: 'signin_with',
+        shape: 'rectangular',
+        locale: 'pt-BR',
+        width: 280
+      });
+    }
+
+    function cronoanaliseChaoCellsFromItem(item) {
+      if (Array.isArray(item)) {
+        const cells = item.slice(0, 11);
+        while (cells.length < 11) cells.push('');
+        cells[8] = '';
+        cells[9] = '';
+        cells[10] = '';
+        return cells;
+      }
+      const src = item || {};
+      return [
+        src.horario || src.clock || '',
+        src.peca || src.partName || '',
+        src.quantidade != null ? String(src.quantidade) : (src.qty != null ? String(src.qty) : ''),
+        src.tempoIndiv != null ? String(src.tempoIndiv) : '',
+        src.tempoTotal != null ? String(src.tempoTotal) : '',
+        src.setor || src.machine || '',
+        src.operador || '',
+        src.status || '',
+        '',
+        '',
+        ''
+      ];
+    }
+
+    function buildCronoanaliseChaoTableRows() {
+      const tableRows = [];
+      (typeof rawEvents !== 'undefined' ? rawEvents : []).forEach((evt, evtIdx) => {
+        const mObj = (typeof machines !== 'undefined' ? machines : []).find(mach => mach.id === evt.machineId);
+        const sector = mObj ? mObj.name : '-';
+        const operador = typeof getMachineOperatorLabel === 'function' ? getMachineOperatorLabel(mObj) : '';
+        const qty = evt.qty;
+        if (evt.setupTime > 0) {
+          tableRows.push({
+            abs: evt.setupStart, kind: 0, seq: evtIdx,
+            cells: [
+              formatReportClock(evt.setupStart), evt.partName, String(qty),
+              formatReportMinutes(evt.setupUnit), formatReportMinutes(evt.setupTime),
+              sector, operador, 'Em Ajuste / Setup', '', '', ''
+            ]
+          });
+        }
+        if (evt.isEstufaBatch) {
+          const queimaEnd = evt.estufaQueimaEnd != null ? evt.estufaQueimaEnd : evt.end;
+          const resfrioEnd = typeof estufaResfrioEndOf === 'function' ? estufaResfrioEndOf(evt) : (evt.estufaResfrioEnd != null ? evt.estufaResfrioEnd : evt.end);
+          const unloadStart = evt.estufaUnloadStart != null ? evt.estufaUnloadStart : resfrioEnd;
+          const queimaMin = evt.estufaQueimaMin != null ? Number(evt.estufaQueimaMin) : (typeof ESTUFA_QUEIMA_MIN !== 'undefined' ? ESTUFA_QUEIMA_MIN : 30);
+          const resfrioMin = evt.estufaResfrioMin != null ? Number(evt.estufaResfrioMin) : (typeof ESTUFA_RESFRIO_MIN !== 'undefined' ? ESTUFA_RESFRIO_MIN : 30);
+          const unloadMin = Math.max(0, (Number(evt.prodTime) || 0) - queimaMin - resfrioMin);
+          tableRows.push({
+            abs: evt.prodStart, kind: 1, seq: evtIdx,
+            cells: [
+              formatReportClock(evt.prodStart), evt.partName, String(qty),
+              formatReportMinutes(queimaMin), formatReportMinutes(queimaMin),
+              sector, operador, 'QUEIMA', '', '', ''
+            ]
+          });
+          tableRows.push({
+            abs: queimaEnd, kind: 1, seq: evtIdx,
+            cells: [
+              formatReportClock(queimaEnd), evt.partName, String(qty),
+              formatReportMinutes(resfrioMin), formatReportMinutes(resfrioMin),
+              sector, operador, 'RESFRIAMENTO', '', '', ''
+            ]
+          });
+          if (evt.end > unloadStart) {
+            tableRows.push({
+              abs: unloadStart, kind: 1, seq: evtIdx,
+              cells: [
+                formatReportClock(unloadStart), evt.partName, String(qty),
+                formatReportMinutes(evt.prodUnit), formatReportMinutes(unloadMin),
+                sector, operador, 'DESCARREGAR', '', '', ''
+              ]
+            });
+          }
+        } else {
+          tableRows.push({
+            abs: evt.prodStart, kind: 1, seq: evtIdx,
+            cells: [
+              formatReportClock(evt.prodStart), evt.partName, String(qty),
+              formatReportMinutes(evt.prodUnit), formatReportMinutes(evt.prodTime),
+              sector, operador, 'Em Processamento / Produção', '', '', ''
+            ]
+          });
+        }
+      });
+      (typeof maintenanceEvents !== 'undefined' ? maintenanceEvents : []).forEach(me => {
+        const mObj = (typeof machines !== 'undefined' ? machines : []).find(mach => mach.id === me.machineId);
+        tableRows.push({
+          abs: me.start, kind: 2, seq: 100000,
+          cells: [
+            formatReportClock(me.start), '—', '—', '—',
+            formatReportMinutes(me.duration),
+            mObj ? mObj.name : '-',
+            typeof getMachineOperatorLabel === 'function' ? getMachineOperatorLabel(mObj) : '',
+            'Manutenção Preventiva', '', '', ''
+          ]
+        });
+      });
+      tableRows.sort((a, b) => (a.abs - b.abs) || ((a.kind || 0) - (b.kind || 0)) || ((a.seq || 0) - (b.seq || 0)));
+      return tableRows;
+    }
+
+    function buildCronoanaliseWorkbook(dadosPayload) {
+      if (!window.XLSX) {
+        alert('Biblioteca de Excel não carregada.');
+        return;
+      }
+      if (typeof simulationHistory !== 'undefined' && !simulationHistory.length) {
+        alert('Gere a simulação antes de exportar a cronoanálise.');
+        return;
+      }
+      const payload = dadosPayload || {};
+      const meta = typeof getPdfReportMeta === 'function' ? getPdfReportMeta() : {};
+      const etapas = payload.etapas || payload.itens || payload.chao;
+      const detailRows = Array.isArray(etapas) && etapas.length
+        ? etapas.map(cronoanaliseChaoCellsFromItem)
+        : buildCronoanaliseChaoTableRows().map(r => r.cells);
+      const opId = payload.opId || meta.projectName || 'OP';
+      const rows = [
+        ['RELATÓRIO DE PRODUÇÃO — PCPMaster v1.10.0'],
+        ['Projeto / SKU Final', meta.label || meta.projectName || payload.projeto || ''],
+        ['Quantidade de Caixas', meta.boxes != null ? meta.boxes : (payload.boxes != null ? payload.boxes : '')],
+        ['Data de emissão', meta.issuedStr || ''],
+        ['Data inicial', meta.startDate || ''],
+        ['Turno', '07:30–17:18'],
+        ['Almoço', '12:00–13:00'],
+        [],
+        ['Cronoanálise do Chão de Fábrica'],
+        [
+          'Horário',
+          'Peça / Componente',
+          'Quantidade (un)',
+          'Tempo Indiv. (min)',
+          'Tempo Total Simulado (min)',
+          'Setor / Máquina',
+          'Operador Responsável',
+          'Status / Situação',
+          'Tempo Registrado (min)',
+          'Descrição / Como foi feito',
+          'Desempenho (Reg. vs Sim.)'
+        ]
+      ].concat(detailRows);
+      const worksheet = XLSX.utils.aoa_to_sheet(rows);
+      const headerRow = 10;
+      const titleCell = worksheet['A9'];
+      if (titleCell) {
+        titleCell.s = {
+          font: { name: 'Arial', sz: 12, bold: true, color: { rgb: '0078D4' } }
+        };
+      }
+      const headerStyle = {
+        font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+        fill: { patternType: 'solid', fgColor: { rgb: '0078D4' } },
+        alignment: { horizontal: 'center', vertical: 'center' }
+      };
+      const zebraStyle = {
+        font: { name: 'Arial', sz: 10 },
+        fill: { patternType: 'solid', fgColor: { rgb: 'F2F4F8' } }
+      };
+      for (let col = 0; col < 11; col++) {
+        const headAddr = XLSX.utils.encode_cell({ r: headerRow - 1, c: col });
+        if (!worksheet[headAddr]) worksheet[headAddr] = { t: 's', v: '' };
+        worksheet[headAddr].s = headerStyle;
+      }
+      for (let r = headerRow; r < rows.length; r++) {
+        const excelRow = r + 1;
+        if (excelRow % 2 !== 0) continue;
+        for (let col = 0; col < 11; col++) {
+          const addr = XLSX.utils.encode_cell({ r: r, c: col });
+          if (!worksheet[addr]) worksheet[addr] = { t: 's', v: '' };
+          worksheet[addr].s = zebraStyle;
+        }
+      }
+      worksheet['!cols'] = [
+        { wch: 22 },
+        { wch: 28 },
+        { wch: 16 },
+        { wch: 18 },
+        { wch: 26 },
+        { wch: 22 },
+        { wch: 24 },
+        { wch: 28 },
+        { wch: 24 },
+        { wch: 32 },
+        { wch: 26 }
+      ];
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Cronoanálise');
+      const fileId = String(opId).replace(/[^\w\-]+/g, '_');
+      return { workbook: workbook, fileName: 'Cronoanalise_' + fileId + '.xlsx' };
+    }
+
+    function exportarCronoanaliseLocal(dadosPayload) {
+      const built = buildCronoanaliseWorkbook(dadosPayload);
+      if (!built) return;
+      XLSX.writeFile(built.workbook, built.fileName);
+    }
+
+    async function googleApiJson(url, accessToken, method, body) {
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Authorization': 'Bearer ' + accessToken,
+          'Content-Type': 'application/json'
+        },
+        body: body == null ? undefined : JSON.stringify(body)
+      });
+      let data = {};
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        data = {};
+      }
+      console.log('Cronoanálise: HTTP', response.status, url.split('?')[0]);
+      if (response.status === 401) {
+        const err = new Error('401');
+        err.status = 401;
+        throw err;
+      }
+      if (!response.ok) {
+        const msg = (data.error && (data.error.message || data.error.status)) || ('HTTP ' + response.status);
+        throw new Error(msg);
+      }
+      return data;
+    }
+
+    async function exportarCronoanaliseDrive(dadosPayload) {
+      const session = readGoogleSession();
+      if (!session || !session.accessToken || !session.email) {
+        localStorage.removeItem(GOOGLE_AUTH_STORAGE_KEY);
+        promptGoogleLogin('Sessão inválida ou expirada. Entre novamente com o Google para criar a planilha.');
+        return;
+      }
+      if (typeof simulationHistory !== 'undefined' && !simulationHistory.length) {
+        alert('Gere a simulação antes de exportar a cronoanálise.');
+        return;
+      }
+
+      const btn = document.getElementById('btn-exportar-cronoanalise');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Criando Planilha...';
+      }
+
+      const folderId = (typeof CONFIG !== 'undefined' && CONFIG && CONFIG.FOLDER_ID) ? String(CONFIG.FOLDER_ID).trim() : '';
+      if (!folderId) {
+        alert('Configure CONFIG.FOLDER_ID em js/config.js com o ID da pasta do Drive.');
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = '📊 Exportar para Cronoanálise (Drive)';
+        }
+        return;
+      }
+
+      try {
+        const built = buildCronoanaliseWorkbook(dadosPayload);
+        if (!built) return;
+        const buffer = XLSX.write(built.workbook, { bookType: 'xlsx', type: 'array' });
+        const boundary = 'pcpmaster_' + Date.now();
+        const metadata = JSON.stringify({
+          name: built.fileName,
+          parents: [folderId],
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        const body = new Blob([
+          '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + metadata + '\r\n',
+          '--' + boundary + '\r\nContent-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\r\n\r\n',
+          new Uint8Array(buffer),
+          '\r\n--' + boundary + '--'
+        ]);
+        console.log('Cronoanálise: enviando', built.fileName, 'usuario', session.email);
+        const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + session.accessToken,
+            'Content-Type': 'multipart/related; boundary=' + boundary
+          },
+          body: body
+        });
+        const data = await response.json().catch(function () { return {}; });
+        console.log('Cronoanálise: HTTP', response.status, built.fileName);
+        if (response.status === 401) {
+          localStorage.removeItem(GOOGLE_AUTH_STORAGE_KEY);
+          promptGoogleLogin('Sessão expirada. Entre novamente com o Google para enviar a planilha.');
+          return;
+        }
+        if (!response.ok) {
+          const msg = (data.error && data.error.message) || ('HTTP ' + response.status);
+          throw new Error(msg);
+        }
+        if (data.webViewLink) window.open(data.webViewLink, '_blank');
+        alert('Planilha enviada com sucesso para o Google Drive.');
+      } catch (error) {
+        console.error('Erro ao criar a planilha de cronoanálise:', error);
+        if (error && error.status === 401) {
+          localStorage.removeItem(GOOGLE_AUTH_STORAGE_KEY);
+          promptGoogleLogin('Sessão expirada. Entre novamente com o Google para criar a planilha.');
+          return;
+        }
+        alert('Falha ao criar a planilha: ' + (error && error.message ? error.message : error));
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = '📊 Exportar para Cronoanálise (Drive)';
+        }
+      }
+    }
+
 function navigateTo(screenId) {
   if (screenId === 'screen-sim') {
     if (typeof activatePlanRuntimeIfNeeded === 'function') activatePlanRuntimeIfNeeded();
@@ -3458,3 +4299,4 @@ function navigateTo(screenId) {
   }
   if (typeof syncTesterFloatingWidget === 'function') syncTesterFloatingWidget();
 }
+

@@ -1,7 +1,7 @@
 /* PCPMaster v2.2 — Motor de simulação, calendário, manutenção, analytics, Gantt, jornada e custos MOD */
 
 const APP_NAME = 'PCPMaster';
-const APP_VERSION = '2.2';
+const APP_VERSION = '2.3';
 const PRECO_SUGERIDO_FORMULA_HINT = 'Fórmula: [(MOD + Custo Fixo Absorvido) / caixas × (1 + Margem)] / (1 - Imposto%)';
 const SCHEMA_VERSION = 'v2.0';
 
